@@ -1,746 +1,689 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ARC Checkout V10 Final</title>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ARC Checkout V10</title>
 
-  <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:Inter,Arial,sans-serif;
+  background:#eef8ff;
+  color:#0f172a;
+}
+.wrapper{
+  max-width:1450px;
+  margin:auto;
+  padding:24px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:380px 1fr;
+  gap:22px;
+}
+.card{
+  background:#fff;
+  border:1px solid #d9ebff;
+  border-radius:18px;
+  padding:22px;
+}
+h2{
+  font-size:28px;
+  margin-bottom:18px;
+}
+label{
+  display:block;
+  font-size:12px;
+  font-weight:700;
+  color:#475569;
+  margin-bottom:7px;
+  text-transform:uppercase;
+}
+input,select,textarea{
+  width:100%;
+  padding:12px;
+  border:1px solid #d8e7f8;
+  border-radius:12px;
+  margin-bottom:14px;
+}
+textarea{
+  min-height:100px;
+  resize:vertical;
+}
+.row2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+button{
+  border:none;
+  border-radius:12px;
+  padding:12px 16px;
+  font-weight:700;
+  cursor:pointer;
+}
+.btn-primary{background:#06b6d4;color:#fff}
+.btn-dark{background:#0f172a;color:#fff}
+.btn-blue{background:#3b82f6;color:#fff}
+.btn-green{background:#10b981;color:#fff}
+.btn-gray{background:#64748b;color:#fff}
+.actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  margin-top:6px;
+}
+.invoice-item{
+  border:1px solid #d9ebff;
+  border-radius:14px;
+  padding:14px;
+  margin-top:12px;
+}
+.invoice-title{
+  font-size:18px;
+  font-weight:800;
+}
+.badge{
+  display:inline-block;
+  padding:5px 10px;
+  border-radius:999px;
+  font-size:12px;
+  font-weight:700;
+}
+.created{background:#f1f5f9;color:#334155}
+.paid{background:#dcfce7;color:#166534}
+.big{
+  font-size:72px;
+  line-height:1;
+  font-weight:900;
+  margin:8px 0 18px;
+}
+.small{
+  font-size:13px;
+  color:#64748b;
+}
+.muted{
+  color:#64748b;
+}
+.wallet{
+  border:1px solid #dbeafe;
+  border-radius:18px;
+  padding:18px;
+  margin-top:20px;
+}
+.wallet-grid{
+  display:grid;
+  grid-template-columns:1fr 180px;
+  gap:20px;
+}
+.checkout-grid{
+  display:grid;
+  grid-template-columns:1fr 280px;
+  gap:22px;
+}
+.qrbox{
+  border:1px solid #dbeafe;
+  border-radius:18px;
+  padding:18px;
+  text-align:center;
+}
+.qrbox img{
+  width:220px;
+  height:220px;
+}
+.success{color:#059669;font-weight:700}
+.error{color:#dc2626;font-weight:700}
 
-    body {
-      font-family: Inter, Arial, sans-serif;
-      background: #eef8ff;
-      color: #0f172a;
-    }
-
-    .wrapper {
-      max-width: 1450px;
-      margin: 0 auto;
-      padding: 24px;
-    }
-
-    .grid {
-      display: grid;
-      grid-template-columns: 380px 1fr;
-      gap: 22px;
-    }
-
-    .card {
-      background: #fff;
-      border: 1px solid #d9ebff;
-      border-radius: 18px;
-      padding: 22px;
-    }
-
-    h2 {
-      font-size: 28px;
-      margin-bottom: 18px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 7px;
-      font-size: 12px;
-      font-weight: 700;
-      color: #475569;
-      text-transform: uppercase;
-    }
-
-    input,
-    select,
-    textarea {
-      width: 100%;
-      padding: 12px;
-      border: 1px solid #d8e7f8;
-      border-radius: 12px;
-      margin-bottom: 14px;
-      font-size: 15px;
-      background: #fff;
-    }
-
-    textarea {
-      resize: vertical;
-      min-height: 100px;
-    }
-
-    .row2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    button {
-      border: none;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .btn-primary {
-      background: #06b6d4;
-      color: #fff;
-    }
-
-    .btn-dark {
-      background: #0f172a;
-      color: #fff;
-    }
-
-    .btn-blue {
-      background: #3b82f6;
-      color: #fff;
-    }
-
-    .btn-green {
-      background: #10b981;
-      color: #fff;
-    }
-
-    .btn-gray {
-      background: #64748b;
-      color: #fff;
-    }
-
-    button:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 6px;
-    }
-
-    .invoice-item {
-      border: 1px solid #d9ebff;
-      border-radius: 14px;
-      padding: 14px;
-      margin-top: 12px;
-      background: #fff;
-    }
-
-    .invoice-title {
-      font-weight: 800;
-      font-size: 18px;
-      margin-bottom: 4px;
-    }
-
-    .badge {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-    }
-
-    .created {
-      background: #f1f5f9;
-      color: #334155;
-    }
-
-    .paid {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .big {
-      font-size: 72px;
-      line-height: 1;
-      font-weight: 900;
-      margin: 8px 0 18px;
-    }
-
-    .muted {
-      color: #64748b;
-      font-size: 14px;
-    }
-
-    .small {
-      font-size: 13px;
-      color: #64748b;
-      line-height: 1.6;
-      word-break: break-word;
-    }
-
-    .mt16 { margin-top: 16px; }
-    .mt20 { margin-top: 20px; }
-
-    .checkout-grid {
-      display: grid;
-      grid-template-columns: 1fr 280px;
-      gap: 22px;
-      align-items: start;
-    }
-
-    .qrbox {
-      border: 1px solid #dbeafe;
-      border-radius: 18px;
-      padding: 18px;
-      text-align: center;
-      min-height: 360px;
-      background: #fff;
-    }
-
-    .qrbox img {
-      width: 220px;
-      height: 220px;
-      border-radius: 12px;
-      background: #fff;
-      object-fit: contain;
-      border: 1px solid #e5e7eb;
-    }
-
-    .qr-placeholder {
-      width: 220px;
-      height: 220px;
-      border-radius: 12px;
-      border: 1px dashed #cbd5e1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin: 0 auto;
-      color: #94a3b8;
-      font-weight: 700;
-      background: #f8fafc;
-    }
-
-    .qrbox a {
-      display: block;
-      margin-top: 10px;
-      color: #2563eb;
-      text-decoration: none;
-      font-weight: 700;
-      word-break: break-word;
-    }
-
-    .wallet {
-      border: 1px solid #dbeafe;
-      border-radius: 18px;
-      padding: 18px;
-      margin-top: 20px;
-    }
-
-    .wallet-grid {
-      display: grid;
-      grid-template-columns: 1fr 180px;
-      gap: 20px;
-    }
-
-    .success {
-      color: #059669;
-      font-weight: 700;
-    }
-
-    .error {
-      color: #dc2626;
-      font-weight: 700;
-    }
-
-    @media (max-width: 1100px) {
-      .grid {
-        grid-template-columns: 1fr;
-      }
-
-      .checkout-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .wallet-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .big {
-        font-size: 56px;
-      }
-    }
-  </style>
+@media(max-width:1100px){
+.grid,.checkout-grid,.wallet-grid{
+grid-template-columns:1fr;
+}
+.big{font-size:56px}
+}
+</style>
 </head>
+
 <body>
-  <div class="wrapper">
-    <div class="grid">
-      <div class="card">
-        <h2>Create Invoice</h2>
-
-        <label>Title</label>
-        <input id="title" placeholder="Coffee" />
-
-        <div class="row2">
-          <div>
-            <label>Amount (USDC)</label>
-            <input id="amount" placeholder="0.8" />
-          </div>
-
-          <div>
-            <label>Target Chain</label>
-            <select id="chain">
-              <option>Arc</option>
-            </select>
-          </div>
-        </div>
-
-        <label>Recipient Address</label>
-        <input id="recipient" placeholder="Leave empty to use merchant wallet" />
-
-        <label>Note</label>
-        <textarea id="note" placeholder="Optional note"></textarea>
-
-        <div class="actions">
-          <button class="btn-primary" onclick="createInvoice()">Create Invoice</button>
-          <button class="btn-dark" onclick="loadInvoices()">Load Invoices</button>
-        </div>
-
-        <h2 class="mt20">Invoices</h2>
-        <div id="invoiceList"></div>
-      </div>
-
-      <div class="card">
-        <div class="checkout-grid">
-          <div>
-            <div class="muted">INVOICE TITLE</div>
-            <h2 id="viewTitle">No invoice selected</h2>
-
-            <div class="muted mt16">AMOUNT</div>
-            <div class="big" id="viewAmount">0 USDC</div>
-
-            <div id="statusBadge" class="badge created">CREATED</div>
-
-            <div class="mt16 muted">INVOICE ID</div>
-            <div id="viewId">-</div>
-
-            <div class="mt16 muted">RECIPIENT ADDRESS</div>
-            <div id="viewRecipient">-</div>
-
-            <div class="actions mt16">
-              <button class="btn-dark" onclick="copyAddress()">Copy Address</button>
-            </div>
-
-            <div class="wallet">
-              <h2 style="font-size:34px">Wallet</h2>
-
-              <div class="wallet-grid">
-                <div>
-                  <div class="small">
-                    <div><b>CONNECTED</b></div>
-                    <div id="walletAddress">Disconnected</div>
-                  </div>
-
-                  <div class="small mt16">
-                    <div><b>ARC USDC BALANCE</b></div>
-                  </div>
-
-                  <div class="big" style="font-size:48px" id="walletBalance">- USDC</div>
-                </div>
-
-                <div>
-                  <div class="small">
-                    <div><b>CHAIN ID</b></div>
-                    <div id="walletChain">-</div>
-                  </div>
-                </div>
-              </div>
-
-              <div class="actions">
-                <button class="btn-blue" onclick="connectWallet()">Connect</button>
-                <button class="btn-gray" onclick="disconnectWallet()">Disconnect</button>
-                <button class="btn-blue" onclick="switchArc()">Switch Arc</button>
-                <button class="btn-green" id="payBtn" onclick="payNow()">Pay Now</button>
-              </div>
-
-              <div class="small mt16" id="payMsg">Open invoice first.</div>
-            </div>
-          </div>
-
-          <div class="qrbox">
-            <div id="qrPlaceholder" class="qr-placeholder">QR</div>
-            <img id="qrImage" alt="QR code" style="display:none;" />
-
-            <a id="standaloneLink" href="#" target="_blank" rel="noreferrer">Open standalone checkout →</a>
-            <a id="explorerLink" href="#" target="_blank" rel="noreferrer">Open explorer →</a>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
-
-  <script>
-    let currentInvoice = null;
-    let wallet = null;
-
-    const ARC_CHAIN_ID = 5042002;
-    const ARC_CHAIN_HEX = "0x4cef52";
-    const ARC_RPC = "https://rpc.testnet.arc.network";
-    const ARC_EXPLORER = "https://testnet.arcscan.app";
-    const ARC_CHAIN_NAME = "Arc Testnet";
-
-    const USDC_TOKEN = "0x3600000000000000000000000000000000000000";
-    const USDC_DECIMALS = 6;
-
-    const ERC20_ABI = [
-      {
-        constant: false,
-        inputs: [
-          { name: "_to", type: "address" },
-          { name: "_value", type: "uint256" }
-        ],
-        name: "transfer",
-        outputs: [{ name: "", type: "bool" }],
-        type: "function"
-      },
-      {
-        constant: true,
-        inputs: [{ name: "owner", type: "address" }],
-        name: "balanceOf",
-        outputs: [{ name: "", type: "uint256" }],
-        type: "function"
-      },
-      {
-        constant: true,
-        inputs: [],
-        name: "decimals",
-        outputs: [{ name: "", type: "uint8" }],
-        type: "function"
-      }
-    ];
-
-    function qs(id) {
-      return document.getElementById(id);
-    }
-
-    function setMessage(html) {
-      qs("payMsg").innerHTML = html;
-    }
-
-    function formatUsdc(value) {
-      const num = Number(value || 0);
-      if (!Number.isFinite(num)) return "0";
-      return num.toLocaleString("en-US", {
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 6
-      });
-    }
-
-    function toTokenUnits(amount, decimals) {
-      const text = String(amount).trim();
-      if (!text) return "0";
-
-      const parts = text.split(".");
-      const whole = parts[0] || "0";
-      const frac = (parts[1] || "").slice(0, decimals).padEnd(decimals, "0");
-      const normalizedWhole = whole.replace(/^0+(?=\d)/, "") || "0";
-      const combined = (normalizedWhole + frac).replace(/^0+/, "");
-      return combined || "0";
-    }
-
-    function showQrPlaceholder() {
-      qs("qrPlaceholder").style.display = "flex";
-      qs("qrImage").style.display = "none";
-      qs("qrImage").removeAttribute("src");
-    }
-
-    function renderQR(text) {
-      if (!text) {
-        showQrPlaceholder();
-        return;
-      }
-
-      const img = qs("qrImage");
-      const placeholder = qs("qrPlaceholder");
-
-      img.onload = function () {
-        placeholder.style.display = "none";
-        img.style.display = "block";
-      };
-
-      img.onerror = function () {
-        showQrPlaceholder();
-      };
-
-      img.src =
-        "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" +
-        encodeURIComponent(text);
-    }
-
-    async function createInvoice() {
-      const body = {
-        title: qs("title").value,
-        amount: qs("amount").value,
-        recipientAddress: qs("recipient").value,
-        targetChain: qs("chain").value,
-        note: qs("note").value
-      };
-
-      const res = await fetch("/api/invoices", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-      });
-
-      const data = await res.json();
-
-      if (!data.ok) {
-        setMessage('<span class="error">' + (data.error || "Create invoice failed.") + "</span>");
-        return;
-      }
-
-      currentInvoice = data.invoice;
-      renderInvoice(currentInvoice);
-      await loadInvoices();
-      setMessage("Invoice ready.");
-    }
-
-    async function loadInvoices() {
-      const res = await fetch("/api/invoices");
-      const data = await res.json();
-
-      qs("invoiceList").innerHTML = "";
-
-      (data.invoices || []).forEach((inv) => {
-        qs("invoiceList").innerHTML += `
-          <div class="invoice-item">
-            <div class="invoice-title">${escapeHtml(inv.title || "-")}</div>
-            <div>${formatUsdc(inv.amount)} USDC</div>
-            <div class="small mt16">${escapeHtml(inv.id)}</div>
-            <div class="small">${escapeHtml(inv.recipientAddress || "-")}</div>
-            <div class="mt16">
-              <span class="badge ${inv.status === "PAID" ? "paid" : "created"}">${inv.status}</span>
-            </div>
-            <div class="mt16">
-              <button class="btn-dark" onclick="openInvoice('${inv.id}')">Open</button>
-            </div>
-          </div>
-        `;
-      });
-    }
-
-    async function openInvoice(id) {
-      const res = await fetch("/api/invoices/" + encodeURIComponent(id));
-      const data = await res.json();
-
-      if (!data.ok) {
-        setMessage('<span class="error">' + (data.error || "Invoice not found.") + "</span>");
-        return;
-      }
-
-      currentInvoice = data.invoice;
-      renderInvoice(currentInvoice);
-      setMessage("Invoice opened.");
-    }
-
-    function renderInvoice(inv) {
-      qs("viewTitle").innerText = inv?.title || "No invoice selected";
-      qs("viewAmount").innerText = formatUsdc(inv?.amount || 0) + " USDC";
-      qs("viewId").innerText = inv?.id || "-";
-      qs("viewRecipient").innerText = inv?.recipientAddress || "-";
-
-      qs("statusBadge").innerText = inv?.status || "CREATED";
-      qs("statusBadge").className =
-        "badge " + ((inv?.status === "PAID") ? "paid" : "created");
-
-      if (!inv || !inv.id) {
-        qs("standaloneLink").href = "#";
-        qs("explorerLink").href = "#";
-        showQrPlaceholder();
-        return;
-      }
-
-      const payUrl = location.origin + "/pay/" + encodeURIComponent(inv.id);
-      qs("standaloneLink").href = payUrl;
-      qs("explorerLink").href = ARC_EXPLORER + "/address/" + inv.recipientAddress;
-      renderQR(payUrl);
-    }
-
-    async function connectWallet() {
-      try {
-        if (!window.ethereum) {
-          alert("Install MetaMask first");
-          return;
-        }
-
-        if (typeof window.Web3 === "undefined") {
-          setMessage('<span class="error">Web3 library not loaded.</span>');
-          return;
-        }
-
-        const accounts = await window.ethereum.request({
-          method: "eth_requestAccounts"
-        });
-
-        wallet = accounts[0] || null;
-        qs("walletAddress").innerText = wallet || "Disconnected";
-
-        const cid = await window.ethereum.request({
-          method: "eth_chainId"
-        });
-
-        qs("walletChain").innerText = parseInt(cid, 16);
-        await loadBalance();
-        setMessage("Wallet connected.");
-      } catch (err) {
-        setMessage('<span class="error">' + escapeHtml(err.message || "Connect failed.") + "</span>");
-      }
-    }
-
-    function disconnectWallet() {
-      wallet = null;
-      qs("walletAddress").innerText = "Disconnected";
-      qs("walletChain").innerText = "-";
-      qs("walletBalance").innerText = "- USDC";
-      setMessage("Wallet disconnected in UI.");
-    }
-
-    async function switchArc() {
-      try {
-        await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: ARC_CHAIN_HEX }]
-        });
-      } catch (switchError) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: ARC_CHAIN_HEX,
-              chainName: ARC_CHAIN_NAME,
-              rpcUrls: [ARC_RPC],
-              nativeCurrency: {
-                name: "Ethereum",
-                symbol: "ETH",
-                decimals: 18
-              },
-              blockExplorerUrls: [ARC_EXPLORER]
-            }]
-          });
-        } catch (addError) {
-          setMessage('<span class="error">' + escapeHtml(addError.message || "Cannot add Arc network.") + "</span>");
-          return;
-        }
-      }
-
-      const cid = await window.ethereum.request({
-        method: "eth_chainId"
-      });
-
-      qs("walletChain").innerText = parseInt(cid, 16);
-      await loadBalance();
-      setMessage("Switched to Arc network.");
-    }
-
-    async function loadBalance() {
-      if (!wallet || !window.ethereum || typeof window.Web3 === "undefined") return;
-
-      try {
-        const web3 = new window.Web3(window.ethereum);
-        const token = new web3.eth.Contract(ERC20_ABI, USDC_TOKEN);
-
-        const raw = await token.methods.balanceOf(wallet).call();
-        const bal = Number(raw) / Math.pow(10, USDC_DECIMALS);
-
-        qs("walletBalance").innerText = formatUsdc(bal) + " USDC";
-      } catch (err) {
-        qs("walletBalance").innerText = "Unavailable";
-      }
-    }
-
-    async function payNow() {
-      if (!wallet) {
-        setMessage('<span class="error">Connect wallet first.</span>');
-        return;
-      }
-
-      if (!currentInvoice || !currentInvoice.id) {
-        setMessage('<span class="error">Open invoice first.</span>');
-        return;
-      }
-
-      try {
-        const cid = await window.ethereum.request({
-          method: "eth_chainId"
-        });
-
-        if (parseInt(cid, 16) !== ARC_CHAIN_ID) {
-          setMessage('<span class="error">Wrong network. Switch to Arc first.</span>');
-          return;
-        }
-
-        if (currentInvoice.status === "PAID") {
-          setMessage('<span class="success">Invoice already paid.</span>');
-          return;
-        }
-
-        const web3 = new window.Web3(window.ethereum);
-        const token = new web3.eth.Contract(ERC20_ABI, USDC_TOKEN);
-
-        const amountUnits = toTokenUnits(currentInvoice.amount, USDC_DECIMALS);
-
-        const tx = await token.methods.transfer(
-          currentInvoice.recipientAddress,
-          amountUnits
-        ).send({ from: wallet });
-
-        await fetch("/api/invoices/" + encodeURIComponent(currentInvoice.id) + "/mark-paid", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            txHash: tx.transactionHash,
-            fromAddress: wallet
-          })
-        });
-
-        currentInvoice.status = "PAID";
-        currentInvoice.txHash = tx.transactionHash;
-
-        renderInvoice(currentInvoice);
-        await loadInvoices();
-
-        const txUrl = ARC_EXPLORER + "/tx/" + tx.transactionHash;
-        setMessage('<span class="success">Payment success.</span> <a href="' + txUrl + '" target="_blank" rel="noreferrer">View tx</a>');
-      } catch (err) {
-        setMessage('<span class="error">' + escapeHtml(err.message || "Payment failed.") + "</span>");
-      }
-    }
-
-    function copyAddress() {
-      if (!currentInvoice?.recipientAddress) return;
-      navigator.clipboard.writeText(currentInvoice.recipientAddress);
-      setMessage("Address copied.");
-    }
-
-    function escapeHtml(value) {
-      return String(value ?? "")
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-    }
-
-    (async function init() {
-      showQrPlaceholder();
-      await loadInvoices();
-
-      if (window.ethereum) {
-        window.ethereum.on("accountsChanged", async (accounts) => {
-          wallet = accounts && accounts.length ? accounts[0] : null;
-          qs("walletAddress").innerText = wallet || "Disconnected";
-          await loadBalance();
-        });
-
-        window.ethereum.on("chainChanged", async (chainId) => {
-          qs("walletChain").innerText = parseInt(chainId, 16);
-          await loadBalance();
-        });
-      }
-    })();
-  </script>
+<div class="wrapper">
+<div class="grid">
+
+<!-- LEFT -->
+<div class="card">
+<h2>Create Invoice</h2>
+
+<label>Title</label>
+<input id="title" placeholder="Coffee"/>
+
+<div class="row2">
+<div>
+<label>Amount (USDC)</label>
+<input id="amount" placeholder="0.8"/>
+</div>
+
+<div>
+<label>Target Chain</label>
+<select id="chain">
+<option>Arc</option>
+</select>
+</div>
+</div>
+
+<label>Recipient Address</label>
+<input id="recipient" placeholder="Leave empty to use merchant wallet"/>
+
+<label>Note</label>
+<textarea id="note"></textarea>
+
+<div class="actions">
+<button class="btn-primary" onclick="createInvoice()">Create Invoice</button>
+<button class="btn-dark" onclick="loadInvoices()">Load Invoices</button>
+</div>
+
+<h2 style="margin-top:20px">Invoices</h2>
+<div id="invoiceList"></div>
+</div>
+
+<!-- RIGHT -->
+<div class="card">
+<div class="checkout-grid">
+
+<div>
+<div class="muted">INVOICE TITLE</div>
+<h2 id="viewTitle">No invoice selected</h2>
+
+<div class="muted">AMOUNT</div>
+<div class="big" id="viewAmount">0 USDC</div>
+
+<div id="statusBadge" class="badge created">CREATED</div>
+
+<div style="margin-top:16px" class="muted">INVOICE ID</div>
+<div id="viewId">-</div>
+
+<div style="margin-top:16px" class="muted">RECIPIENT</div>
+<div id="viewRecipient">-</div>
+
+<div class="actions" style="margin-top:16px">
+<button class="btn-dark" onclick="copyAddress()">Copy Address</button>
+</div>
+
+<div class="wallet">
+<h2 style="font-size:34px">Wallet</h2>
+
+<div class="wallet-grid">
+<div>
+<div class="small">
+<b>CONNECTED</b><br>
+<span id="walletAddress">Disconnected</span>
+</div>
+
+<div class="small" style="margin-top:16px">
+<b>ARC USDC BALANCE</b>
+</div>
+
+<div class="big" style="font-size:48px" id="walletBalance">- USDC</div>
+</div>
+
+<div>
+<div class="small">
+<b>CHAIN ID</b><br>
+<span id="walletChain">-</span>
+</div>
+</div>
+</div>
+
+<div class="actions">
+<button class="btn-blue" onclick="connectWallet()">Connect</button>
+<button class="btn-gray" onclick="disconnectWallet()">Disconnect</button>
+<button class="btn-blue" onclick="switchArc()">Switch Arc</button>
+<button class="btn-dark" onclick="connectCircle()">Login Google / Circle</button>
+<button class="btn-green" onclick="payNow()">Pay Now</button>
+<button onclick="setupPin()">Setup Circle PIN</button>
+</div>
+
+<div class="small" style="margin-top:16px" id="payMsg">
+Open invoice first.
+</div>
+
+</div>
+</div>
+
+<div class="qrbox">
+<img id="qrImage"/>
+<br><br>
+<a id="standaloneLink" href="#" target="_blank">Open checkout</a>
+</div>
+
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- WEB3 -->
+<script src="https://cdn.jsdelivr.net/npm/web3@1.10.0/dist/web3.min.js"></script>
+
+<!-- CIRCLE -->
+<script type="module">
+  import { W3SSdk } from "https://esm.sh/@circle-fin/w3s-pw-web-sdk?target=es2020";
+  window.W3SSdk = W3SSdk;
+  console.log("Circle W3SSdk loaded:", W3SSdk);
+</script>
+
+<script>
+let currentInvoice = null;
+let wallet = null;
+
+const ARC_CHAIN_ID = 5042002;
+const ARC_CHAIN_HEX = "0x4cef52";
+const ARC_RPC = "https://rpc.testnet.arc.network";
+const ARC_EXPLORER = "https://testnet.arcscan.app";
+
+const USDC_TOKEN = "0x3600000000000000000000000000000000000000";
+const USDC_DECIMALS = 6;
+
+const ERC20_ABI = [
+{
+constant:false,
+inputs:[
+{name:"_to",type:"address"},
+{name:"_value",type:"uint256"}
+],
+name:"transfer",
+outputs:[{name:"",type:"bool"}],
+type:"function"
+},
+{
+constant:true,
+inputs:[{name:"owner",type:"address"}],
+name:"balanceOf",
+outputs:[{name:"",type:"uint256"}],
+type:"function"
+}
+];
+
+function qs(id){
+return document.getElementById(id);
+}
+
+function msg(t){
+qs("payMsg").innerHTML=t;
+}
+
+function format(n){
+return Number(n||0).toLocaleString("en-US",{
+maximumFractionDigits:6
+});
+}
+
+/* =========================
+LOAD INVOICES
+========================= */
+async function loadInvoices(){
+const res = await fetch("/api/invoices");
+const data = await res.json();
+
+qs("invoiceList").innerHTML = "";
+
+(data.invoices||[]).forEach(inv=>{
+qs("invoiceList").innerHTML += `
+<div class="invoice-item">
+<div class="invoice-title">${inv.title}</div>
+<div>${format(inv.amount)} USDC</div>
+<div class="small">${inv.id}</div>
+<div style="margin-top:10px">
+<button class="btn-dark" onclick="openInvoice('${inv.id}')">Open</button>
+</div>
+</div>
+`;
+});
+}
+
+async function createInvoice(){
+const body = {
+title:qs("title").value,
+amount:qs("amount").value,
+recipientAddress:qs("recipient").value,
+targetChain:"Arc",
+note:qs("note").value
+};
+
+const res = await fetch("/api/invoices",{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify(body)
+});
+
+const data = await res.json();
+
+if(!data.ok){
+msg('<span class="error">'+data.error+'</span>');
+return;
+}
+
+currentInvoice = data.invoice;
+renderInvoice(currentInvoice);
+await loadInvoices();
+msg("Invoice created.");
+}
+
+async function openInvoice(id){
+const res = await fetch("/api/invoices/"+id);
+const data = await res.json();
+
+currentInvoice = data.invoice;
+renderInvoice(currentInvoice);
+}
+
+function renderInvoice(inv){
+qs("viewTitle").innerText = inv.title;
+qs("viewAmount").innerText = format(inv.amount)+" USDC";
+qs("viewId").innerText = inv.id;
+qs("viewRecipient").innerText = inv.recipientAddress;
+qs("statusBadge").innerText = inv.status;
+
+qs("qrImage").src =
+"https://api.qrserver.com/v1/create-qr-code/?size=220x220&data="+
+encodeURIComponent(location.origin+"/pay/"+inv.id);
+
+qs("standaloneLink").href =
+location.origin+"/pay/"+inv.id;
+}
+
+/* =========================
+WALLET
+========================= */
+async function connectWallet(){
+if(!window.ethereum){
+alert("Install MetaMask");
+return;
+}
+
+const accounts = await ethereum.request({
+method:"eth_requestAccounts"
+});
+
+wallet = accounts[0];
+
+qs("walletAddress").innerText = wallet;
+
+const cid = await ethereum.request({
+method:"eth_chainId"
+});
+
+qs("walletChain").innerText =
+parseInt(cid,16);
+
+loadBalance();
+
+msg("Wallet connected.");
+}
+
+function disconnectWallet(){
+wallet = null;
+
+qs("walletAddress").innerText =
+"Disconnected";
+
+qs("walletChain").innerText = "-";
+qs("walletBalance").innerText = "- USDC";
+
+msg("Disconnected.");
+}
+
+async function switchArc(){
+try{
+await ethereum.request({
+method:"wallet_switchEthereumChain",
+params:[{chainId:ARC_CHAIN_HEX}]
+});
+}catch(e){
+
+await ethereum.request({
+method:"wallet_addEthereumChain",
+params:[{
+chainId:ARC_CHAIN_HEX,
+chainName:"Arc Testnet",
+rpcUrls:[ARC_RPC],
+nativeCurrency:{
+name:"ETH",
+symbol:"ETH",
+decimals:18
+},
+blockExplorerUrls:[ARC_EXPLORER]
+}]
+});
+
+}
+
+msg("Switched to Arc.");
+}
+
+async function loadBalance(){
+try{
+const web3 = new Web3(window.ethereum);
+
+const token = new web3.eth.Contract(
+ERC20_ABI,
+USDC_TOKEN
+);
+
+const raw = await token.methods
+.balanceOf(wallet)
+.call();
+
+const bal =
+Number(raw) / Math.pow(10,USDC_DECIMALS);
+
+qs("walletBalance").innerText =
+format(bal)+" USDC";
+
+}catch(e){
+qs("walletBalance").innerText =
+"Unavailable";
+}
+}
+
+/* =========================
+PAY
+========================= */
+async function payNow(){
+
+if(!wallet){
+msg('<span class="error">Connect wallet first</span>');
+return;
+}
+
+if(!currentInvoice){
+msg('<span class="error">Open invoice first</span>');
+return;
+}
+
+try{
+
+const web3 = new Web3(window.ethereum);
+
+const token = new web3.eth.Contract(
+ERC20_ABI,
+USDC_TOKEN
+);
+
+const amount =
+web3.utils.toBN(
+Math.floor(
+Number(currentInvoice.amount)*1000000
+).toString()
+);
+
+const tx = await token.methods
+.transfer(
+currentInvoice.recipientAddress,
+amount
+)
+.send({
+from:wallet
+});
+
+await fetch(
+"/api/invoices/"+currentInvoice.id+"/mark-paid",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({
+txHash:tx.transactionHash,
+fromAddress:wallet
+})
+}
+);
+
+msg('<span class="success">Payment success</span>');
+
+currentInvoice.status = "PAID";
+renderInvoice(currentInvoice);
+
+}catch(e){
+msg('<span class="error">'+e.message+'</span>');
+}
+}
+
+/* =========================
+CIRCLE LOGIN
+========================= */
+async function connectCircle(){
+
+const res = await fetch("/api/circle/config");
+const data = await res.json();
+
+const clientId =
+data.config.googleClientId;
+
+if(!clientId){
+alert("Missing GOOGLE_CLIENT_ID");
+return;
+}
+
+window.location.href =
+"https://accounts.google.com/o/oauth2/v2/auth"+
+"?client_id="+encodeURIComponent(clientId)+
+"&redirect_uri="+encodeURIComponent(location.origin)+
+"&response_type=token"+
+"&scope="+encodeURIComponent("openid email profile");
+}
+
+/* =========================
+SETUP PIN
+========================= */
+async function setupPin(){
+
+msg("Starting Circle PIN setup...");
+
+const hash = location.hash;
+
+if(!hash.includes("access_token")){
+msg("Login Google first.");
+return;
+}
+
+const params =
+new URLSearchParams(hash.replace("#",""));
+
+const token =
+params.get("access_token");
+
+const user = await fetch(
+"https://www.googleapis.com/oauth2/v3/userinfo",
+{
+headers:{
+Authorization:"Bearer "+token
+}
+}
+).then(r=>r.json());
+
+const email = user.email;
+
+const tokenRes = await fetch(
+"/api/circle/user-token",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({email})
+}
+);
+
+const tokenData = await tokenRes.json();
+
+const userToken =
+tokenData?.data?.userToken;
+
+const encryptionKey =
+tokenData?.data?.encryptionKey;
+
+if(!userToken || !encryptionKey){
+msg("No Circle token.");
+return;
+}
+
+const cfg =
+await fetch("/api/circle/config")
+.then(r=>r.json());
+
+const appId =
+cfg.config.circleAppId;
+
+const initRes = await fetch(
+"/api/circle/initialize-user",
+{
+method:"POST",
+headers:{
+"Content-Type":"application/json"
+},
+body:JSON.stringify({userToken})
+}
+);
+
+const initData =
+await initRes.json();
+
+const challengeId =
+initData?.data?.challengeId;
+
+const sdk = new window.W3SSdk({
+appSettings:{appId}
+});
+
+sdk.setAuthentication({
+userToken,
+encryptionKey
+});
+
+sdk.execute(challengeId,
+async(error,result)=>{
+
+if(error){
+msg("PIN setup failed");
+return;
+}
+
+msg("PIN setup success.");
+
+});
+}
+
+/* ========================= */
+function copyAddress(){
+navigator.clipboard.writeText(
+qs("viewRecipient").innerText
+);
+msg("Copied.");
+}
+
+loadInvoices();
+</script>
 </body>
 </html>

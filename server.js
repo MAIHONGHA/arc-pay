@@ -3,11 +3,27 @@ require("dotenv").config();
 const express = require("express");
 const path = require("path");
 const cors = require("cors");
+const crypto = require("crypto");
 const Database = require("better-sqlite3");
-const QRCode = require("qrcode");
+
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+
+/* =========================
+   CONFIG
+========================= */
+
+const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "");
+const CIRCLE_APP_ID = String(process.env.CIRCLE_APP_ID || "");
+
+const CIRCLE_API_KEY = String(
+  process.env.CIRCLE_WALLET_KEY ||
+    process.env.CIRCLE_API_KEY ||
+    ""
+);
 
 const ARC_CHAIN_ID = Number(process.env.ARC_CHAIN_ID || 5042002);
 const ARC_CHAIN_ID_HEX = String(process.env.ARC_CHAIN_ID_HEX || "0x4cef52");
@@ -18,6 +34,7 @@ const ARC_RPC_URL = String(
 const ARC_EXPLORER_URL = String(
   process.env.ARC_EXPLORER_URL || "https://testnet.arcscan.app"
 );
+
 const USDC_ADDRESS = String(
   process.env.USDC_ADDRESS || "0x3600000000000000000000000000000000000000"
 );
@@ -28,6 +45,10 @@ const MERCHANT_ADDRESS = String(
     process.env.MERCHANT_ADDRESS ||
     "0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6"
 ).trim();
+
+/* =========================
+   DATABASE
+========================= */
 
 const db = new Database(path.join(__dirname, "data.db"));
 db.pragma("journal_mode = WAL");
@@ -48,10 +69,33 @@ db.prepare(`
   )
 `).run();
 
-app.use(cors());
+/* =========================
+   MIDDLEWARE
+========================= */
+
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:3000"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "public")));
+
+/* =========================
+   HELPERS
+========================= */
+
+function requireCircle(res) {
+  if (!CIRCLE_API_KEY) {
+    res.status(500).json({
+      ok: false,
+      error: "Missing CIRCLE_WALLET_KEY or CIRCLE_API_KEY in .env"
+    });
+    return false;
+  }
+
+  return true;
+}
 
 function makeInvoiceId() {
   return `inv_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -70,7 +114,8 @@ function isAddress(value) {
 function rowToInvoice(row) {
   if (!row) return null;
 
-  const checkoutPath = `/pay/${row.id}`;
+  const checkoutPath = `/?invoice=${row.id}`;
+
   return {
     id: row.id,
     title: row.title,
@@ -85,16 +130,19 @@ function rowToInvoice(row) {
     paidAt: row.paidAt || null,
     checkoutPath,
     checkoutUrl: checkoutPath,
-    qrUrl: `/api/qr/${row.id}`,
     explorerAddressUrl: `${ARC_EXPLORER_URL}/address/${row.recipientAddress}`,
     explorerTxUrl: row.txHash ? `${ARC_EXPLORER_URL}/tx/${row.txHash}` : null
   };
 }
 
+/* =========================
+   HEALTH / CONFIG
+========================= */
+
 app.get("/api/health", (req, res) => {
   res.json({
     ok: true,
-    service: "arc-checkout-v10",
+    service: "arc-pay-mini-final",
     time: new Date().toISOString()
   });
 });
@@ -114,6 +162,20 @@ app.get("/api/config", (req, res) => {
     }
   });
 });
+
+app.get("/api/circle/config", (req, res) => {
+  res.json({
+    ok: true,
+    config: {
+      circleAppId: CIRCLE_APP_ID,
+      googleClientId: GOOGLE_CLIENT_ID
+    }
+  });
+});
+
+/* =========================
+   INVOICES
+========================= */
 
 app.get("/api/invoices", (req, res) => {
   const rows = db
@@ -152,6 +214,7 @@ app.post("/api/invoices", (req, res) => {
     const recipientAddress = String(
       req.body.recipientAddress || MERCHANT_ADDRESS
     ).trim();
+
     const targetChain = String(req.body.targetChain || "Arc").trim() || "Arc";
     const note = String(req.body.note || "").trim();
     const createdAt = new Date().toISOString();
@@ -181,9 +244,23 @@ app.post("/api/invoices", (req, res) => {
 
     db.prepare(`
       INSERT INTO invoices (
-        id, title, amount, recipientAddress, targetChain, note, status, createdAt
+        id,
+        title,
+        amount,
+        recipientAddress,
+        targetChain,
+        note,
+        status,
+        createdAt
       ) VALUES (
-        @id, @title, @amount, @recipientAddress, @targetChain, @note, 'CREATED', @createdAt
+        @id,
+        @title,
+        @amount,
+        @recipientAddress,
+        @targetChain,
+        @note,
+        'CREATED',
+        @createdAt
       )
     `).run({
       id,
@@ -259,45 +336,356 @@ app.post("/api/invoices/:id/mark-paid", (req, res) => {
   }
 });
 
-app.get("/api/qr/:id", async (req, res) => {
-  try {
-    const row = db
-      .prepare("SELECT * FROM invoices WHERE id = ?")
-      .get(req.params.id);
+/* =========================
+   CIRCLE USER
+========================= */
 
-    if (!row) {
-      return res.status(404).send("Invoice not found");
+app.post("/api/circle/create-user", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Missing email"
+      });
     }
 
-    const payUrl = `${req.protocol}://${req.get("host")}/pay/${row.id}`;
-
-    const png = await QRCode.toBuffer(payUrl, {
-      type: "png",
-      width: 320,
-      margin: 1,
-      errorCorrectionLevel: "M"
+    const response = await fetch("https://api.circle.com/v1/w3s/users", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CIRCLE_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId: String(email).toLowerCase()
+      })
     });
 
-    res.setHeader("Content-Type", "image/png");
-    res.send(png);
-  } catch (error) {
-    res.status(500).send("QR error");
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
 
-app.get("/pay/:id", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+app.post("/api/circle/user-token", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        error: "Missing email"
+      });
+    }
+
+    const response = await fetch("https://api.circle.com/v1/w3s/users/token", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CIRCLE_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        userId: String(email).toLowerCase()
+      })
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
 });
+
+app.post("/api/circle/initialize-user", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    const response = await fetch("https://api.circle.com/v1/w3s/user/initialize", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CIRCLE_API_KEY}`,
+        "X-User-Token": userToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        idempotencyKey: crypto.randomUUID(),
+        blockchains: ["ARC-TESTNET"],
+        accountType: "SCA"
+      })
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/* =========================
+   CIRCLE WALLETS
+========================= */
+
+app.post("/api/circle/create-wallet", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    const response = await fetch("https://api.circle.com/v1/w3s/user/wallets", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${CIRCLE_API_KEY}`,
+        "X-User-Token": userToken,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        idempotencyKey: crypto.randomUUID(),
+        blockchains: ["ARC-TESTNET"],
+        accountType: "SCA"
+      })
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+async function listWalletsWithToken(userToken) {
+  const response = await fetch("https://api.circle.com/v1/w3s/wallets", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${CIRCLE_API_KEY}`,
+      "X-User-Token": userToken,
+      "Content-Type": "application/json"
+    }
+  });
+
+  const data = await response.json();
+
+  return {
+    status: response.status,
+    data
+  };
+}
+
+app.post("/api/circle/list-wallets", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    const result = await listWalletsWithToken(userToken);
+    res.status(result.status).json(result.data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.post("/api/circle/wallets", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    const result = await listWalletsWithToken(userToken);
+    res.status(result.status).json(result.data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.post("/api/circle/wallet-balances", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken, walletId } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    if (!walletId) {
+      return res.status(400).json({
+        error: "Missing walletId"
+      });
+    }
+
+    const response = await fetch(
+      `https://api.circle.com/v1/w3s/wallets/${walletId}/balances`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${CIRCLE_API_KEY}`,
+          "X-User-Token": userToken,
+          "Content-Type": "application/json"
+        }
+      }
+    );
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/* =========================
+   CIRCLE PAYMENT
+========================= */
+app.post("/api/circle/transfer", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const {
+      userToken,
+      walletId,
+      tokenId,
+      amount,
+      destinationAddress
+    } = req.body;
+
+    if (!userToken) return res.status(400).json({ error: "Missing userToken" });
+    if (!walletId) return res.status(400).json({ error: "Missing walletId" });
+    if (!tokenId) return res.status(400).json({ error: "Missing tokenId" });
+    if (!amount) return res.status(400).json({ error: "Missing amount" });
+
+    if (!destinationAddress || !isAddress(destinationAddress)) {
+      return res.status(400).json({ error: "Invalid destinationAddress" });
+    }
+
+    const payload = {
+  idempotencyKey: crypto.randomUUID(),
+  walletId: String(walletId),
+  tokenId: String(tokenId),
+  destinationAddress: String(destinationAddress),
+  amounts: [String(Number(amount).toFixed(6))],
+  feeLevel: "MEDIUM"
+};
+
+    console.log("Circle transfer backend payload:", payload);
+
+    const response = await fetch(
+      "https://api.circle.com/v1/w3s/user/transactions/transfer",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${CIRCLE_API_KEY}`,
+          "X-User-Token": userToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const data = await response.json();
+    console.log("Circle transfer backend response:", response.status, data);
+
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/circle/transactions", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const { userToken } = req.body;
+
+    if (!userToken) {
+      return res.status(400).json({
+        error: "Missing userToken"
+      });
+    }
+
+    const response = await fetch("https://api.circle.com/v1/w3s/transactions", {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${CIRCLE_API_KEY}`,
+        "X-User-Token": userToken,
+        "Content-Type": "application/json"
+      }
+    });
+
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+/* =========================
+   FRONTEND FALLBACK
+========================= */
+
+const distPath = path.join(__dirname, "frontend", "dist");
+
+app.use(express.static(distPath));
 
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html"));
+  res.sendFile(path.join(distPath, "index.html"), (err) => {
+    if (err) {
+      res.status(404).send("Frontend not built. Use http://localhost:5173 for Vite dev.");
+    }
+  });
 });
 
+/* =========================
+   START
+========================= */
+
 app.listen(PORT, () => {
-  console.log(`ARC Checkout V10 running at http://localhost:${PORT}`);
+  console.log(`ARC Pay Mini API running at http://localhost:${PORT}`);
   console.log(`merchantAddress = ${MERCHANT_ADDRESS}`);
-  console.log(`arcChainId = ${ARC_CHAIN_ID}`);
-  console.log(`arcChainIdHex = ${ARC_CHAIN_ID_HEX}`);
-  console.log(`usdcAddress = ${USDC_ADDRESS}`);
-  console.log(`usdcDecimals = ${USDC_DECIMALS}`);
+  console.log(`circleKey = ${CIRCLE_API_KEY ? "loaded" : "missing"}`);
 });
