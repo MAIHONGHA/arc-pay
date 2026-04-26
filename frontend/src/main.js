@@ -4,7 +4,7 @@ import Web3 from "web3";
 
 window.Web3 = Web3;
 
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_BASE || "";
 
 const ARC_CHAIN_ID = 5042002;
 const ARC_CHAIN_HEX = "0x4cef52";
