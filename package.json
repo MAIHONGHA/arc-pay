@@ -5,9 +5,9 @@
   "description": "Final Arc USDC checkout dapp",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "build-circle": "esbuild src/circle.js --bundle --platform=browser --outfile=public/circle-sdk.js"
-  },
+  "start": "node server.js",
+  "build": "cd frontend && npm install && npm run build"
+},
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.8.3",
     "@circle-fin/app-kit": "^1.4.1",
