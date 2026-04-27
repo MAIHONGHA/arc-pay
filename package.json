@@ -5,13 +5,21 @@
   "description": "Final Arc USDC checkout dapp",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
-  },
+  "start": "node server.js",
+  "build": "cd frontend && npm install && npm run build"
+},
   "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.8.3",
+    "@circle-fin/app-kit": "^1.4.1",
+    "@circle-fin/w3s-pw-web-sdk": "^1.1.11",
     "better-sqlite3": "^12.9.0",
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
-    "qrcode": "^1.5.4"
+    "qrcode": "^1.5.4",
+    "viem": "^2.48.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.0"
   }
 }

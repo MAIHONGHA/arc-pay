@@ -5,3 +5,5 @@ data.db-shm
 data.db-wal
 data/
 db.json
+frontend/node_modules/
+frontend/dist/
