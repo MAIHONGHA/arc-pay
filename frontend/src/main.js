@@ -45,12 +45,10 @@ const metamaskWalletEl = document.getElementById("metamaskWallet");
 const selectedInvoiceEl = document.getElementById("selectedInvoice");
 const invoiceListEl = document.getElementById("invoiceList");
 const qrBoxEl = document.getElementById("qrBox");
-
 const titleEl = document.getElementById("title");
 const amountEl = document.getElementById("amount");
 const recipientEl = document.getElementById("recipient");
 const noteEl = document.getElementById("note");
-
 const btnGoogle = document.getElementById("btnGoogle");
 const btnSetupPin = document.getElementById("btnSetupPin");
 const btnConnectWallet = document.getElementById("btnConnectWallet");
@@ -60,6 +58,8 @@ const btnPay = document.getElementById("btnPay");
 const btnPayCircle = document.getElementById("btnPayCircle");
 const btnCreateInvoice = document.getElementById("btnCreateInvoice");
 const btnLoadInvoices = document.getElementById("btnLoadInvoices");
+const btnRefresh = document.getElementById("btnRefresh");
+const btnLogoutGoogle = document.getElementById("btnLogoutGoogle");
 
 function setStatus(message, type = "") {
   statusEl.className = type;
@@ -922,6 +922,21 @@ btnPay?.addEventListener("click", payWithMetaMask);
 btnPayCircle?.addEventListener("click", payWithCircleWallet);
 btnCreateInvoice?.addEventListener("click", createInvoice);
 btnLoadInvoices?.addEventListener("click", loadInvoices);
+btnRefresh?.addEventListener("click", () => {
+  window.location.reload();
+});
+
+btnLogoutGoogle?.addEventListener("click", () => {
+  localStorage.removeItem("googleUser");
+  localStorage.removeItem("googleToken");
+  localStorage.removeItem("circleUserToken");
+  localStorage.removeItem("circleEncryptionKey");
+
+  emailEl.textContent = "-";
+  circleWalletEl.textContent = "-";
+
+  setStatus("Google / Circle logged out.", "success");
+});
 
 if (window.ethereum) {
   window.ethereum.on("accountsChanged", (accounts) => {
@@ -938,3 +953,60 @@ loadInvoices().then(async () => {
     await openInvoice(invoiceId);
   }
 });
+
+setInterval(async () => {
+  try {
+    await loadInvoices();
+
+    if (selectedInvoice?.id) {
+      const data = await api("/api/invoices/" + encodeURIComponent(selectedInvoice.id));
+      selectedInvoice = data.invoice;
+      renderSelectedInvoice();
+    }
+  } catch (err) {
+    console.warn("Realtime error:", err.message);
+  }
+}, 5000);
+
+function showToast(message) {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.classList.remove("hidden");
+
+  setTimeout(() => {
+    toast.classList.add("hidden");
+  }, 3500);
+}
+
+window.generateAIDraft = async function () {
+  const prompt = document.getElementById("aiPrompt").value;
+
+  const res = await fetch("/api/ai/invoice-draft", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt }),
+  });
+
+  const data = await res.json();
+
+  if (!data.success) {
+    alert("AI failed");
+    return;
+  }
+
+  document.getElementById("aiResult").textContent =
+    JSON.stringify(data.draft, null, 2);
+
+  // Auto-fill invoice form
+  titleEl.value = data.draft.title || "";
+  amountEl.value = data.draft.amount || "";
+  noteEl.value = data.draft.description || "";
+};
+ 
+  recipientEl.value = data.draft.customer?.startsWith("0x")
+  ? data.draft.customer
+  : "";

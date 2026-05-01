@@ -130,3 +130,20 @@ a {
     grid-template-columns: 1fr;
   }
 }
+
+.toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  background: #111827;
+  color: white;
+  padding: 14px 18px;
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+  z-index: 9999;
+  font-weight: 700;
+}
+
+.toast.hidden {
+  display: none;
+}

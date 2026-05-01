@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const OpenAI = require("openai");
 const path = require("path");
 const cors = require("cors");
 const crypto = require("crypto");
@@ -11,6 +12,13 @@ const fetch = (...args) =>
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+
+/* =========================
+   AI CONFIG
+========================= */
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 /* =========================
    CONFIG
@@ -172,6 +180,50 @@ app.get("/api/circle/config", (req, res) => {
     }
   });
 });
+
+app.post("/api/ai/invoice-draft", async (req, res) => {
+  try {
+    const { prompt } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Prompt is required" });
+    }
+
+    const response = await openai.responses.create({
+      model: "gpt-4.1-mini",
+      input: `
+Create an ArcPay invoice draft from this request:
+
+"${prompt}"
+
+Return ONLY JSON:
+{
+  "title": "",
+  "description": "",
+  "amount": 0,
+  "currency": "USDC",
+  "customer": ""
+}
+`
+    });
+
+    let text = response.output_text.trim();
+
+    text = text
+      .replace(/```json/g, "")
+      .replace(/```/g, "")
+      .trim();
+
+    const draft = JSON.parse(text);
+
+    res.json({ success: true, draft });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "AI draft failed" });
+  }
+});
+
 
 /* =========================
    INVOICES

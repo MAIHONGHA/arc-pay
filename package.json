@@ -5,9 +5,9 @@
   "description": "Final Arc USDC checkout dapp",
   "main": "server.js",
   "scripts": {
-  "start": "node server.js",
-  "build": "cd frontend && npm install && npm run build"
-},
+    "start": "node server.js",
+    "build": "cd frontend && npm install && npm run build"
+  },
   "dependencies": {
     "@circle-fin/adapter-viem-v2": "^1.8.3",
     "@circle-fin/app-kit": "^1.4.1",
@@ -16,6 +16,7 @@
     "cors": "^2.8.6",
     "dotenv": "^16.6.1",
     "express": "^4.22.1",
+    "openai": "^6.35.0",
     "qrcode": "^1.5.4",
     "viem": "^2.48.4"
   },
