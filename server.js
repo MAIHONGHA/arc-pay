@@ -16,9 +16,9 @@ const PORT = Number(process.env.PORT || 3000);
 /* =========================
    AI CONFIG
 ========================= */
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const openai = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null;
 
 /* =========================
    CONFIG
@@ -182,6 +182,10 @@ app.get("/api/circle/config", (req, res) => {
 });
 
 app.post("/api/ai/invoice-draft", async (req, res) => {
+  if (!openai) {
+    return res.status(500).json({ error: "OPENAI_API_KEY is missing" });
+  }
+
   try {
     const { prompt } = req.body;
 
