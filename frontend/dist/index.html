@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ArcPay_Min</title>
+    <script type="module" crossorigin src="/assets/index-BeDRK_ip.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-Bh3oEnuq.css">
+  </head>
+  <body>
+    <div id="app">
+      <div class="grid">
+        <section class="card">
+          <h1>Create Invoice</h1>
+
+          <label>Title</label>
+          <input id="title" placeholder="Coffee" />
+
+          <label>Amount USDC</label>
+          <input id="amount" placeholder="0.8" />
+
+          <label>Recipient Address</label>
+          <input id="recipient" placeholder="Leave empty to use merchant wallet" />
+
+          <label>Note</label>
+          <textarea id="note" placeholder="Optional note"></textarea>
+
+          <div class="row">
+  <button id="btnCreateInvoice">Create Invoice</button>
+  <button id="btnLoadInvoices">Load Invoices</button>
+</div>
+
+<hr/>
+
+<h3>AI Invoice Draft</h3>
+
+<textarea id="aiPrompt" placeholder="Example: create an invoice for 500 USDC for customer A"></textarea>
+<br/>
+
+<button onclick="generateAIDraft()">Generate AI Draft</button>
+
+<pre id="aiResult"></pre>
+
+          <h2>Invoices</h2>
+          <div id="invoiceList"></div>
+        </section>
+
+        <section class="card">
+          <h1>ArcPay_Min</h1>
+
+          <div class="row">
+            <button id="btnGoogle">Login Google / Circle</button>
+            <button id="btnSetupPin">Setup Circle PIN</button>
+            <button id="btnConnectWallet">Connect MetaMask</button>
+            <button id="btnDisconnectWallet">Disconnect</button>
+            <button id="btnSwitchArc">Switch Arc</button>
+            <button id="btnPay">Pay with MetaMask</button>
+            <button id="btnPayCircle">Pay with Circle Wallet</button>
+            <button id="btnRefresh">Refresh</button>
+            <button id="btnLogoutGoogle">Logout Google</button>
+          </div>
+
+          <div class="box">
+            <b>Status</b>
+            <div id="status">Ready.</div>
+          </div>
+
+          <div class="box">
+            <b>Google Email</b>
+            <div id="email">-</div>
+          </div>
+
+          <div class="box">
+            <b>Circle Wallet</b>
+            <div id="circleWallet">-</div>
+          </div>
+
+          <div class="box">
+            <b>MetaMask Wallet</b>
+            <div id="metamaskWallet">Disconnected</div>
+          </div>
+
+          <div class="box">
+            <b>Selected Invoice</b>
+            <div id="selectedInvoice">No invoice selected.</div>
+          </div>
+
+          <div class="box">
+            <b>Invoice QR</b>
+            <div id="qrBox" class="qr-empty">Open an invoice to show QR.</div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+  </body>
+</html>
