@@ -732,6 +732,46 @@ app.post("/api/circle/transactions", async (req, res) => {
 
 const distPath = path.join(__dirname, "frontend", "dist");
 
+app.get("/api/dashboard", (req, res) => {
+  try {
+    const totalReceivedRow = db.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM invoices
+      WHERE status = 'PAID'
+    `).get();
+
+    const paidCountRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM invoices
+      WHERE status = 'PAID'
+    `).get();
+
+    const pendingCountRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM invoices
+      WHERE status != 'PAID'
+    `).get();
+
+    const latestPayment = db.prepare(`
+      SELECT id, title, amount, txHash, paidAt
+      FROM invoices
+      WHERE status = 'PAID'
+      ORDER BY paidAt DESC
+      LIMIT 1
+    `).get();
+
+    res.json({
+      totalReceived: totalReceivedRow.total,
+      paidCount: paidCountRow.count,
+      pendingCount: pendingCountRow.count,
+      latestPayment: latestPayment || null
+    });
+  } catch (err) {
+    console.error("dashboard error:", err);
+    res.status(500).json({ error: "Dashboard failed" });
+  }
+});
+
 app.use(express.static(distPath));
 
 app.get("*", (req, res) => {
@@ -809,6 +849,46 @@ app.get("/api/invoices/:id/check-payment", async (req, res) => {
   } catch (err) {
     console.error("check-payment error:", err);
     res.status(500).json({ error: "Check payment failed" });
+  }
+});
+
+app.get("/api/dashboard", (req, res) => {
+  try {
+    const totalReceivedRow = db.prepare(`
+      SELECT COALESCE(SUM(amount), 0) as total
+      FROM invoices
+      WHERE status = 'PAID'
+    `).get();
+
+    const paidCountRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM invoices
+      WHERE status = 'PAID'
+    `).get();
+
+    const pendingCountRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM invoices
+      WHERE status != 'PAID'
+    `).get();
+
+    const latestPayment = db.prepare(`
+      SELECT id, title, amount, txHash, paidAt
+      FROM invoices
+      WHERE status = 'PAID'
+      ORDER BY paidAt DESC
+      LIMIT 1
+    `).get();
+
+    res.json({
+      totalReceived: totalReceivedRow.total,
+      paidCount: paidCountRow.count,
+      pendingCount: pendingCountRow.count,
+      latestPayment: latestPayment || null
+    });
+  } catch (err) {
+    console.error("dashboard error:", err);
+    res.status(500).json({ error: "Dashboard failed" });
   }
 });
 

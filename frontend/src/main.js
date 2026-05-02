@@ -1002,11 +1002,43 @@ window.generateAIDraft = async function () {
     JSON.stringify(data.draft, null, 2);
 
   // Auto-fill invoice form
-  titleEl.value = data.draft.title || "";
-  amountEl.value = data.draft.amount || "";
-  noteEl.value = data.draft.description || "";
-};
- 
-  recipientEl.value = data.draft.customer?.startsWith("0x")
+titleEl.value = data.draft.title || "";
+amountEl.value = data.draft.amount || "";
+noteEl.value = data.draft.description || "";
+
+recipientEl.value = data.draft.customer && data.draft.customer.startsWith("0x")
   ? data.draft.customer
   : "";
+};
+ 
+function shortTx(tx) {
+  if (!tx) return "-";
+  return tx.slice(0, 8) + "..." + tx.slice(-6);
+}
+
+async function loadDashboard() {
+  try {
+    const res = await fetch("/api/dashboard");
+    const data = await res.json();
+
+    document.getElementById("dashTotal").innerText =
+      Number(data.totalReceived || 0).toFixed(2) + " USDC";
+
+    document.getElementById("dashPaid").innerText =
+      data.paidCount || 0;
+
+    document.getElementById("dashPending").innerText =
+      data.pendingCount || 0;
+
+    document.getElementById("dashLatestTx").innerText =
+      data.latestPayment?.txHash
+        ? shortTx(data.latestPayment.txHash)
+        : "-";
+
+  } catch (err) {
+    console.error("loadDashboard error:", err);
+  }
+}
+
+loadDashboard();
+setInterval(loadDashboard, 5000);
