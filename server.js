@@ -6,6 +6,7 @@ const path = require("path");
 const cors = require("cors");
 const crypto = require("crypto");
 const Database = require("better-sqlite3");
+const { ethers } = require("ethers");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
@@ -39,6 +40,11 @@ const ARC_CHAIN_NAME = String(process.env.ARC_CHAIN_NAME || "Arc Testnet");
 const ARC_RPC_URL = String(
   process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network"
 );
+const provider = new ethers.JsonRpcProvider(process.env.ARC_RPC_URL);
+
+const ERC20_ABI = [
+  "event Transfer(address indexed from, address indexed to, uint256 value)"
+];
 const ARC_EXPLORER_URL = String(
   process.env.ARC_EXPLORER_URL || "https://testnet.arcscan.app"
 );
@@ -734,6 +740,76 @@ app.get("*", (req, res) => {
       res.status(404).send("Frontend not built. Use http://localhost:5173 for Vite dev.");
     }
   });
+});
+
+async function checkInvoicePaid(invoice) {
+  try {
+    const contract = new ethers.Contract(
+      process.env.USDC_ADDRESS,
+      ERC20_ABI,
+      provider
+    );
+
+    const filter = contract.filters.Transfer(null, invoice.recipientAddress);
+
+    const currentBlock = await provider.getBlockNumber();
+    const fromBlock = Math.max(currentBlock - 1000, 0);
+
+    const events = await contract.queryFilter(filter, fromBlock, currentBlock);
+
+    for (const e of events) {
+      const amount = Number(e.args.value) / 1e6;
+
+      if (amount >= Number(invoice.amount)) {
+        return {
+          paid: true,
+          txHash: e.transactionHash
+        };
+      }
+    }
+
+    return { paid: false };
+  } catch (err) {
+    console.error("checkInvoicePaid error:", err);
+    return { paid: false };
+  }
+}
+
+app.get("/api/invoices/:id/check-payment", async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const invoice = db.prepare("SELECT * FROM invoices WHERE id = ?").get(id);
+
+    if (!invoice) {
+      return res.status(404).json({ error: "Invoice not found" });
+    }
+
+    if (invoice.status === "PAID") {
+      return res.json(invoice);
+    }
+
+    const result = await checkInvoicePaid(invoice);
+
+    if (result.paid) {
+      db.prepare(`
+        UPDATE invoices
+        SET status = 'PAID',
+            txHash = ?,
+            paidAt = ?
+        WHERE id = ?
+      `).run(result.txHash, new Date().toISOString(), id);
+
+      invoice.status = "PAID";
+      invoice.txHash = result.txHash;
+      invoice.paidAt = new Date().toISOString();
+    }
+
+    res.json(invoice);
+  } catch (err) {
+    console.error("check-payment error:", err);
+    res.status(500).json({ error: "Check payment failed" });
+  }
 });
 
 /* =========================
