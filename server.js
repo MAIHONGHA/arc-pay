@@ -9,11 +9,14 @@ const Database = require("better-sqlite3");
 const { ethers } = require("ethers");
 const nodemailer = require("nodemailer");
 const mailer = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.MAIL_USER,
     pass: process.env.MAIL_PASS
-  }
+  },
+  family: 4
 });
 
 const fetch = (...args) =>
