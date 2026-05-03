@@ -7,6 +7,14 @@ const cors = require("cors");
 const crypto = require("crypto");
 const Database = require("better-sqlite3");
 const { ethers } = require("ethers");
+const nodemailer = require("nodemailer");
+const mailer = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS
+  }
+});
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
@@ -54,6 +62,12 @@ const USDC_ADDRESS = String(
 );
 const USDC_DECIMALS = Number(process.env.USDC_DECIMALS || 6);
 
+const PAYOUT_PRIVATE_KEY = process.env.PAYOUT_PRIVATE_KEY;
+
+const CLAIM_USDC_ABI = [
+  "function transfer(address to, uint256 amount) returns (bool)"
+];
+
 const MERCHANT_ADDRESS = String(
   process.env.CIRCLE_WALLET_ADDRESS ||
     process.env.MERCHANT_ADDRESS ||
@@ -66,6 +80,18 @@ const MERCHANT_ADDRESS = String(
 
 const db = new Database(path.join(__dirname, "data.db"));
 db.pragma("journal_mode = WAL");
+
+app.get("/api/claims/:id", (req, res) => {
+  const { id } = req.params;
+
+  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
+
+  if (!claim) {
+    return res.status(404).json({ error: "Claim not found" });
+  }
+
+  res.json(claim);
+});
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS invoices (
@@ -82,6 +108,23 @@ db.prepare(`
     paidAt TEXT
   )
 `).run();
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS claims (
+    id TEXT PRIMARY KEY,
+    recipientEmail TEXT NOT NULL,
+    amount REAL NOT NULL,
+    message TEXT,
+    status TEXT DEFAULT 'PENDING',
+    walletAddress TEXT,
+    createdAt TEXT,
+    claimedAt TEXT
+  )
+`).run();
+
+try {
+  db.prepare("ALTER TABLE claims ADD COLUMN txHash TEXT").run();
+} catch {}
 
 /* =========================
    MIDDLEWARE
@@ -890,6 +933,138 @@ app.get("/api/dashboard", (req, res) => {
     console.error("dashboard error:", err);
     res.status(500).json({ error: "Dashboard failed" });
   }
+});
+
+app.post("/api/claims/send-email", async (req, res) => {
+  try {
+    const { recipientEmail, amount, message } = req.body;
+
+    if (!recipientEmail || !amount) {
+      return res.status(400).json({ error: "recipientEmail and amount are required" });
+    }
+
+    const id = crypto.randomUUID();
+    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const claimLink = `${appUrl}/claim/${id}`;
+
+    db.prepare(`
+      INSERT INTO claims (id, recipientEmail, amount, message, status, createdAt)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      id,
+      recipientEmail,
+      Number(amount),
+      message || "",
+      "PENDING",
+      new Date().toISOString()
+    );
+
+    await mailer.sendMail({
+      from: `"ArcPay" <${process.env.MAIL_USER}>`,
+      to: recipientEmail,
+      subject: `You received ${amount} USDC via ArcPay`,
+      html: `
+        <h2>You received ${amount} USDC</h2>
+        <p>${message || "You have a USDC claim waiting for you."}</p>
+        <p>Claim your USDC here:</p>
+        <p><a href="${claimLink}">${claimLink}</a></p>
+      `
+    });
+
+    res.json({
+      success: true,
+      claimId: id,
+      claimLink
+    });
+  } catch (err) {
+    console.error("send claim email error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/claims/:id", (req, res) => {
+  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(req.params.id);
+
+  if (!claim) {
+    return res.status(404).json({ error: "Claim not found" });
+  }
+
+  res.json({ claim });
+});
+
+app.post("/api/claims/:id/claim", async (req, res) => {
+  try {
+    const { walletAddress } = req.body;
+    const { id } = req.params;
+
+    if (!walletAddress || !walletAddress.startsWith("0x")) {
+      return res.status(400).json({ error: "Valid wallet address is required" });
+    }
+
+    const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
+
+    if (!claim) {
+      return res.status(404).json({ error: "Claim not found" });
+    }
+
+    if (claim.status === "CLAIMED") {
+      return res.status(400).json({ error: "Claim already claimed" });
+    }
+
+    if (!PAYOUT_PRIVATE_KEY) {
+      return res.status(500).json({ error: "Missing PAYOUT_PRIVATE_KEY" });
+    }
+
+    const payoutWallet = new ethers.Wallet(PAYOUT_PRIVATE_KEY, provider);
+
+    const usdc = new ethers.Contract(
+      USDC_ADDRESS,
+      CLAIM_USDC_ABI,
+      payoutWallet
+    );
+
+    const amountUnits = ethers.parseUnits(String(claim.amount), USDC_DECIMALS);
+
+    const tx = await usdc.transfer(walletAddress, amountUnits);
+    await tx.wait();
+
+    db.prepare(`
+      UPDATE claims
+      SET status = ?,
+          walletAddress = ?,
+          claimedAt = ?,
+          txHash = ?
+      WHERE id = ?
+    `).run(
+      "CLAIMED",
+      walletAddress,
+      new Date().toISOString(),
+      tx.hash,
+      id
+    );
+
+    res.json({
+      success: true,
+      message: "USDC claimed successfully",
+      walletAddress,
+      txHash: tx.hash
+    });
+  } catch (err) {
+    console.error("claim transfer error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get("/api/claims/:id", (req, res) => {
+  const { id } = req.params;
+
+  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
+
+  if (!claim) {
+    return res.status(404).json({ error: "Claim not found" });
+  }
+
+  res.json(claim);
 });
 
 /* =========================

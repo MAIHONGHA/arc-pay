@@ -4,13 +4,48 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ArcPay_Min</title>
-    <script type="module" crossorigin src="/assets/index-C3vcZ1IU.js"></script>
+    <script type="module" crossorigin src="/assets/index-BhIGnzDb.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-C0Ayytdq.css">
   </head>
   <body>
     <div id="app">
       <div class="grid">
         <section class="card">
+        <div class="box">
+         <b>Business Profile</b><br/><br/>
+
+         <input id="bizName" placeholder="Business Name" /><br/><br/>
+         <input id="bizEmail" placeholder="Business Email" /><br/><br/>
+         <input id="bizWallet" placeholder="Merchant Wallet Address" /><br/><br/>
+
+         <button id="btnSaveBiz">Save Profile</button>
+         </div>
+        <div class="box">
+         <b>Customer</b><br/><br/>
+
+         <input id="custName" placeholder="Customer Name" /><br/><br/>
+         <input id="custEmail" placeholder="Customer Email" /><br/><br/>
+         <input id="custWallet" placeholder="Customer Wallet (0x...)" /><br/><br/>
+
+         <button id="btnSaveCustomer">Save Customer</button>
+         </div>
+         <label>Select Customer</label>
+         <select id="customerSelect">
+           <option value="">-- Choose customer --</option>
+           </select>
+
+        <div class="box">
+         <b>Send USDC by Gmail</b><br/><br/>
+
+         <input id="claimEmail" placeholder="Recipient Gmail" /><br/><br/>
+         <input id="claimAmount" placeholder="Amount USDC" /><br/><br/>
+         <textarea id="claimMessage" placeholder="Message"></textarea><br/><br/>
+
+         <button id="btnSendClaimEmail">Send Claim Email</button>
+
+         <pre id="claimResult"></pre>
+         </div>
+
           <h1>Create Invoice</h1>
 
           <label>Title</label>

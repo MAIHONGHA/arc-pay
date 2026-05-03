@@ -60,6 +60,57 @@ const btnCreateInvoice = document.getElementById("btnCreateInvoice");
 const btnLoadInvoices = document.getElementById("btnLoadInvoices");
 const btnRefresh = document.getElementById("btnRefresh");
 const btnLogoutGoogle = document.getElementById("btnLogoutGoogle");
+const bizNameEl = document.getElementById("bizName");
+const bizEmailEl = document.getElementById("bizEmail");
+const bizWalletEl = document.getElementById("bizWallet");
+const btnSaveBiz = document.getElementById("btnSaveBiz");
+const custNameEl = document.getElementById("custName");
+const custEmailEl = document.getElementById("custEmail");
+const custWalletEl = document.getElementById("custWallet");
+const btnSaveCustomer = document.getElementById("btnSaveCustomer");
+const customerSelectEl = document.getElementById("customerSelect");
+const claimEmailEl = document.getElementById("claimEmail");
+const claimAmountEl = document.getElementById("claimAmount");
+const claimMessageEl = document.getElementById("claimMessage");
+const btnSendClaimEmail = document.getElementById("btnSendClaimEmail");
+const claimResultEl = document.getElementById("claimResult");
+const isClaimPage = window.location.pathname.startsWith("/claim/");
+
+function saveCustomer() {
+  const customer = {
+    name: custNameEl.value,
+    email: custEmailEl.value,
+    wallet: custWalletEl.value
+  };
+
+  const list = JSON.parse(localStorage.getItem("customers") || "[]");
+
+  list.push(customer);
+
+  localStorage.setItem("customers", JSON.stringify(list));
+
+  setStatus("Customer saved.", "success");
+}
+
+btnSaveCustomer?.addEventListener("click", saveCustomer);
+
+async function sendClaimEmail() {
+  try {
+    const data = await api("/api/claims/send-email", {
+      method: "POST",
+      body: JSON.stringify({
+        recipientEmail: claimEmailEl.value,
+        amount: claimAmountEl.value,
+        message: claimMessageEl.value
+      })
+    });
+
+    claimResultEl.textContent = data.claimLink;
+    setStatus("Claim email sent.", "success");
+  } catch (err) {
+    setStatus("Send claim email failed: " + err.message, "error");
+  }
+}
 
 function setStatus(message, type = "") {
   statusEl.className = type;
@@ -504,10 +555,18 @@ async function setupCirclePin() {
 
 async function createInvoice() {
   try {
+    
+    const biz = JSON.parse(localStorage.getItem("businessProfile") || "{}");
+
+    const recipientAddress =
+      recipientEl.value && recipientEl.value.trim() !== ""
+        ? recipientEl.value
+        : biz.wallet;
+
     const body = {
       title: titleEl.value,
       amount: amountEl.value,
-      recipientAddress: recipientEl.value,
+      recipientAddress,
       targetChain: "Arc",
       note: noteEl.value
     };
@@ -525,6 +584,31 @@ async function createInvoice() {
   } catch (err) {
     setStatus("Create invoice failed: " + err.message, "error");
   }
+}
+
+async function saveBusinessProfile() {
+  const body = {
+    name: bizNameEl.value,
+    email: bizEmailEl.value,
+    wallet: bizWalletEl.value
+  };
+
+  localStorage.setItem("businessProfile", JSON.stringify(body));
+
+  setStatus("Business profile saved.", "success");
+}
+
+function renderCustomerDropdown() {
+  const customers = JSON.parse(localStorage.getItem("customers") || "[]");
+
+  customerSelectEl.innerHTML = `<option value="">-- Choose customer --</option>`;
+
+  customers.forEach((c, index) => {
+    const option = document.createElement("option");
+    option.value = index;
+    option.textContent = `${c.name} (${c.wallet?.slice(0,6)}...)`;
+    customerSelectEl.appendChild(option);
+  });
 }
 
 async function loadInvoices() {
@@ -1040,5 +1124,74 @@ async function loadDashboard() {
   }
 }
 
-loadDashboard();
-setInterval(loadDashboard, 5000);
+if (!isClaimPage) {
+  loadDashboard();
+  renderCustomerDropdown();
+  setInterval(loadDashboard, 5000);
+}
+
+btnSaveBiz?.addEventListener("click", saveBusinessProfile);
+
+customerSelectEl?.addEventListener("change", () => {
+  const customers = JSON.parse(localStorage.getItem("customers") || "[]");
+  const selected = customers[customerSelectEl.value];
+
+  if (selected) {
+    recipientEl.value = selected.wallet || "";
+  }
+});
+
+btnSendClaimEmail?.addEventListener("click", sendClaimEmail);
+
+// ===== CLAIM PAGE =====
+
+async function loadClaimPage() {
+  const path = window.location.pathname;
+
+  if (!path.startsWith("/claim/")) return;
+
+  const claimId = path.split("/claim/")[1];
+
+  document.body.innerHTML = ` 
+    <div style="padding:40px; max-width:500px; margin:auto;">
+      <h2>Claim your USDC</h2>
+      <p id="claimInfo">Loading...</p>
+
+      <input id="walletInput" placeholder="Your wallet (0x...)" style="width:100%; padding:10px; margin-top:10px;" />
+
+      <button id="btnClaim" style="margin-top:10px; padding:10px; width:100%;">
+        Claim Now
+      </button>
+
+      <p id="claimStatus"></p>
+    </div>
+  `;
+
+  const res = await fetch(`/api/claims/${claimId}`);
+  const data = await res.json();
+
+  if (!data || !data.amount) {
+  document.body.innerHTML = "❌ Claim not found";
+  return;
+}
+
+  document.getElementById("claimInfo").innerText =
+  `You received ${data.amount} USDC`;
+
+  document.getElementById("btnClaim").onclick = async () => {
+    const wallet = document.getElementById("walletInput").value;
+
+    const res = await fetch(`/api/claims/${claimId}/claim`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ walletAddress: wallet })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("claimStatus").innerText =
+      data.success ? "Claimed!" : `Error: ${data.error}`;
+  };
+}
+
+loadClaimPage();
