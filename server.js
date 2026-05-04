@@ -1069,7 +1069,7 @@ app.post("/api/claims/:id/claim", async (req, res) => {
       id
     );
 
-console.log("CLAIM CREATED:", id, claimLink);
+console.log("CLAIM CREATED:", id);
 
     res.json({
       success: true,
