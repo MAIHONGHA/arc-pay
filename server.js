@@ -949,7 +949,7 @@ app.post("/api/claims/send-email", async (req, res) => {
     }
 
     const id = crypto.randomUUID();
-    const appUrl = process.env.APP_URL || "http://localhost:3000";
+    const appUrl = String(process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
     const claimLink = `${appUrl}/claim/${id}`;
 
     db.prepare(`
