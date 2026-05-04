@@ -986,8 +986,7 @@ if (error) {
 
     res.json({
       success: true,
-      claimId: id,
-      claimLink
+      claimId: id
     });
   } catch (err) {
     console.error("send claim email error:", err);
