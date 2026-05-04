@@ -18,12 +18,14 @@ const mailer = nodemailer.createTransport({
   },
   family: 4
 });
+const { Resend } = require("resend");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 /* =========================
    AI CONFIG
@@ -962,17 +964,25 @@ app.post("/api/claims/send-email", async (req, res) => {
       new Date().toISOString()
     );
 
-    await mailer.sendMail({
-      from: `"ArcPay" <${process.env.MAIL_USER}>`,
-      to: recipientEmail,
-      subject: `You received ${amount} USDC via ArcPay`,
-      html: `
-        <h2>You received ${amount} USDC</h2>
-        <p>${message || "You have a USDC claim waiting for you."}</p>
-        <p>Claim your USDC here:</p>
-        <p><a href="${claimLink}">${claimLink}</a></p>
-      `
-    });
+    const { data, error } = await resend.emails.send({
+  from: "ArcPay <onboarding@resend.dev>",
+  to: recipientEmail,
+  subject: `You received ${amount} USDC via ArcPay`,
+  html: ` 
+    <h2>You received ${amount} USDC</h2>
+    <p>${message || "You have a USDC claim waiting for you."}</p>
+    <p>Claim your USDC here:</p>
+    <p><a href="${claimLink}">${claimLink}</a></p>
+  `
+});
+
+if (error) {
+  console.error("Resend error:", error);
+  return res.status(500).json({
+    success: false,
+    error: "Failed to send claim email"
+  });
+}
 
     res.json({
       success: true,
@@ -983,6 +993,20 @@ app.post("/api/claims/send-email", async (req, res) => {
     console.error("send claim email error:", err);
     res.status(500).json({ error: err.message });
   }
+});
+
+app.get("/api/claims/:id", (req, res) => {
+  const { id } = req.params;
+
+  const claim = db
+    .prepare("SELECT * FROM claims WHERE id = ?")
+    .get(id);
+
+  if (!claim) {
+    return res.status(404).send("Claim not found");
+  }
+
+  res.json(claim);
 });
 
 app.get("/api/claims/:id", (req, res) => {
@@ -1046,6 +1070,8 @@ app.post("/api/claims/:id/claim", async (req, res) => {
       id
     );
 
+console.log("CLAIM CREATED:", id, claimLink);
+
     res.json({
       success: true,
       message: "USDC claimed successfully",
@@ -1068,6 +1094,42 @@ app.get("/api/claims/:id", (req, res) => {
   }
 
   res.json(claim);
+});
+
+app.get("/api/claim/:id", (req, res) => {
+  const { id } = req.params;
+
+  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
+
+  if (!claim) {
+    return res.status(404).json({ error: "Claim not found" });
+  }
+
+  res.json(claim);
+});
+
+app.post("/api/claims/:id/claim", (req, res) => {
+  const { id } = req.params;
+  const { walletAddress } = req.body;
+
+  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
+
+  if (!claim) {
+    return res.status(404).json({ success: false, error: "Claim not found" });
+  }
+
+  db.prepare(`
+    UPDATE claims
+    SET status = 'CLAIMED',
+        walletAddress = ?
+    WHERE id = ?
+  `).run(walletAddress || null, id);
+
+  res.json({
+    success: true,
+    claimId: id,
+    walletAddress
+  });
 });
 
 /* =========================
