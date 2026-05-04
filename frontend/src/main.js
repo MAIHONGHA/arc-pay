@@ -4,7 +4,7 @@ import Web3 from "web3";
 
 window.Web3 = Web3;
 
-const API_BASE = import.meta.env.VITE_API_BASE || "";
+const API_BASE = window.location.origin;
 
 const ARC_CHAIN_ID = 5042002;
 const ARC_CHAIN_HEX = "0x4cef52";
@@ -76,45 +76,28 @@ const btnSendClaimEmail = document.getElementById("btnSendClaimEmail");
 const claimResultEl = document.getElementById("claimResult");
 const isClaimPage = window.location.pathname.startsWith("/claim/");
 
-function saveCustomer() {
-  const customer = {
-    name: custNameEl.value,
-    email: custEmailEl.value,
-    wallet: custWalletEl.value
-  };
-
-  const list = JSON.parse(localStorage.getItem("customers") || "[]");
-
-  list.push(customer);
-
-  localStorage.setItem("customers", JSON.stringify(list));
-
-  setStatus("Customer saved.", "success");
-}
-
-btnSaveCustomer?.addEventListener("click", saveCustomer);
-
-async function sendClaimEmail() {
-  try {
-    const data = await api("/api/claims/send-email", {
-      method: "POST",
-      body: JSON.stringify({
-        recipientEmail: claimEmailEl.value,
-        amount: claimAmountEl.value,
-        message: claimMessageEl.value
-      })
-    });
-
-    claimResultEl.textContent = data.claimLink;
-    setStatus("Claim email sent.", "success");
-  } catch (err) {
-    setStatus("Send claim email failed: " + err.message, "error");
-  }
-}
-
 function setStatus(message, type = "") {
+  if (!statusEl) return;
   statusEl.className = type;
   statusEl.textContent = message;
+}
+
+async function api(path, options = {}) {
+  const res = await fetch(API_BASE + path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) {
+    throw new Error(data?.error || data?.message || JSON.stringify(data));
+  }
+
+  return data;
 }
 
 function formatUsdc(value) {
@@ -149,22 +132,37 @@ function toTokenUnits(amount, decimals) {
   return combined || "0";
 }
 
-async function api(path, options = {}) {
-  const res = await fetch(API_BASE + path, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
-    }
-  });
+function saveCustomer() {
+  const customer = {
+    name: custNameEl.value,
+    email: custEmailEl.value,
+    wallet: custWalletEl.value
+  };
 
-  const data = await res.json().catch(() => ({}));
+  const list = JSON.parse(localStorage.getItem("customers") || "[]");
+  list.push(customer);
+  localStorage.setItem("customers", JSON.stringify(list));
 
-  if (!res.ok) {
-    throw new Error(data?.error || data?.message || JSON.stringify(data));
+  renderCustomerDropdown();
+  setStatus("Customer saved.", "success");
+}
+
+async function sendClaimEmail() {
+  try {
+    const data = await api("/api/claims/send-email", {
+      method: "POST",
+      body: JSON.stringify({
+        recipientEmail: claimEmailEl.value,
+        amount: claimAmountEl.value,
+        message: claimMessageEl.value
+      })
+    });
+
+    claimResultEl.textContent = data.claimLink || JSON.stringify(data, null, 2);
+    setStatus("Claim email sent.", "success");
+  } catch (err) {
+    setStatus("Send claim email failed: " + err.message, "error");
   }
-
-  return data;
 }
 
 /* =========================
@@ -202,26 +200,32 @@ function renderQR(inv) {
     </div>
   `;
 
-  const btnCopyLink = document.getElementById("btnCopyLink");
-  if (btnCopyLink) {
-    btnCopyLink.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(payUrl);
-      setStatus("Payment link copied.", "success");
-    });
-  }
+  document.getElementById("btnCopyLink")?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(payUrl);
+    setStatus("Payment link copied.", "success");
+  });
 
-  const btnCopyRecipient = document.getElementById("btnCopyRecipient");
-  if (btnCopyRecipient) {
-    btnCopyRecipient.addEventListener("click", async () => {
-      await navigator.clipboard.writeText(inv.recipientAddress);
-      setStatus("Recipient address copied.", "success");
-    });
-  }
+  document.getElementById("btnCopyRecipient")?.addEventListener("click", async () => {
+    await navigator.clipboard.writeText(inv.recipientAddress);
+    setStatus("Recipient address copied.", "success");
+  });
 }
 
 /* =========================
    CIRCLE HELPERS
 ========================= */
+
+function extractWallet(data) {
+  const wallets = data?.data?.wallets || data?.wallets || [];
+
+  return (
+    wallets.find((w) => String(w.blockchain || "").toUpperCase() === "ARC-TESTNET") ||
+    wallets[0] ||
+    data?.data?.wallet ||
+    data?.wallet ||
+    null
+  );
+}
 
 function extractWalletAddress(data) {
   const wallet = extractWallet(data);
@@ -230,21 +234,6 @@ function extractWalletAddress(data) {
     wallet?.address ||
     wallet?.walletAddress ||
     wallet?.accounts?.[0]?.address ||
-    null
-  );
-}
-
-function extractWallet(data) {
-  const wallets =
-    data?.data?.wallets ||
-    data?.wallets ||
-    [];
-
-  return (
-    wallets.find((w) => String(w.blockchain || "").toUpperCase() === "ARC-TESTNET") ||
-    wallets[0] ||
-    data?.data?.wallet ||
-    data?.wallet ||
     null
   );
 }
@@ -282,7 +271,7 @@ async function listCircleWallets(userToken) {
       method: "POST",
       body: JSON.stringify({ userToken })
     });
-  } catch (err) {
+  } catch {
     return await api("/api/circle/wallets", {
       method: "POST",
       body: JSON.stringify({ userToken })
@@ -306,27 +295,19 @@ async function loadCircleWallet(userToken) {
   circleWalletEl.textContent = address;
   setStatus("Circle wallet loaded.", "success");
 
-  return {
-    wallet,
-    address
-  };
+  return { wallet, address };
 }
 
 async function findUsdcToken(userToken, walletId) {
   const balanceData = await api("/api/circle/wallet-balances", {
     method: "POST",
-    body: JSON.stringify({
-      userToken,
-      walletId
-    })
+    body: JSON.stringify({ userToken, walletId })
   });
 
   console.log("FULL Circle balances:", balanceData);
 
   const tokenBalances =
-    balanceData?.data?.tokenBalances ||
-    balanceData?.tokenBalances ||
-    [];
+    balanceData?.data?.tokenBalances || balanceData?.tokenBalances || [];
 
   const usdc =
     tokenBalances.find((b) => {
@@ -343,7 +324,6 @@ async function findUsdcToken(userToken, walletId) {
     tokenBalances.find((b) => {
       const symbol = String(b?.token?.symbol || "").toUpperCase();
       const blockchain = String(b?.token?.blockchain || "").toUpperCase();
-
       return symbol === "USDC" && blockchain === "ARC-TESTNET";
     });
 
@@ -360,11 +340,7 @@ async function findUsdcToken(userToken, walletId) {
     throw new Error("ARC USDC tokenId not found.");
   }
 
-  return {
-    tokenId,
-    balance,
-    raw: usdc
-  };
+  return { tokenId, balance, raw: usdc };
 }
 
 /* =========================
@@ -401,7 +377,7 @@ async function handleGoogleRedirect() {
   if (!hash.includes("access_token")) {
     const savedUser = getGoogleUser();
 
-    if (savedUser.email) {
+    if (savedUser.email && emailEl) {
       emailEl.textContent = savedUser.email;
     }
 
@@ -423,9 +399,7 @@ async function handleGoogleRedirect() {
   localStorage.setItem("googleToken", googleToken);
 
   const user = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: {
-      Authorization: "Bearer " + googleToken
-    }
+    headers: { Authorization: "Bearer " + googleToken }
   }).then((r) => r.json());
 
   if (!user.email) {
@@ -499,10 +473,7 @@ async function setupCirclePin() {
       appSettings: { appId }
     });
 
-    sdk.setAuthentication({
-      userToken,
-      encryptionKey
-    });
+    sdk.setAuthentication({ userToken, encryptionKey });
 
     sdk.execute(challengeId, async (error, result) => {
       if (error) {
@@ -555,7 +526,6 @@ async function setupCirclePin() {
 
 async function createInvoice() {
   try {
-    
     const biz = JSON.parse(localStorage.getItem("businessProfile") || "{}");
 
     const recipientAddress =
@@ -579,7 +549,6 @@ async function createInvoice() {
     selectedInvoice = data.invoice;
     renderSelectedInvoice();
     await loadInvoices();
-
     setStatus("Invoice created.", "success");
   } catch (err) {
     setStatus("Create invoice failed: " + err.message, "error");
@@ -594,11 +563,12 @@ async function saveBusinessProfile() {
   };
 
   localStorage.setItem("businessProfile", JSON.stringify(body));
-
   setStatus("Business profile saved.", "success");
 }
 
 function renderCustomerDropdown() {
+  if (!customerSelectEl) return;
+
   const customers = JSON.parse(localStorage.getItem("customers") || "[]");
 
   customerSelectEl.innerHTML = `<option value="">-- Choose customer --</option>`;
@@ -606,7 +576,7 @@ function renderCustomerDropdown() {
   customers.forEach((c, index) => {
     const option = document.createElement("option");
     option.value = index;
-    option.textContent = `${c.name} (${c.wallet?.slice(0,6)}...)`;
+    option.textContent = `${c.name || "Customer"} (${c.wallet?.slice(0, 6) || "no wallet"}...)`;
     customerSelectEl.appendChild(option);
   });
 }
@@ -793,8 +763,8 @@ async function payWithMetaMask() {
     web3.eth.transactionBlockTimeout = 200;
     web3.eth.transactionPollingTimeout = 900;
     web3.eth.transactionConfirmationBlocks = 1;
-    const token = new web3.eth.Contract(ERC20_ABI, USDC_TOKEN);
 
+    const token = new web3.eth.Contract(ERC20_ABI, USDC_TOKEN);
     const amountUnits = toTokenUnits(selectedInvoice.amount, USDC_DECIMALS);
 
     setStatus("Sending MetaMask USDC transaction...");
@@ -802,12 +772,11 @@ async function payWithMetaMask() {
     const tx = await token.methods
       .transfer(selectedInvoice.recipientAddress, amountUnits)
       .send({
-  from: metamaskWallet,
-  gas: 120000
-});
+        from: metamaskWallet,
+        gas: 120000
+      });
 
     await markInvoicePaid(tx.transactionHash, metamaskWallet);
-
     setStatus("MetaMask payment success: " + tx.transactionHash, "success");
   } catch (err) {
     setStatus("MetaMask payment failed: " + err.message, "error");
@@ -875,15 +844,6 @@ async function payWithCircleWallet() {
 
     setStatus("Creating Circle transfer challenge...");
 
-    console.log("Circle transfer payload:", {
-  userToken,
-  walletId: wallet.id,
-  tokenId: usdc.tokenId,
-  amount: String(selectedInvoice.amount),
-  destinationAddress: selectedInvoice.recipientAddress,
-  walletBlockchain: wallet.blockchain
-});
-
     const transferData = await api("/api/circle/transfer", {
       method: "POST",
       body: JSON.stringify({
@@ -909,10 +869,7 @@ async function payWithCircleWallet() {
       appSettings: { appId }
     });
 
-    sdk.setAuthentication({
-      userToken,
-      encryptionKey
-    });
+    sdk.setAuthentication({ userToken, encryptionKey });
 
     sdk.execute(challengeId, async (error, result) => {
       if (error) {
@@ -954,7 +911,6 @@ async function payWithCircleWallet() {
             "circle_pending";
 
           await markInvoicePaid(txHash, walletAddress);
-
           setStatus("Circle payment submitted: " + txHash, "success");
         } catch (err) {
           setStatus(
@@ -979,10 +935,7 @@ async function markInvoicePaid(txHash, fromAddress) {
     "/api/invoices/" + encodeURIComponent(selectedInvoice.id) + "/mark-paid",
     {
       method: "POST",
-      body: JSON.stringify({
-        txHash,
-        fromAddress
-      })
+      body: JSON.stringify({ txHash, fromAddress })
     }
   );
 
@@ -994,85 +947,18 @@ async function markInvoicePaid(txHash, fromAddress) {
 }
 
 /* =========================
-   EVENTS + INIT
+   AI INVOICE
 ========================= */
-
-btnGoogle?.addEventListener("click", connectGoogleCircle);
-btnSetupPin?.addEventListener("click", setupCirclePin);
-btnConnectWallet?.addEventListener("click", connectMetaMask);
-btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
-btnSwitchArc?.addEventListener("click", switchArc);
-btnPay?.addEventListener("click", payWithMetaMask);
-btnPayCircle?.addEventListener("click", payWithCircleWallet);
-btnCreateInvoice?.addEventListener("click", createInvoice);
-btnLoadInvoices?.addEventListener("click", loadInvoices);
-btnRefresh?.addEventListener("click", () => {
-  window.location.reload();
-});
-
-btnLogoutGoogle?.addEventListener("click", () => {
-  localStorage.removeItem("googleUser");
-  localStorage.removeItem("googleToken");
-  localStorage.removeItem("circleUserToken");
-  localStorage.removeItem("circleEncryptionKey");
-
-  emailEl.textContent = "-";
-  circleWalletEl.textContent = "-";
-
-  setStatus("Google / Circle logged out.", "success");
-});
-
-if (window.ethereum) {
-  window.ethereum.on("accountsChanged", (accounts) => {
-    metamaskWallet = accounts?.[0] || null;
-    metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
-  });
-}
-
-renderQR(null);
-handleGoogleRedirect();
-loadInvoices().then(async () => {
-  const invoiceId = new URLSearchParams(window.location.search).get("invoice");
-  if (invoiceId) {
-    await openInvoice(invoiceId);
-  }
-});
-
-setInterval(async () => {
-  try {
-    await loadInvoices();
-
-    if (selectedInvoice?.id) {
-      const data = await api("/api/invoices/" + encodeURIComponent(selectedInvoice.id));
-      selectedInvoice = data.invoice;
-      renderSelectedInvoice();
-    }
-  } catch (err) {
-    console.warn("Realtime error:", err.message);
-  }
-}, 5000);
-
-function showToast(message) {
-  const toast = document.getElementById("toast");
-  if (!toast) return;
-
-  toast.textContent = message;
-  toast.classList.remove("hidden");
-
-  setTimeout(() => {
-    toast.classList.add("hidden");
-  }, 3500);
-}
 
 window.generateAIDraft = async function () {
   const prompt = document.getElementById("aiPrompt").value;
 
-  const res = await fetch("/api/ai/invoice-draft", {
+  const res = await fetch(`${API_BASE}/api/ai/invoice-draft`, {
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
-    body: JSON.stringify({ prompt }),
+    body: JSON.stringify({ prompt })
   });
 
   const data = await res.json();
@@ -1085,16 +971,20 @@ window.generateAIDraft = async function () {
   document.getElementById("aiResult").textContent =
     JSON.stringify(data.draft, null, 2);
 
-  // Auto-fill invoice form
-titleEl.value = data.draft.title || "";
-amountEl.value = data.draft.amount || "";
-noteEl.value = data.draft.description || "";
+  titleEl.value = data.draft.title || "";
+  amountEl.value = data.draft.amount || "";
+  noteEl.value = data.draft.description || "";
 
-recipientEl.value = data.draft.customer && data.draft.customer.startsWith("0x")
-  ? data.draft.customer
-  : "";
+  recipientEl.value =
+    data.draft.customer && data.draft.customer.startsWith("0x")
+      ? data.draft.customer
+      : "";
 };
- 
+
+/* =========================
+   DASHBOARD
+========================= */
+
 function shortTx(tx) {
   if (!tx) return "-";
   return tx.slice(0, 8) + "..." + tx.slice(-6);
@@ -1102,48 +992,24 @@ function shortTx(tx) {
 
 async function loadDashboard() {
   try {
-    const res = await fetch("/api/dashboard");
-    const data = await res.json();
+    const data = await api("/api/dashboard");
 
     document.getElementById("dashTotal").innerText =
       Number(data.totalReceived || 0).toFixed(2) + " USDC";
 
-    document.getElementById("dashPaid").innerText =
-      data.paidCount || 0;
-
-    document.getElementById("dashPending").innerText =
-      data.pendingCount || 0;
+    document.getElementById("dashPaid").innerText = data.paidCount || 0;
+    document.getElementById("dashPending").innerText = data.pendingCount || 0;
 
     document.getElementById("dashLatestTx").innerText =
-      data.latestPayment?.txHash
-        ? shortTx(data.latestPayment.txHash)
-        : "-";
-
+      data.latestPayment?.txHash ? shortTx(data.latestPayment.txHash) : "-";
   } catch (err) {
     console.error("loadDashboard error:", err);
   }
 }
 
-if (!isClaimPage) {
-  loadDashboard();
-  renderCustomerDropdown();
-  setInterval(loadDashboard, 5000);
-}
-
-btnSaveBiz?.addEventListener("click", saveBusinessProfile);
-
-customerSelectEl?.addEventListener("change", () => {
-  const customers = JSON.parse(localStorage.getItem("customers") || "[]");
-  const selected = customers[customerSelectEl.value];
-
-  if (selected) {
-    recipientEl.value = selected.wallet || "";
-  }
-});
-
-btnSendClaimEmail?.addEventListener("click", sendClaimEmail);
-
-// ===== CLAIM PAGE =====
+/* =========================
+   CLAIM PAGE
+========================= */
 
 async function loadClaimPage() {
   const path = window.location.pathname;
@@ -1152,7 +1018,7 @@ async function loadClaimPage() {
 
   const claimId = path.split("/claim/")[1];
 
-  document.body.innerHTML = ` 
+  document.body.innerHTML = `
     <div style="padding:40px; max-width:500px; margin:auto;">
       <h2>Claim your USDC</h2>
       <p id="claimInfo">Loading...</p>
@@ -1167,31 +1033,117 @@ async function loadClaimPage() {
     </div>
   `;
 
-  const res = await fetch(`/api/claims/${claimId}`);
-  const data = await res.json();
+  try {
+    const data = await api(`/api/claims/${claimId}`);
 
-  if (!data || !data.amount) {
-  document.body.innerHTML = "❌ Claim not found";
-  return;
+    if (!data || !data.amount) {
+      document.body.innerHTML = "❌ Claim not found";
+      return;
+    }
+
+    document.getElementById("claimInfo").innerText =
+      `You received ${data.amount} USDC`;
+
+    document.getElementById("btnClaim").onclick = async () => {
+      const wallet = document.getElementById("walletInput").value;
+
+      try {
+        const result = await api(`/api/claims/${claimId}/claim`, {
+          method: "POST",
+          body: JSON.stringify({ walletAddress: wallet })
+        });
+
+        document.getElementById("claimStatus").innerText =
+          result.success ? "Claimed!" : `Error: ${result.error}`;
+      } catch (err) {
+        document.getElementById("claimStatus").innerText =
+          "Error: " + err.message;
+      }
+    };
+  } catch (err) {
+    document.body.innerHTML = "❌ Claim not found: " + err.message;
+  }
 }
 
-  document.getElementById("claimInfo").innerText =
-  `You received ${data.amount} USDC`;
+/* =========================
+   EVENTS + INIT
+========================= */
 
-  document.getElementById("btnClaim").onclick = async () => {
-    const wallet = document.getElementById("walletInput").value;
+btnSaveCustomer?.addEventListener("click", saveCustomer);
+btnSendClaimEmail?.addEventListener("click", sendClaimEmail);
+btnSaveBiz?.addEventListener("click", saveBusinessProfile);
 
-    const res = await fetch(`/api/claims/${claimId}/claim`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ walletAddress: wallet })
-    });
+btnGoogle?.addEventListener("click", connectGoogleCircle);
+btnSetupPin?.addEventListener("click", setupCirclePin);
+btnConnectWallet?.addEventListener("click", connectMetaMask);
+btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
+btnSwitchArc?.addEventListener("click", switchArc);
+btnPay?.addEventListener("click", payWithMetaMask);
+btnPayCircle?.addEventListener("click", payWithCircleWallet);
+btnCreateInvoice?.addEventListener("click", createInvoice);
+btnLoadInvoices?.addEventListener("click", loadInvoices);
 
-    const data = await res.json();
+btnRefresh?.addEventListener("click", () => {
+  window.location.reload();
+});
 
-    document.getElementById("claimStatus").innerText =
-      data.success ? "Claimed!" : `Error: ${data.error}`;
-  };
+btnLogoutGoogle?.addEventListener("click", () => {
+  localStorage.removeItem("googleUser");
+  localStorage.removeItem("googleToken");
+  localStorage.removeItem("circleUserToken");
+  localStorage.removeItem("circleEncryptionKey");
+
+  if (emailEl) emailEl.textContent = "-";
+  if (circleWalletEl) circleWalletEl.textContent = "-";
+
+  setStatus("Google / Circle logged out.", "success");
+});
+
+customerSelectEl?.addEventListener("change", () => {
+  const customers = JSON.parse(localStorage.getItem("customers") || "[]");
+  const selected = customers[customerSelectEl.value];
+
+  if (selected) {
+    recipientEl.value = selected.wallet || "";
+  }
+});
+
+if (window.ethereum) {
+  window.ethereum.on("accountsChanged", (accounts) => {
+    metamaskWallet = accounts?.[0] || null;
+    metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
+  });
 }
 
-loadClaimPage();
+if (isClaimPage) {
+  loadClaimPage();
+} else {
+  renderQR(null);
+  handleGoogleRedirect();
+
+  loadInvoices().then(async () => {
+    const invoiceId = new URLSearchParams(window.location.search).get("invoice");
+    if (invoiceId) {
+      await openInvoice(invoiceId);
+    }
+  });
+
+  renderCustomerDropdown();
+  loadDashboard();
+
+  setInterval(async () => {
+    try {
+      await loadInvoices();
+
+      if (selectedInvoice?.id) {
+        const data = await api("/api/invoices/" + encodeURIComponent(selectedInvoice.id));
+        selectedInvoice = data.invoice;
+        renderSelectedInvoice();
+      }
+    } catch (err) {
+      console.warn("Realtime error:", err.message);
+    }
+  }, 5000);
+
+  setInterval(loadDashboard, 5000);
+}
