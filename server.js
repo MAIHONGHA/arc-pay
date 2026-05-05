@@ -7,17 +7,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const Database = require("better-sqlite3");
 const { ethers } = require("ethers");
-const nodemailer = require("nodemailer");
-const mailer = nodemailer.createTransport({
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.MAIL_USER,
-    pass: process.env.MAIL_PASS
-  },
-  family: 4
-});
+
 const { Resend } = require("resend");
 
 const fetch = (...args) =>
@@ -965,7 +955,7 @@ app.post("/api/claims/send-email", async (req, res) => {
     );
 
     const { data, error } = await resend.emails.send({
-  from: "ArcPay <onboarding@resend.dev>",
+  from: "ArcPay <no-reply@arcpay.pro>",
   to: recipientEmail,
   subject: `You received ${amount} USDC via ArcPay`,
   html: ` 
@@ -1129,6 +1119,22 @@ app.post("/api/claims/:id/claim", (req, res) => {
     claimId: id,
     walletAddress
   });
+});
+
+app.get("/test-email", async (req, res) => {
+  try {
+    const data = await resend.emails.send({
+      from: "ArcPay <no-reply@arcpay.pro>",
+      to: ["maihongha14021992mhh12@gmail.com"],
+      subject: "Test email from ArcPay 🚀",
+      html: "<h1>ArcPay email is working!</h1>",
+    });
+
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Error sending email");
+  }
 });
 
 /* =========================
