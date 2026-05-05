@@ -76,6 +76,18 @@ const MERCHANT_ADDRESS = String(
 const db = new Database(path.join(__dirname, "data.db"));
 db.pragma("journal_mode = WAL");
 
+// payouts table
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payouts (
+    id TEXT PRIMARY KEY,
+    recipient TEXT,
+    amount REAL,
+    status TEXT,
+    tx_hash TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
+
 app.get("/api/claims/:id", (req, res) => {
   const { id } = req.params;
 
@@ -132,6 +144,48 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.post("/api/payouts", (req, res) => {
+  const { recipient, amount } = req.body;
+
+  if (!recipient || !amount) {
+    return res.status(400).json({ error: "Missing recipient or amount" });
+  }
+
+  const id = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO payouts (id, recipient, amount, status)
+    VALUES (?, ?, ?, ?)
+  `).run(id, recipient, amount, "PENDING");
+
+  res.json({
+    id,
+    recipient,
+    amount,
+    status: "PENDING"
+  });
+});
+
+app.get("/api/payouts", (req, res) => {
+  const rows = db.prepare(`
+    SELECT * FROM payouts
+    ORDER BY created_at DESC`
+  ).all();
+
+  res.json(rows);
+});
+
+app.get("/test-payout", (req, res) => {
+  const id = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO payouts (id, recipient, amount, status)
+    VALUES (?, ?, ?, ?)
+  `).run(id, "0xTEST123", 100, "PENDING");
+
+  res.json({ message: "Test payout created", id });
+});
 
 /* =========================
    HELPERS
