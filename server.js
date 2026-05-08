@@ -7,7 +7,7 @@ const cors = require("cors");
 const crypto = require("crypto");
 const Database = require("better-sqlite3");
 const { ethers } = require("ethers");
-
+const cron = require("node-cron");
 const { Resend } = require("resend");
 
 const fetch = (...args) =>
@@ -44,10 +44,18 @@ const ARC_RPC_URL = String(
   process.env.ARC_RPC_URL || "https://rpc.testnet.arc.network"
 );
 const provider = new ethers.JsonRpcProvider(process.env.ARC_RPC_URL);
+const PAYOUT_PRIVATE_KEY = process.env.PAYOUT_PRIVATE_KEY || "";
+const payoutWallet = PAYOUT_PRIVATE_KEY
+  ? new ethers.Wallet(PAYOUT_PRIVATE_KEY, provider)
+  : null;
 
 const ERC20_ABI = [
+  "function transfer(address to, uint256 amount) returns (bool)",
+  "function balanceOf(address account) view returns (uint256)",
+  "function decimals() view returns (uint8)",
   "event Transfer(address indexed from, address indexed to, uint256 value)"
 ];
+
 const ARC_EXPLORER_URL = String(
   process.env.ARC_EXPLORER_URL || "https://testnet.arcscan.app"
 );
@@ -56,8 +64,6 @@ const USDC_ADDRESS = String(
   process.env.USDC_ADDRESS || "0x3600000000000000000000000000000000000000"
 );
 const USDC_DECIMALS = Number(process.env.USDC_DECIMALS || 6);
-
-const PAYOUT_PRIVATE_KEY = process.env.PAYOUT_PRIVATE_KEY;
 
 const CLAIM_USDC_ABI = [
   "function transfer(address to, uint256 amount) returns (bool)"
@@ -87,6 +93,22 @@ db.prepare(`
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `).run();
+try {
+  db.prepare(`ALTER TABLE payouts ADD COLUMN mode TEXT DEFAULT 'now'`).run();
+} catch {}
+try {
+  db.prepare(`
+    ALTER TABLE payouts
+    ADD COLUMN frequency TEXT DEFAULT 'once'
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE payouts
+    ADD COLUMN next_run_at DATETIME
+  `).run();
+} catch {}
 
 app.get("/api/claims/:id", (req, res) => {
   const { id } = req.params;
@@ -129,9 +151,68 @@ db.prepare(`
   )
 `).run();
 
+// payroll batches
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payroll_batches (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    pay_date DATETIME,
+    status TEXT DEFAULT 'DRAFT',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
+
+// payroll items
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payroll_items (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT,
+    employee_name TEXT,
+    employee_email TEXT,
+    wallet TEXT,
+    base_salary REAL DEFAULT 0,
+    overtime_hours REAL DEFAULT 0,
+    overtime_rate REAL DEFAULT 0,
+    allowance REAL DEFAULT 0,
+    bonus REAL DEFAULT 0,
+    deduction REAL DEFAULT 0,
+    final_amount REAL DEFAULT 0,
+    status TEXT DEFAULT 'DRAFT',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
+
+try {
+  db.prepare(`
+    ALTER TABLE payroll_items
+    ADD COLUMN tx_hash TEXT
+  `).run();
+} catch {}
+
 try {
   db.prepare("ALTER TABLE claims ADD COLUMN txHash TEXT").run();
 } catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE payroll_batches
+    ADD COLUMN frequency TEXT DEFAULT 'once'
+  `).run();
+} catch {}
+
+try {
+  db.prepare(
+    "ALTER TABLE payroll_batches ADD COLUMN auto_execute INTEGER DEFAULT 0"
+  ).run();
+  console.log("✅ Added auto_execute column");
+} catch (e) {}
+
+try {
+  db.prepare(
+    "ALTER TABLE payroll_batches ADD COLUMN requires_approval INTEGER DEFAULT 1"
+  ).run();
+  console.log("✅ Added requires_approval column");
+} catch (e) {}
 
 /* =========================
    MIDDLEWARE
@@ -144,6 +225,456 @@ app.use(cors({
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.get("/api/payroll-batches", (req, res) => {
+  const rows = db.prepare(`
+    SELECT
+      b.*,
+      COALESCE(SUM(i.final_amount), 0) AS total_amount,
+      COUNT(i.id) AS employee_count
+    FROM payroll_batches b
+    LEFT JOIN payroll_items i ON i.batch_id = b.id
+    GROUP BY b.id
+    ORDER BY b.created_at DESC
+  `).all();
+
+  res.json(rows);
+});
+
+app.get("/api/payroll-items", (req, res) => {
+  const latestBatch = db.prepare(`
+    SELECT * FROM payroll_batches
+    ORDER BY created_at DESC
+    LIMIT 1
+  `).get();
+
+  if (!latestBatch) {
+    return res.json([]);
+  }
+
+  const rows = db.prepare(`
+    SELECT * FROM payroll_items
+    WHERE batch_id = ?
+    ORDER BY created_at DESC
+  `).all(latestBatch.id);
+
+  res.json(rows);
+});
+
+app.get("/api/payroll-batches/:id/items", (req, res) => {
+  const { id } = req.params;
+
+  const items = db.prepare(`
+    SELECT *
+    FROM payroll_items
+    WHERE batch_id = ?
+    ORDER BY created_at DESC
+  `).all(id);
+
+  res.json(items);
+});
+
+app.post("/api/payroll-batches/:id/approve", (req, res) => {
+  const { id } = req.params;
+
+  const batch = db.prepare(`
+    SELECT * FROM payroll_batches
+    WHERE id = ?
+  `).get(id);
+
+  if (!batch) {
+    return res.status(404).json({ error: "Payroll batch not found" });
+  }
+
+  db.prepare(`
+    UPDATE payroll_batches
+    SET status = 'APPROVED'
+    WHERE id = ?
+  `).run(id);
+
+  db.prepare(`
+    UPDATE payroll_items
+    SET status = 'APPROVED'
+    WHERE batch_id = ?
+  `).run(id);
+
+  res.json({
+    success: true,
+    message: "Payroll batch approved",
+    batchId: id
+  });
+});
+
+app.post("/api/payroll-batches/:id/unapprove", (req, res) => {
+  const { id } = req.params;
+
+  db.prepare(`
+    UPDATE payroll_batches
+    SET status = 'DRAFT'
+    WHERE id = ?
+  `).run(id);
+
+  db.prepare(`
+    UPDATE payroll_items
+    SET status = 'DRAFT'
+    WHERE batch_id = ?
+    AND status != 'PAID'
+  `).run(id);
+
+  res.json({
+    success: true,
+    message: "Payroll batch moved back to DRAFT"
+  });
+});
+
+app.post("/api/payroll-batches/:id/cancel", (req, res) => {
+  const { id } = req.params;
+
+  db.prepare(`
+    UPDATE payroll_batches
+    SET status = 'CANCELLED'
+    WHERE id = ?
+    AND status != 'PAID'
+  `).run(id);
+
+  db.prepare(`
+    UPDATE payroll_items
+    SET status = 'CANCELLED'
+    WHERE batch_id = ?
+    AND status != 'PAID'
+  `).run(id);
+
+  res.json({
+    success: true,
+    message: "Payroll batch cancelled"
+  });
+});
+
+app.post("/api/payroll-batches/:id/execute", async (req, res) => {
+  const { id } = req.params;
+
+  const batch = db.prepare(`
+    SELECT *
+    FROM payroll_batches
+    WHERE id = ?
+  `).get(id);
+
+  if (!batch) {
+    return res.status(404).json({
+      error: "Payroll batch not found"
+    });
+  }
+
+  if (batch.status !== "REVIEW") {
+    return res.status(400).json({
+      error: "Only REVIEW payroll batch can be executed"
+    });
+  }
+
+  const items = db.prepare(`
+    SELECT *
+    FROM payroll_items
+    WHERE batch_id = ?
+  `).all(id);
+
+  if (!items.length) {
+    return res.status(404).json({
+      error: "No payroll items found"
+    });
+  }
+
+  const results = [];
+
+  for (const item of items) {
+    if (item.status === "PAID") {
+      console.log("⚠️ Payroll item already paid:", item.id);
+      continue;
+    }
+
+    if (item.status !== "REVIEW") {
+      console.log("⚠️ Payroll item not ready:", item.id);
+      continue;
+    }
+
+    const payoutId = crypto.randomUUID();
+
+    db.prepare(`
+      INSERT INTO payouts (
+        id,
+        recipient,
+        amount,
+        status,
+        mode,
+        frequency
+      )
+      VALUES (?, ?, ?, ?, ?, ?)
+    `).run(
+      payoutId,
+      item.wallet,
+      item.final_amount,
+      "APPROVED",
+      "payroll",
+      "once"
+    );
+
+    const payoutResult = await executePayoutById(payoutId);
+
+    db.prepare(`
+      UPDATE payroll_items
+      SET status = 'PAID',
+          tx_hash = ?
+      WHERE id = ?
+    `).run(
+      payoutResult.txHash,
+      item.id
+    );
+
+    try {
+      await resend.emails.send({
+        from: "ArcPay <no-reply@arcpay.pro>",
+        to: [item.employee_email],
+        subject: `Your salary has been paid - ${item.final_amount} USDC`,
+        html: `
+          <h2>Salary Paid</h2>
+          <p>Hello ${item.employee_name},</p>
+          <p>Your salary has been paid via ArcPay.</p>
+
+          <ul>
+            <li>Base salary: ${item.base_salary} USDC</li>
+            <li>Overtime: ${item.overtime_hours}h × ${item.overtime_rate}</li>
+            <li>Allowance: ${item.allowance} USDC</li>
+            <li>Bonus: ${item.bonus} USDC</li>
+            <li>Deduction: ${item.deduction} USDC</li>
+            <li><b>Final amount: ${item.final_amount} USDC</b></li>
+          </ul>
+
+          <p><b>Transaction:</b> ${payoutResult.txHash}</p>
+
+          <p>
+            <a href="https://testnet.arcscan.app/tx/${payoutResult.txHash}">
+              View transaction
+            </a>
+          </p>
+        `
+      });
+
+      console.log("✅ Payslip email sent:", item.employee_email);
+    } catch (emailErr) {
+      console.error("Payslip email failed:", emailErr.message);
+    }
+
+    results.push({
+      employee: item.employee_name,
+      amount: item.final_amount,
+      txHash: payoutResult.txHash
+    });
+  }
+
+  db.prepare(`
+    UPDATE payroll_batches
+    SET status = 'PAID'
+    WHERE id = ?
+  `).run(id);
+
+  res.json({
+    success: true,
+    payrollBatch: id,
+    results
+  });
+});
+
+app.post("/api/payroll-items/:id/update", (req, res) => {
+  const { id } = req.params;
+
+  const item = db.prepare(`
+    SELECT * FROM payroll_items
+    WHERE id = ?
+  `).get(id);
+
+  if (!item) {
+    return res.status(404).json({ error: "Payroll item not found" });
+  }
+
+  if (item.status === "PAID") {
+    return res.status(400).json({
+      error: "Cannot edit paid payroll item"
+    });
+  }
+
+  const base = Number(req.body.base_salary || 0);
+  const overtimeHours = Number(req.body.overtime_hours || 0);
+  const overtimeRate = Number(req.body.overtime_rate || 0);
+  const allowance = Number(req.body.allowance || 0);
+  const bonus = Number(req.body.bonus || 0);
+  const deduction = Number(req.body.deduction || 0);
+
+  const finalAmount =
+    base + overtimeHours * overtimeRate + allowance + bonus - deduction;
+
+  db.prepare(`
+    UPDATE payroll_items
+    SET base_salary = ?,
+        overtime_hours = ?,
+        overtime_rate = ?,
+        allowance = ?,
+        bonus = ?,
+        deduction = ?,
+        final_amount = ?,
+        status = 'DRAFT'
+    WHERE id = ?
+  `).run(
+    base,
+    overtimeHours,
+    overtimeRate,
+    allowance,
+    bonus,
+    deduction,
+    finalAmount,
+    id
+  );
+
+  db.prepare(`
+    UPDATE payroll_batches
+    SET status = 'DRAFT'
+    WHERE id = ?
+  `).run(item.batch_id);
+
+  res.json({
+    success: true,
+    message: "Payroll item updated",
+    finalAmount
+  });
+});
+
+app.post("/api/payroll-items/:id/send-payslip", async (req, res) => {
+  const { id } = req.params;
+
+  const item = db.prepare(`
+    SELECT * FROM payroll_items
+    WHERE id = ?
+  `).get(id);
+
+  if (!item) {
+    return res.status(404).json({ error: "Payroll item not found" });
+  }
+
+  if (item.status !== "PAID") {
+    return res.status(400).json({ error: "Only PAID payroll can send payslip" });
+  }
+
+  if (!item.tx_hash) {
+    return res.status(400).json({ error: "Missing transaction hash" });
+  }
+
+  try {
+    await resend.emails.send({
+      from: "ArcPay <no-reply@arcpay.pro>",
+      to: [item.employee_email],
+      subject: `Your salary has been paid - ${item.final_amount} USDC`,
+      html: `
+        <h2>Salary Paid</h2>
+        <p>Hello ${item.employee_name},</p>
+        <p>Your salary has been paid via ArcPay.</p>
+        <ul>
+          <li>Base salary: ${item.base_salary} USDC</li>
+          <li>Overtime: ${item.overtime_hours}h × ${item.overtime_rate}</li>
+          <li>Allowance: ${item.allowance} USDC</li>
+          <li>Bonus: ${item.bonus} USDC</li>
+          <li>Deduction: ${item.deduction} USDC</li>
+          <li><b>Final amount: ${item.final_amount} USDC</b></li>
+        </ul>
+        <p>
+          <a href="https://testnet.arcscan.app/tx/${item.tx_hash}">
+            View transaction
+          </a>
+        </p>
+      `
+    });
+
+    res.json({ success: true, message: "Payslip sent" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/payroll-batches", (req, res) => {
+  const batchId = crypto.randomUUID();
+
+  const {
+    title = "Payroll Batch",
+    pay_date,
+    frequency = "once",
+    employees = []
+  } = req.body;
+
+  db.prepare(`
+    INSERT INTO payroll_batches (
+      id,
+      title,
+      pay_date,
+      status,
+      frequency
+  )
+  VALUES (?, ?, ?, ?, ?)
+  `).run(
+  batchId,
+  title,
+  pay_date || new Date().toISOString(),
+  "DRAFT",
+  frequency
+);
+
+  for (const emp of employees) {
+    const base = Number(emp.base_salary || 0);
+    const overtimeHours = Number(emp.overtime_hours || 0);
+    const overtimeRate = Number(emp.overtime_rate || 0);
+    const allowance = Number(emp.allowance || 0);
+    const bonus = Number(emp.bonus || 0);
+    const deduction = Number(emp.deduction || 0);
+
+    const finalAmount =
+      base + overtimeHours * overtimeRate + allowance + bonus - deduction;
+
+    db.prepare(`
+      INSERT INTO payroll_items (
+        id,
+        batch_id,
+        employee_name,
+        employee_email,
+        wallet,
+        base_salary,
+        overtime_hours,
+        overtime_rate,
+        allowance,
+        bonus,
+        deduction,
+        final_amount,
+        status
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      crypto.randomUUID(),
+      batchId,
+      emp.employee_name,
+      emp.employee_email,
+      emp.wallet,
+      base,
+      overtimeHours,
+      overtimeRate,
+      allowance,
+      bonus,
+      deduction,
+      finalAmount,
+      "DRAFT"
+    );
+  }
+
+  res.json({
+    success: true,
+    batchId,
+    count: employees.length
+  });
+});
 
 app.post("/api/payouts", (req, res) => {
   const { recipient, amount } = req.body;
@@ -180,12 +711,219 @@ app.get("/test-payout", (req, res) => {
   const id = crypto.randomUUID();
 
   db.prepare(`
-    INSERT INTO payouts (id, recipient, amount, status)
-    VALUES (?, ?, ?, ?)
-  `).run(id, "0xTEST123", 100, "PENDING");
+  INSERT INTO payouts (
+  id,
+  recipient,
+  amount,
+  status,
+  mode,
+ frequency,
+  next_run_at
+)
+VALUES (?, ?, ?, ?, ?, ?, ?)
+`).run(
+  id,
+  "0x09C960a7d011D1bb9241B69F9CDaD9c9BcE6175d",
+  1,
+  "PENDING",
+  "scheduled",
+  "monthly",
+  new Date(Date.now() + 60000).toISOString()
+);
 
   res.json({ message: "Test payout created", id });
 });
+
+app.get("/test-payroll", (req, res) => {
+  const batchId = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO payroll_batches (
+      id,
+      title,
+      pay_date,
+      status
+    )
+    VALUES (?, ?, datetime('now'), ?)
+  `).run(
+    batchId,
+    "May 2026 Payroll",
+    "DRAFT"
+  );
+
+  db.prepare(`
+    INSERT INTO payroll_items (
+      id,
+      batch_id,
+      employee_name,
+      employee_email,
+      wallet,
+      base_salary,
+      overtime_hours,
+      overtime_rate,
+      allowance,
+      bonus,
+      deduction,
+      final_amount
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    crypto.randomUUID(),
+    batchId,
+    "Mai",
+    "mai@test.com",
+    "0x09C960a7d011D1bb9241B69F9CDaD9c9BcE6175d",
+    1,
+    0,
+    0,
+    0,
+    0,
+    0,
+    1
+  );
+
+  res.json({
+    success: true,
+    batchId
+  });
+});
+
+async function executePayoutById(id) {
+  if (!payoutWallet) {
+    throw new Error("Missing PAYOUT_PRIVATE_KEY");
+  }
+
+  const payout = db.prepare(`
+    SELECT * FROM payouts WHERE id = ?
+  `).get(id);
+
+  if (!payout) {
+    throw new Error("Payout not found");
+  }
+
+  if (payout.status === "PAID") {
+    return { alreadyPaid: true, payout };
+  }
+
+  const usdc = new ethers.Contract(
+    USDC_ADDRESS,
+    ERC20_ABI,
+    payoutWallet
+  );
+
+  const amountUnits = ethers.parseUnits(String(payout.amount), 6);
+
+  const tx = await usdc.transfer(payout.recipient, amountUnits);
+  await tx.wait();
+
+  db.prepare(`
+    UPDATE payouts
+    SET status = ?, tx_hash = ?
+    WHERE id = ?
+  `).run("PAID", tx.hash, id);
+
+if (payout.mode === "scheduled" && payout.frequency === "monthly") {
+  const nextId = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO payouts (
+      id, recipient, amount, status, mode, frequency, next_run_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+1 month'))
+  `).run(
+    nextId,
+    payout.recipient,
+    payout.amount,
+    "APPROVED",
+    "scheduled",
+    "monthly"
+  );
+}
+
+  return {
+    id,
+    txHash: tx.hash,
+    status: "PAID"
+  };
+}
+
+app.post("/api/payouts/:id/execute", async (req, res) => {
+  try {
+    const result = await executePayoutById(req.params.id);
+
+    res.json({
+      message: result.alreadyPaid ? "Already paid" : "Payout sent",
+      ...result
+    });
+  } catch (err) {
+    console.error("PAYOUT ERROR:", err);
+    res.status(500).json({
+      error: "Payout failed",
+      details: err.message
+    });
+  }
+});   
+
+app.post("/api/payouts/:id/approve", (req, res) => {
+  const { id } = req.params;
+
+  const payout = db.prepare(`
+    SELECT * FROM payouts WHERE id = ?
+  `).get(id);
+
+  if (!payout) {
+    return res.status(404).json({ error: "Payout not found" });
+  }
+
+  if (payout.status !== "PENDING" && payout.status !== "REVIEW") {
+    return res.status(400).json({
+      error: "Only PENDING or REVIEW payouts can be approved"
+    });
+  }
+
+  db.prepare(`
+    UPDATE payouts
+    SET status = 'APPROVED'
+    WHERE id = ?
+  `).run(id);
+
+  res.json({
+    message: "Payout approved",
+    id,
+    status: "APPROVED"
+  });
+});
+
+// payroll batches
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payroll_batches (
+    id TEXT PRIMARY KEY,
+    title TEXT,
+    pay_date DATETIME,
+    status TEXT DEFAULT 'DRAFT',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
+
+// payroll items
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payroll_items (
+    id TEXT PRIMARY KEY,
+    batch_id TEXT,
+    employee_name TEXT,
+    employee_email TEXT,
+    wallet TEXT,
+    base_salary REAL DEFAULT 0,
+    overtime_hours REAL DEFAULT 0,
+    overtime_rate REAL DEFAULT 0,
+    allowance REAL DEFAULT 0,
+    bonus REAL DEFAULT 0,
+    deduction REAL DEFAULT 0,
+    final_amount REAL DEFAULT 0,
+    status TEXT DEFAULT 'DRAFT',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`).run();
 
 /* =========================
    HELPERS
@@ -1188,6 +1926,157 @@ app.get("/test-email", async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send("Error sending email");
+  }
+});
+
+cron.schedule("*/1 * * * *", async () => {
+  console.log("AUTO PAYOUT CHECK...");
+
+  const payouts = db.prepare(`
+    SELECT * FROM payouts
+    WHERE status = 'PENDING'
+    ORDER BY created_at ASC
+    LIMIT 3
+  `).all();
+
+  for (const p of payouts) {
+  try {
+    db.prepare(`
+      UPDATE payouts
+      SET status = 'REVIEW'
+      WHERE id = ?
+      AND status = 'APPROVED'
+    `).run(p.id);
+
+    console.log("Payout needs confirmation:", p.id);
+  } catch (err) {
+    console.error("Auto review error:", err.message);
+  }
+}
+});
+
+app.post("/api/payouts/:id/confirm", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const payout = db.prepare(`
+      SELECT * FROM payouts WHERE id = ?
+    `).get(id);
+
+    if (!payout) {
+      return res.status(404).json({ error: "Payout not found" });
+    }
+
+    if (payout.status !== "PENDING" && payout.status !== "REVIEW") {
+      return res.status(400).json({
+        error: "Only PENDING or REVIEW payouts can be confirmed"
+      });
+    }
+
+    if (payout.mode === "scheduled") {
+      db.prepare(`
+        UPDATE payouts
+        SET status = 'APPROVED',
+            next_run_at = datetime('now', '+1 minute')
+        WHERE id = ?
+      `).run(id);
+
+      return res.json({
+        message: "Scheduled payout approved",
+        id,
+        status: "APPROVED"
+      });
+    }
+
+    const result = await executePayoutById(id);
+
+    res.json({
+      message: "Payout paid now",
+      ...result
+    });
+  } catch (err) {
+    console.error("CONFIRM PAYOUT ERROR:", err);
+    res.status(500).json({
+      error: "Confirm payout failed",
+      details: err.message
+    });
+  }
+});
+
+// =======================
+// AUTO PAYOUT CRON
+// =======================
+cron.schedule("* * * * *", () => {
+  console.log("⏰ Checking scheduled payrolls...");
+
+  const duePayrolls = db.prepare(`
+    SELECT *
+    FROM payroll_batches
+    WHERE status = 'APPROVED'
+      AND datetime(pay_date) <= datetime('now')
+  `).all();
+
+  for (const payroll of duePayrolls) {
+
+    db.prepare(`
+      UPDATE payroll_batches
+      SET status = 'REVIEW'
+      WHERE id = ?
+    `).run(payroll.id);
+
+    db.prepare(`
+      UPDATE payroll_items
+      SET status = 'REVIEW'
+      WHERE batch_id = ?
+        AND status = 'APPROVED'
+    `).run(payroll.id);
+
+    console.log("Payroll needs final review:", payroll.id);
+
+    // CREATE NEXT MONTHLY PAYROLL
+    if (payroll.frequency === "monthly") {
+
+      const nextDate = new Date(payroll.pay_date);
+
+      nextDate.setMonth(nextDate.getMonth() + 1);
+
+const existingNextPayroll = db.prepare(`
+  SELECT id
+  FROM payroll_batches
+  WHERE title = ?
+    AND frequency = 'monthly'
+    AND date(pay_date) = date(?)
+  LIMIT 1
+`).get(payroll.title, nextDate.toISOString());
+
+if (existingNextPayroll) {
+  console.log("⚠️ Next monthly payroll already exists:", existingNextPayroll.id);
+  continue;
+}
+
+      db.prepare(`
+        INSERT INTO payroll_batches (
+          id,
+          title,
+          pay_date,
+          status,
+          frequency,
+          auto_execute,
+          requires_approval
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        crypto.randomUUID(),
+        payroll.title,
+        nextDate.toISOString(),
+        "DRAFT",
+        "monthly",
+        payroll.auto_execute || 0,
+        payroll.requires_approval || 1
+      );
+
+      console.log("✅ Next monthly payroll created");
+    }
   }
 });
 
