@@ -1082,7 +1082,28 @@ btnSetupPin?.addEventListener("click", setupCirclePin);
 btnConnectWallet?.addEventListener("click", connectMetaMask);
 btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
 btnSwitchArc?.addEventListener("click", switchArc);
-btnPay?.addEventListener("click", payWithMetaMask);
+btnPay?.addEventListener("click", async () => {
+  if (metamaskWallet) {
+    await payWithMetaMask();
+    return;
+  }
+
+  const googleUser = getGoogleUser();
+
+  if (googleUser?.email) {
+    const useCircle = confirm(
+      "MetaMask is not connected. Pay with Circle wallet?"
+    );
+
+    if (useCircle) {
+      await payWithCircleWallet();
+    }
+
+    return;
+  }
+
+  await payWithMetaMask();
+});
 btnPayCircle?.addEventListener("click", payWithCircleWallet);
 btnCreateInvoice?.addEventListener("click", createInvoice);
 btnLoadInvoices?.addEventListener("click", loadInvoices);
@@ -1153,12 +1174,12 @@ if (isClaimPage) {
 }
 
 const payoutRoot = document.getElementById("payout-root");
+const payrollRoot = document.getElementById("payroll-anchor");
 
 if (payoutRoot) {
-  createRoot(payoutRoot).render(
-    <React.Fragment>
-      <PayoutPanel />
-      <PayrollPanel />
-    </React.Fragment>
-  );
+  createRoot(payoutRoot).render(<PayoutPanel />);
+}
+
+if (payrollRoot) {
+  createRoot(payrollRoot).render(<PayrollPanel />);
 }
