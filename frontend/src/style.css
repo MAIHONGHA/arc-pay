@@ -1050,3 +1050,113 @@ pre {
     padding-bottom:96px !important;
   }
 }
+
+/* INVOICE MOBILE SHEET */
+
+.invoice-sheet.hidden {
+  display: none;
+}
+
+.invoice-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 99998;
+}
+
+.invoice-sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,.62);
+  backdrop-filter: blur(8px);
+}
+
+.invoice-sheet-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 88vh;
+  overflow-y: auto;
+  background: #0b1220;
+  border-radius: 30px 30px 0 0;
+  padding: 14px 20px 28px;
+  border: 1px solid rgba(255,255,255,.08);
+  box-shadow: 0 -24px 70px rgba(0,0,0,.55);
+  animation: sheetUp .24s ease;
+}
+
+.sheet-handle {
+  width: 46px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.22);
+  margin: 0 auto 18px;
+}
+
+.sheet-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.sheet-close {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 26px;
+  line-height: 1;
+  background: #162033;
+  color: #fff;
+}
+
+.sheet-body {
+  margin-top: 14px;
+  padding: 16px;
+  border-radius: 20px;
+  background: #0f1628;
+  border: 1px solid rgba(255,255,255,.06);
+  line-height: 1.55;
+}
+
+.sheet-qr {
+  margin-top: 14px;
+}
+
+.sheet-qr .qr-wrap {
+  padding: 16px;
+  border-radius: 20px;
+  background: #0f1628;
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.sheet-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+@keyframes sheetUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (min-width:701px) {
+  .invoice-sheet-content {
+    left: 50%;
+    right: auto;
+    bottom: 40px;
+    width: min(620px, calc(100% - 40px));
+    transform: translateX(-50%);
+    border-radius: 30px;
+  }
+}

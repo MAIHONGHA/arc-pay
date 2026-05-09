@@ -4,8 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ArcPay_Min</title>
-    <script type="module" crossorigin src="/assets/index-D2lfM5ZA.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-DIgF_EX0.css">
+    <script type="module" crossorigin src="/assets/index-ffedc0B9.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DdoP587s.css">
   </head>
 
   <body>
@@ -255,5 +255,32 @@
 
     <div id="toast" class="toast hidden"></div>
     <div id="toast" class="toast hidden"></div>
+    <div id="invoiceSheet" class="invoice-sheet hidden">
+  <div class="invoice-sheet-backdrop" id="closeInvoiceSheet"></div>
+
+  <div class="invoice-sheet-content">
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">Invoice Detail</p>
+        <h2 id="sheetTitle">Invoice</h2>
+      </div>
+
+      <button id="btnCloseInvoiceSheet" class="sheet-close">×</button>
+    </div>
+
+    <div id="sheetBody" class="sheet-body">
+      No invoice selected.
+    </div>
+
+    <div id="sheetQR" class="sheet-qr"></div>
+
+    <div class="sheet-actions">
+      <button id="sheetCopyLink">Copy Link</button>
+      <button id="sheetPayInvoice">Pay Invoice</button>
+    </div>
+  </div>
+</div>
   </body>
 </html>

@@ -254,5 +254,32 @@
     <div id="toast" class="toast hidden"></div>
     <script type="module" src="/src/main.jsx"></script>
     <div id="toast" class="toast hidden"></div>
+    <div id="invoiceSheet" class="invoice-sheet hidden">
+  <div class="invoice-sheet-backdrop" id="closeInvoiceSheet"></div>
+
+  <div class="invoice-sheet-content">
+    <div class="sheet-handle"></div>
+
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">Invoice Detail</p>
+        <h2 id="sheetTitle">Invoice</h2>
+      </div>
+
+      <button id="btnCloseInvoiceSheet" class="sheet-close">×</button>
+    </div>
+
+    <div id="sheetBody" class="sheet-body">
+      No invoice selected.
+    </div>
+
+    <div id="sheetQR" class="sheet-qr"></div>
+
+    <div class="sheet-actions">
+      <button id="sheetCopyLink">Copy Link</button>
+      <button id="sheetPayInvoice">Pay Invoice</button>
+    </div>
+  </div>
+</div>
   </body>
 </html>
