@@ -4,41 +4,53 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ArcPay_Min</title>
-    <script type="module" crossorigin src="/assets/index-CG5hdaO1.js"></script>
-    <link rel="stylesheet" crossorigin href="/assets/index-ix88B-48.css">
+    <script type="module" crossorigin src="/assets/index-D2lfM5ZA.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DIgF_EX0.css">
   </head>
 
   <body>
     <div id="app">
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-title">ArcPay</div>
-          <div class="brand-subtitle">ARC NETWORK · USDC</div>
+          <div class="brand-logo">A</div>
+          <div>
+            <div class="brand-title">ArcPay</div>
+            <div class="brand-subtitle">ARC NETWORK · USDC</div>
+          </div>
         </div>
 
-        <a href="#dashboard" class="nav-link active">Dashboard</a>
-        <a href="#invoices" class="nav-link">Invoices</a>
-        <a href="#gmail" class="nav-link">Gmail Claim</a>
-        <a href="#payroll" class="nav-link">Payroll</a>
-        <a href="#payouts" class="nav-link">Payouts</a>
+        <nav class="sidebar-menu">
+          <a href="#dashboard">Dashboard</a>
+          <a href="#invoices">Invoices</a>
+          <a href="#gmail">Gmail Claim</a>
+          <a href="#payroll">Payroll</a>
+          <a href="#payouts">Payouts</a>
+          <a href="#ai">AI Draft</a>
+        </nav>
       </aside>
 
-      <main class="main">
+      <main class="main-shell">
         <section id="dashboard" class="panel hero-panel">
-          <div class="topbar">
+          <div class="hero-top">
             <div>
               <p class="eyebrow">Crypto payments dashboard</p>
               <h1>ArcPay_Min</h1>
+              <p class="muted">Invoices, payroll, payouts, Circle wallet, MetaMask and email claims in one dashboard.</p>
             </div>
 
-            <div class="wallet-actions">
-              <button id="btnGoogle">Login Google / Circle</button>
-              <button id="btnConnectWallet">Connect MetaMask</button>
-              <button id="btnDisconnectWallet">Disconnect</button>
-              <button id="btnSwitchArc">Switch Arc</button>
-              <button id="btnRefresh">Refresh</button>
+            <div class="hero-actions">
+              <button id="btnGoogle">
+                Login Google
+              </button>
+
+              <button id="btnConnectWallet">
+                Connect Wallet
+              </button>
+
+              <button id="btnPay">
+                Pay Invoice
+              </button>
             </div>
-          </div>
 
           <section class="dashboard">
             <div class="stat-card">
@@ -64,134 +76,184 @@
 
           <div class="status-grid">
             <div class="mini-box">
-              <b>Status</b>
-              <div id="status">Ready.</div>
+              <span>Status</span>
+              <b id="status">Ready.</b>
             </div>
 
             <div class="mini-box">
-              <b>Google Email</b>
-              <div id="email">-</div>
+              <span>Google Email</span>
+              <b id="email">-</b>
             </div>
 
             <div class="mini-box">
-              <b>Circle Wallet</b>
-              <div id="circleWallet">-</div>
+              <span>Circle Wallet</span>
+              <b id="circleWallet">-</b>
             </div>
 
             <div class="mini-box">
-              <b>MetaMask Wallet</b>
-              <div id="metamaskWallet">Disconnected</div>
+              <span>MetaMask Wallet</span>
+              <b id="metamaskWallet">Disconnected</b>
+            </div>
+          </div>
+          
+        </section>
+
+        <section class="three-column-layout">
+          <section class="main-column">
+            <section id="invoices" class="panel">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Invoices</p>
+                  <h2>Create Invoice</h2>
+                </div>
+              </div>
+
+              <label>Title</label>
+              <input id="title" placeholder="e.g. Coffee" />
+
+              <label>Amount USDC</label>
+              <input id="amount" placeholder="0.8" />
+
+              <label>Recipient Address</label>
+              <input id="recipient" placeholder="Leave empty to use merchant wallet" />
+
+              <label>Note</label>
+              <textarea id="note" placeholder="Optional note"></textarea>
+
+              <div class="row">
+                <button id="btnCreateInvoice">Create Invoice</button>
+                <button id="btnLoadInvoices">Load Invoices</button>
+              </div>
+
+              <div class="split-grid">
+                <div class="mini-box invoice-detail-card">
+                 <span>Selected Invoice</span>
+                 <div id="selectedInvoice">No invoice selected.</div>
+              </div>
+
+                <div class="mini-box">
+                  <span>Invoice QR</span>
+                  <div id="qrBox" class="qr-empty">Open an invoice to show QR.</div>
+                </div>
+              </div>
+
+              <h3>Invoice History</h3>
+              <div id="invoiceList"></div>
+            </section>
+
+        <section class="panel payroll-analytics">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Analytics</p>
+              <h2>Payroll Analytics</h2>
             </div>
           </div>
 
-          <div class="row">
-            <button id="btnSetupPin">Setup Circle PIN</button>
-            <button id="btnPay">Pay with MetaMask</button>
-            <button id="btnPayCircle">Pay with Circle Wallet</button>
-            <button id="btnLogoutGoogle">Logout Google</button>
+          <div class="analytics-grid">
+
+            <div class="analytics-card">
+              <span>Total Payroll</span>
+              <h3 id="payrollTotal">$0</h3>
+            </div>
+
+          <div class="analytics-card">
+            <span>Total Employees</span>
+            <h3 id="payrollEmployees">0</h3>
           </div>
-        </section>
 
-        <section class="content-grid">
-          <section id="invoices" class="panel">
-            <div class="section-header">
-              <div>
-                <p class="eyebrow">Invoices</p>
-                <h2>Create Invoice</h2>
-              </div>
-            </div>
+          <div class="analytics-card">
+            <span>Paid Payrolls</span>
+            <h3 id="payrollPaid">0</h3>
+          </div>
 
-            <label>Title</label>
-            <input id="title" placeholder="e.g. Coffee" />
+          <div class="analytics-card">
+            <span>Pending Payrolls</span>
+            <h3 id="payrollPending">0</h3>
+          </div>
 
-            <label>Amount USDC</label>
-            <input id="amount" placeholder="0.8" />
+        </div>
 
-            <label>Recipient Address</label>
-            <input id="recipient" placeholder="Leave empty to use merchant wallet" />
+        <div class="chart-box">
+          <div class="fake-chart">
 
-            <label>Note</label>
-            <textarea id="note" placeholder="Optional note"></textarea>
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:85%"></div>
+            <div class="bar active" style="height:100%"></div>
 
-            <div class="row">
-              <button id="btnCreateInvoice">Create Invoice</button>
-              <button id="btnLoadInvoices">Load Invoices</button>
-            </div>
+          </div>
+        </div>
+      </section>
 
-            <div class="split-grid">
-              <div class="mini-box">
-                <b>Selected Invoice</b>
-                <div id="selectedInvoice">No invoice selected.</div>
-              </div>
+            <section id="payroll" class="panel">
+              <p class="eyebrow">Payroll</p>
+              <h2>Create Payroll & Payroll History</h2>
+              <div id="payroll-anchor"></div>
+            </section>
 
-              <div class="mini-box">
-                <b>Invoice QR</b>
-                <div id="qrBox" class="qr-empty">Open an invoice to show QR.</div>
-              </div>
-            </div>
-
-            <h3>Invoice History</h3>
-            <div id="invoiceList"></div>
+            <section id="payouts" class="panel">
+              <p class="eyebrow">Payouts</p>
+              <h2>Payout Queue</h2>
+              <div id="payout-root"></div>
+            </section>
           </section>
 
-          <section id="gmail" class="panel">
-            <p class="eyebrow">Email payout</p>
-            <h2>Send USDC by Gmail</h2>
+          <aside class="right-panel">
+            <section class="panel">
+              <p class="eyebrow">Business</p>
+              <h2>Business Profile</h2>
 
-            <input id="claimEmail" placeholder="Recipient Gmail" />
-            <input id="claimAmount" placeholder="Amount USDC" />
-            <textarea id="claimMessage" placeholder="Message"></textarea>
+              <input id="bizName" placeholder="Business Name" />
+              <input id="bizEmail" placeholder="Business Email" />
+              <input id="bizWallet" placeholder="Merchant Wallet Address" />
 
-            <button id="btnSendClaimEmail">Send Claim Email</button>
-            <pre id="claimResult"></pre>
+              <button id="btnSaveBiz">Save Profile</button>
+            </section>
 
-            <div class="divider"></div>
+            <section id="gmail" class="panel">
+              <p class="eyebrow">Email payout</p>
+              <h2>Send USDC by Gmail</h2>
 
-            <h2>Customer</h2>
-            <input id="custName" placeholder="Customer Name" />
-            <input id="custEmail" placeholder="Customer Email" />
-            <input id="custWallet" placeholder="Customer Wallet (0x...)" />
-            <button id="btnSaveCustomer">Save Customer</button>
+              <input id="claimEmail" placeholder="Recipient Gmail" />
+              <input id="claimAmount" placeholder="Amount USDC" />
+              <textarea id="claimMessage" placeholder="Message"></textarea>
 
-            <label>Select Customer</label>
-            <select id="customerSelect">
-              <option value="">-- Choose customer --</option>
-            </select>
-          </section>
+              <button id="btnSendClaimEmail">Send Claim Email</button>
+              <pre id="claimResult"></pre>
+            </section>
 
-          <section class="panel">
-            <p class="eyebrow">Business</p>
-            <h2>Business Profile</h2>
+            <section class="panel">
+              <p class="eyebrow">Customer</p>
+              <h2>Customer</h2>
 
-            <input id="bizName" placeholder="Business Name" />
-            <input id="bizEmail" placeholder="Business Email" />
-            <input id="bizWallet" placeholder="Merchant Wallet Address" />
+              <input id="custName" placeholder="Customer Name" />
+              <input id="custEmail" placeholder="Customer Email" />
+              <input id="custWallet" placeholder="Customer Wallet (0x...)" />
 
-            <button id="btnSaveBiz">Save Profile</button>
+              <button id="btnSaveCustomer">Save Customer</button>
 
-            <div class="divider"></div>
+              <label>Select Customer</label>
+              <select id="customerSelect">
+                <option value="">-- Choose customer --</option>
+              </select>
+            </section>
 
-            <h2>AI Invoice Draft</h2>
-            <textarea id="aiPrompt" placeholder="Example: create an invoice for 500 USDC for customer A"></textarea>
-            <button onclick="generateAIDraft()">Generate AI Draft</button>
-            <pre id="aiResult"></pre>
-          </section>
-        </section>
+            <section id="ai" class="panel">
+              <p class="eyebrow">AI</p>
+              <h2>AI Invoice Draft</h2>
 
-        <section id="payroll" class="panel">
-          <p class="eyebrow">Payroll</p>
-          <h2>Payroll System</h2>
-          <div id="payroll-anchor"></div>
-        </section>
+              <textarea id="aiPrompt" placeholder="Example: create an invoice for 500 USDC for customer A"></textarea>
+              <button onclick="generateAIDraft()">Generate AI Draft</button>
 
-        <section id="payouts" class="panel">
-          <p class="eyebrow">Payouts</p>
-          <h2>Payouts</h2>
-          <div id="payout-root"></div>
+              <pre id="aiResult"></pre>
+            </section>
+          </aside>
         </section>
       </main>
     </div>
 
     <div id="toast" class="toast hidden"></div>
+    <div id="toast" class="toast hidden"></div>
   </body>
 </html>

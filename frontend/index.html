@@ -124,10 +124,10 @@
               </div>
 
               <div class="split-grid">
-                <div class="mini-box">
-                  <span>Selected Invoice</span>
-                  <div id="selectedInvoice">No invoice selected.</div>
-                </div>
+                <div class="mini-box invoice-detail-card">
+                 <span>Selected Invoice</span>
+                 <div id="selectedInvoice">No invoice selected.</div>
+              </div>
 
                 <div class="mini-box">
                   <span>Invoice QR</span>
@@ -138,6 +138,51 @@
               <h3>Invoice History</h3>
               <div id="invoiceList"></div>
             </section>
+
+        <section class="panel payroll-analytics">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Analytics</p>
+              <h2>Payroll Analytics</h2>
+            </div>
+          </div>
+
+          <div class="analytics-grid">
+
+            <div class="analytics-card">
+              <span>Total Payroll</span>
+              <h3 id="payrollTotal">$0</h3>
+            </div>
+
+          <div class="analytics-card">
+            <span>Total Employees</span>
+            <h3 id="payrollEmployees">0</h3>
+          </div>
+
+          <div class="analytics-card">
+            <span>Paid Payrolls</span>
+            <h3 id="payrollPaid">0</h3>
+          </div>
+
+          <div class="analytics-card">
+            <span>Pending Payrolls</span>
+            <h3 id="payrollPending">0</h3>
+          </div>
+
+        </div>
+
+        <div class="chart-box">
+          <div class="fake-chart">
+
+            <div class="bar" style="height:40%"></div>
+            <div class="bar" style="height:65%"></div>
+            <div class="bar" style="height:55%"></div>
+            <div class="bar" style="height:85%"></div>
+            <div class="bar active" style="height:100%"></div>
+
+          </div>
+        </div>
+      </section>
 
             <section id="payroll" class="panel">
               <p class="eyebrow">Payroll</p>
@@ -208,5 +253,6 @@
 
     <div id="toast" class="toast hidden"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <div id="toast" class="toast hidden"></div>
   </body>
 </html>

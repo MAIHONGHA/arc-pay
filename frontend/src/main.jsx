@@ -47,6 +47,11 @@ const emailEl = document.getElementById("email");
 const circleWalletEl = document.getElementById("circleWallet");
 const metamaskWalletEl = document.getElementById("metamaskWallet");
 const selectedInvoiceEl = document.getElementById("selectedInvoice");
+const invoiceModalEl =
+  document.getElementById("invoiceModal");
+
+const closeInvoiceModalEl =
+  document.getElementById("closeInvoiceModal");
 const invoiceListEl = document.getElementById("invoiceList");
 const qrBoxEl = document.getElementById("qrBox");
 const titleEl = document.getElementById("title");
@@ -80,10 +85,29 @@ const btnSendClaimEmail = document.getElementById("btnSendClaimEmail");
 const claimResultEl = document.getElementById("claimResult");
 const isClaimPage = window.location.pathname.startsWith("/claim/");
 
+function showToast(message, type = "success") {
+  const toast = document.getElementById("toast");
+  if (!toast) return;
+
+  toast.textContent = message;
+  toast.className = `toast show ${type}`;
+
+  clearTimeout(window.__toastTimer);
+
+  window.__toastTimer = setTimeout(() => {
+    toast.className = "toast hidden";
+  }, 3200);
+}
+
 function setStatus(message, type = "") {
-  if (!statusEl) return;
-  statusEl.className = type;
-  statusEl.textContent = message;
+  if (statusEl) {
+    statusEl.className = type;
+    statusEl.textContent = message;
+  }
+
+  if (message) {
+    showToast(message, type || "success");
+  }
 }
 
 async function api(path, options = {}) {
@@ -98,7 +122,11 @@ async function api(path, options = {}) {
   const data = await res.json().catch(() => ({}));
 
   if (!res.ok) {
-    throw new Error(data?.error || data?.message || JSON.stringify(data));
+    throw new Error(
+      data?.error ||
+      data?.message ||
+      JSON.stringify(data)
+    );
   }
 
   return data;
@@ -1183,3 +1211,13 @@ if (payoutRoot) {
 if (payrollRoot) {
   createRoot(payrollRoot).render(<PayrollPanel />);
 }
+
+closeInvoiceModalEl?.addEventListener("click", () => {
+  invoiceModalEl?.classList.add("hidden");
+});
+
+invoiceModalEl?.addEventListener("click", (e) => {
+  if (e.target === invoiceModalEl) {
+    invoiceModalEl.classList.add("hidden");
+  }
+});
