@@ -655,8 +655,10 @@ async function openInvoice(id) {
   try {
     const data = await api("/api/invoices/" + encodeURIComponent(id));
     selectedInvoice = data.invoice;
+
     renderSelectedInvoice();
     openInvoiceSheet(selectedInvoice);
+
     setStatus("Invoice opened.", "success");
   } catch (err) {
     setStatus("Open invoice failed: " + err.message, "error");
@@ -668,41 +670,98 @@ function openInvoiceSheet(inv) {
   const sheetTitle = document.getElementById("sheetTitle");
   const sheetBody = document.getElementById("sheetBody");
   const sheetQR = document.getElementById("sheetQR");
+  const copyBtn = document.getElementById("sheetCopyLink");
+  const payBtn = document.getElementById("sheetPayInvoice");
 
   if (!sheet || !inv) return;
 
-  const payUrl = `${window.location.origin}/?invoice=${encodeURIComponent(inv.id)}`;
-
+  const payUrl = getInvoicePayUrl(inv);
   const qrUrl =
     "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" +
     encodeURIComponent(payUrl);
 
-  sheetTitle.textContent = inv.title || "Invoice";
+  if (sheetTitle) {
+    sheetTitle.textContent = inv.title || "Invoice";
+  }
 
-  sheetBody.innerHTML = `
-    <div><b>${escapeHtml(inv.title || "")}</b></div>
-    <div>${formatUsdc(inv.amount)} USDC</div>
-    <div>Status: ${escapeHtml(inv.status || "")}</div>
-    <div>ID: ${escapeHtml(inv.id || "")}</div>
-    <div>Recipient: ${escapeHtml(inv.recipientAddress || "")}</div>
-  `;
+  if (sheetBody) {
+    sheetBody.innerHTML = `
+      <div><b>${escapeHtml(inv.title || "")}</b></div>
+      <div>${formatUsdc(inv.amount)} USDC</div>
+      <div>Status: ${escapeHtml(inv.status || "")}</div>
+      <div>ID: ${escapeHtml(inv.id || "")}</div>
+      <div>Recipient: ${escapeHtml(inv.recipientAddress || "")}</div>
+    `;
+  }
 
-  sheetQR.innerHTML = `
-  <div class="sheet-link-card">
-    <div class="sheet-link-label">Payment Link</div>
-    <a href="${payUrl}" target="_blank" rel="noreferrer">${payUrl}</a>
-  </div>
-`;
+  if (sheetQR) {
+    sheetQR.innerHTML = `
+      <div class="sheet-qr-card">
+        <img
+          class="sheet-qr-img"
+          src="${qrUrl}"
+          alt="Invoice QR"
+        />
+
+        <div class="sheet-link-card">
+         <div class="sheet-link-label">Payment Link</div>
+
+         <a href="${payUrl}" target="_blank" rel="noreferrer">
+                ${payUrl}
+         </a>
+
+        <div class="row" style="margin-top:12px;">
+         <button id="sheetCopyLink" class="secondary">
+           Copy Link
+         </button>
+
+        <button id="sheetCopyRecipient" class="secondary">
+          Copy Address
+         </button>
+
+        <button id="sheetOpenWallet" class="secondary">
+          Open in Wallet
+         </button>
+        </div>
+       </div>
+    `;
+  }
 
   sheet.classList.remove("hidden");
 
-  document.getElementById("sheetCopyLink").onclick = async () => {
-    await navigator.clipboard.writeText(payUrl);
-    setStatus("Payment link copied.", "success");
-  };
+  if (copyBtn) {
+    copyBtn.onclick = async () => {
+      await navigator.clipboard.writeText(payUrl);
+      setStatus("Payment link copied.", "success");
+    };
+  }
 
-  document.getElementById("sheetPayInvoice").onclick = () => {
-    payWithMetaMask();
+const copyRecipientBtn =
+  document.getElementById("sheetCopyRecipient");
+
+if (copyRecipientBtn) {
+  copyRecipientBtn.onclick = async () => {
+    await navigator.clipboard.writeText(
+      inv.recipientAddress || ""
+    );
+
+    setStatus("Recipient address copied.", "success");
+  };
+}
+
+  if (payBtn) {
+    payBtn.onclick = () => {
+      payWithMetaMask();
+    };
+  }
+}
+
+const openWalletBtn =
+  document.getElementById("sheetOpenWallet");
+
+if (openWalletBtn) {
+  openWalletBtn.onclick = () => {
+    window.open(payUrl, "_blank");
   };
 }
 
@@ -712,9 +771,22 @@ function closeInvoiceSheet() {
 
 function renderSelectedInvoice() {
   if (!selectedInvoice) {
-    selectedInvoiceEl.textContent = "No invoice selected.";
+    if (selectedInvoiceEl) {
+      selectedInvoiceEl.textContent = "No invoice selected.";
+    }
+
     renderQR(null);
     return;
+  }
+
+  if (selectedInvoiceEl) {
+    selectedInvoiceEl.innerHTML = `
+      <div><b>${escapeHtml(selectedInvoice.title || "")}</b></div>
+      <div>${formatUsdc(selectedInvoice.amount)} USDC</div>
+      <div>Status: ${escapeHtml(selectedInvoice.status || "")}</div>
+      <div>ID: ${escapeHtml(selectedInvoice.id || "")}</div>
+      <div>Recipient: ${escapeHtml(selectedInvoice.recipientAddress || "")}</div>
+    `;
   }
 
   renderQR(selectedInvoice);
@@ -1234,6 +1306,30 @@ if (isClaimPage) {
 
 document.getElementById("btnCloseInvoiceSheet")?.addEventListener("click", closeInvoiceSheet);
 document.getElementById("closeInvoiceSheet")?.addEventListener("click", closeInvoiceSheet);
+
+let sheetStartY = 0;
+let sheetCurrentY = 0;
+
+const invoiceSheetEl = document.getElementById("invoiceSheet");
+
+invoiceSheetEl?.addEventListener("touchstart", (e) => {
+  sheetStartY = e.touches[0].clientY;
+});
+
+invoiceSheetEl?.addEventListener("touchmove", (e) => {
+  sheetCurrentY = e.touches[0].clientY;
+});
+
+invoiceSheetEl?.addEventListener("touchend", () => {
+  const distance = sheetCurrentY - sheetStartY;
+
+  if (distance > 90) {
+    closeInvoiceSheet();
+  }
+
+  sheetStartY = 0;
+  sheetCurrentY = 0;
+});
 
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");

@@ -1160,3 +1160,75 @@ pre {
     border-radius: 30px;
   }
 }
+
+/* SHEET QR POLISH */
+
+.sheet-qr-card{
+  margin-top:16px;
+  padding:18px;
+  border-radius:24px;
+  background:#0f1628;
+  border:1px solid rgba(255,255,255,.08);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:16px;
+}
+
+.sheet-qr-img{
+  width:210px;
+  height:210px;
+  border-radius:24px;
+  background:#fff;
+  padding:12px;
+  box-shadow:0 18px 45px rgba(0,224,255,.16);
+}
+
+.sheet-link-card{
+  width:100%;
+  padding:14px;
+  border-radius:18px;
+  background:#0b1220;
+  border:1px solid rgba(255,255,255,.06);
+  word-break:break-all;
+}
+
+.sheet-link-label{
+  color:#7c89b6;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:1px;
+  margin-bottom:8px;
+}
+
+@media(max-width:700px){
+  .sheet-qr-img{
+    width:145px;
+    height:145px;
+  }
+}
+
+@media(max-width:700px){
+  .invoice-sheet-content,
+  .sheet-content,
+  .invoice-sheet{
+    max-height:78vh;
+    overflow-y:auto;
+    padding-bottom:120px;
+  }
+
+  .sheet-qr-img{
+    width:120px;
+    height:120px;
+  }
+
+  .sheet-qr-card{
+    padding:12px;
+    gap:10px;
+  }
+
+  .sheet-link-card{
+    padding:10px;
+  }
+}
