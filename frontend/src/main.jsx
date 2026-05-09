@@ -5,6 +5,7 @@ import "./style.css";
 import { W3SSdk } from "@circle-fin/w3s-pw-web-sdk";
 import Web3 from "web3";
 import PayrollPanel from "./PayrollPanel.jsx";
+import { Html5Qrcode } from "html5-qrcode";
 
 window.Web3 = Web3;
 
@@ -84,6 +85,10 @@ const claimMessageEl = document.getElementById("claimMessage");
 const btnSendClaimEmail = document.getElementById("btnSendClaimEmail");
 const claimResultEl = document.getElementById("claimResult");
 const isClaimPage = window.location.pathname.startsWith("/claim/");
+const btnScanQR = document.getElementById("btnScanQR");
+const qrScannerModal = document.getElementById("qrScannerModal");
+const btnCloseScanner = document.getElementById("btnCloseScanner");
+let qrScanner = null;
 
 function showToast(message, type = "success") {
   const toast = document.getElementById("toast");
@@ -242,6 +247,52 @@ function renderQR(inv) {
     setStatus("Recipient address copied.", "success");
   });
 }
+
+btnScanQR?.addEventListener("click", async () => {
+  try {
+    qrScannerModal?.classList.remove("hidden");
+
+    qrScanner = new Html5Qrcode("qrScanner");
+
+    await qrScanner.start(
+      { facingMode: "environment" },
+      { fps: 10, qrbox: 250 },
+      async (decodedText) => {
+        await qrScanner.stop();
+        qrScannerModal?.classList.add("hidden");
+
+        const url = new URL(decodedText);
+        const invoiceId = url.searchParams.get("invoice");
+
+        if (invoiceId) {
+          await openInvoice(invoiceId);
+          setStatus("Invoice scanned. Ready to pay.", "success");
+
+          setTimeout(() => {
+          document.getElementById("sheetPayInvoice")?.scrollIntoView({
+              behavior: "smooth",
+              block: "center"
+            });
+          }, 400);
+        } else {
+          setStatus("QR does not contain invoice id.", "error");
+        }
+      }
+    );
+  } catch (err) {
+    setStatus("QR scanner failed: " + err.message, "error");
+  }
+});
+
+btnCloseScanner?.addEventListener("click", async () => {
+  try {
+    if (qrScanner) {
+      await qrScanner.stop();
+    }
+  } catch {}
+
+  qrScannerModal?.classList.add("hidden");
+});
 
 /* =========================
    CIRCLE HELPERS

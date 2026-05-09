@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ArcPay_Min</title>
-    <script type="module" crossorigin src="/assets/index-Wum0KT_j.js"></script>
+    <script type="module" crossorigin src="/assets/index-D1yD20Yk.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-DSEbzyW8.css">
   </head>
 
@@ -50,6 +50,8 @@
               <button id="btnPay">
                 Pay Invoice
               </button>
+
+              <button id="btnScanQR" class="secondary">Scan QR</button>
             </div>
 
           <section class="dashboard">
@@ -282,5 +284,15 @@
     </div>
   </div>
 </div>
+
+<div id="qrScannerModal" class="invoice-modal hidden">
+  <div class="invoice-modal-content">
+    <button id="btnCloseScanner" class="close-btn">x</button>
+    <p class="eyebrow">CAMERA SCAN</p>
+    <h2>Scan Invoice QR</h2>
+    <div id="qrScanner" style="width:100%;"></div>
+  </div>
+</div>
+
   </body>
 </html>

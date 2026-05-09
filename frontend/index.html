@@ -48,6 +48,8 @@
               <button id="btnPay">
                 Pay Invoice
               </button>
+
+              <button id="btnScanQR" class="secondary">Scan QR</button>
             </div>
 
           <section class="dashboard">
@@ -281,5 +283,15 @@
     </div>
   </div>
 </div>
+
+<div id="qrScannerModal" class="invoice-modal hidden">
+  <div class="invoice-modal-content">
+    <button id="btnCloseScanner" class="close-btn">x</button>
+    <p class="eyebrow">CAMERA SCAN</p>
+    <h2>Scan Invoice QR</h2>
+    <div id="qrScanner" style="width:100%;"></div>
+  </div>
+</div>
+
   </body>
 </html>
