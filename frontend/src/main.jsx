@@ -936,9 +936,19 @@ async function payWithMetaMask() {
     });
 
     if (parseInt(chainId, 16) !== ARC_CHAIN_ID) {
-      setStatus("Wrong network. Click Switch Arc first.", "error");
+      setStatus("Switching to Arc network...");
+
+      await switchArc();
+
+    const newChainId = await window.ethereum.request({
+      method: "eth_chainId"
+    });
+
+    if (parseInt(newChainId, 16) !== ARC_CHAIN_ID) {
+      setStatus("Wrong network. Please switch to Arc Testnet in wallet.", "error");
       return;
-    }
+     }
+   }
 
     if (selectedInvoice.status === "PAID") {
       setStatus("Invoice already paid.", "success");
