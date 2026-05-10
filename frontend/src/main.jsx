@@ -772,10 +772,6 @@ function openInvoiceSheet(inv) {
         <button id="sheetCopyRecipient" class="secondary">
           Copy Address
          </button>
-
-        <button id="sheetOpenWallet" class="secondary">
-          Open in Wallet
-         </button>
         </div>
        </div>
     `;
@@ -808,15 +804,6 @@ if (copyRecipientBtn) {
       payWithMetaMask();
     };
   }
-}
-
-const openWalletBtn =
-  document.getElementById("sheetOpenWallet");
-
-if (openWalletBtn) {
-  openWalletBtn.onclick = () => {
-    window.open(payUrl, "_blank");
-  };
 }
 
 function closeInvoiceSheet() {
