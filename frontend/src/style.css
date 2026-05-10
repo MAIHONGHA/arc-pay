@@ -1232,3 +1232,102 @@ pre {
     padding:10px;
   }
 }
+
+.wallet-selector-box{
+  margin:14px 0;
+}
+
+#walletProvider{
+  margin-top:10px;
+}
+
+/* DASHBOARD TOP ACTIONS - COMPACT FIX */
+
+.hero-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+.hero-actions button {
+  width: auto !important;
+  min-width: 150px !important;
+  height: 52px !important;
+  padding: 8px 16px !important;
+  border-radius: 16px !important;
+  font-size: 14px !important;
+}
+
+.hero-actions .wallet-selector-box {
+  width: 210px !important;
+  min-width: 210px !important;
+  margin: 0 !important;
+  padding: 12px !important;
+}
+
+.hero-actions #walletProvider {
+  height: 42px !important;
+  margin: 6px 0 0 !important;
+  padding: 8px 12px !important;
+  font-size: 14px !important;
+  border-radius: 14px !important;
+}
+
+@media (max-width:700px) {
+  .hero-actions {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .hero-actions button,
+  .hero-actions .wallet-selector-box {
+    width: 100% !important;
+    min-width: 0 !important;
+    height: 54px !important;
+  }
+
+  .hero-actions .wallet-selector-box {
+    height: auto !important;
+  }
+}
+
+.hidden-section {
+  display: none !important;
+}
+
+.sidebar-menu a.active-tab {
+  color: #06121f !important;
+  background: linear-gradient(90deg, #16c8ff, #00e0ff) !important;
+}
+
+/* HERO BUTTON SAME STYLE */
+
+.wallet-selector-box{
+  background:linear-gradient(135deg,#5cf2ff,#7dfcff) !important;
+  border:none !important;
+  min-height:88px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  box-shadow:0 10px 30px rgba(0,224,255,.18);
+}
+
+.wallet-selector-box span{
+  color:#10203a !important;
+  font-weight:900;
+}
+
+#walletProvider{
+  background:rgba(0,0,0,.12) !important;
+  border:none !important;
+  color:#10203a !important;
+  font-weight:800;
+}
+
+#btnScanQR{
+  background:linear-gradient(135deg,#5cf2ff,#7dfcff) !important;
+  color:#10203a !important;
+  border:none !important;
+  box-shadow:0 10px 30px rgba(0,224,255,.18);
+}

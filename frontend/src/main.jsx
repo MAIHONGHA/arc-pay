@@ -65,6 +65,7 @@ const btnConnectWallet = document.getElementById("btnConnectWallet");
 const btnDisconnectWallet = document.getElementById("btnDisconnectWallet");
 const btnSwitchArc = document.getElementById("btnSwitchArc");
 const btnPay = document.getElementById("btnPay");
+const walletProviderEl = document.getElementById("walletProvider");
 const btnPayCircle = document.getElementById("btnPayCircle");
 const btnCreateInvoice = document.getElementById("btnCreateInvoice");
 const btnLoadInvoices = document.getElementById("btnLoadInvoices");
@@ -1265,27 +1266,36 @@ btnConnectWallet?.addEventListener("click", connectMetaMask);
 btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
 btnSwitchArc?.addEventListener("click", switchArc);
 btnPay?.addEventListener("click", async () => {
-  if (metamaskWallet) {
+  const provider = walletProviderEl?.value || "auto";
+
+  if (provider === "circle") {
+    await payWithCircleWallet();
+    return;
+  }
+
+  if (provider === "metamask" || provider === "okx" || provider === "coinbase") {
     await payWithMetaMask();
     return;
   }
 
-  const googleUser = getGoogleUser();
-
-  if (googleUser?.email) {
-    const useCircle = confirm(
-      "MetaMask is not connected. Pay with Circle wallet?"
-    );
-
-    if (useCircle) {
-      await payWithCircleWallet();
+  if (provider === "auto") {
+    if (window.ethereum) {
+      await payWithMetaMask();
+      return;
     }
 
-    return;
-  }
+    const googleUser = getGoogleUser();
 
-  await payWithMetaMask();
+    if (googleUser?.email) {
+      await payWithCircleWallet();
+      return;
+    }
+
+    setStatus("Connect MetaMask/OKX/Coinbase or Login Google first.", "error");
+  }
 });
+
+
 btnPayCircle?.addEventListener("click", payWithCircleWallet);
 btnCreateInvoice?.addEventListener("click", createInvoice);
 btnLoadInvoices?.addEventListener("click", loadInvoices);
@@ -1402,3 +1412,24 @@ invoiceModalEl?.addEventListener("click", (e) => {
     invoiceModalEl.classList.add("hidden");
   }
 });
+
+function showTab(tabId) {
+  document.querySelectorAll(".app-section").forEach((section) => {
+    section.classList.toggle("hidden-section", section.id !== tabId);
+  });
+
+  document.querySelectorAll("[data-tab]").forEach((link) => {
+    link.classList.toggle("active-tab", link.dataset.tab === tabId);
+  });
+}
+
+document.querySelectorAll("[data-tab]").forEach((link) => {
+  link.addEventListener("click", (e) => {
+    e.preventDefault();
+    const tabId = link.dataset.tab;
+    window.location.hash = tabId;
+    showTab(tabId);
+  });
+});
+
+showTab(window.location.hash.replace("#", "") || "dashboard");
