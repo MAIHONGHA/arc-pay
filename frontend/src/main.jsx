@@ -268,6 +268,9 @@ btnScanQR?.addEventListener("click", async () => {
           await openInvoice(invoiceId);
           setStatus("Invoice scanned. Ready to pay.", "success");
 
+        if (navigator.vibrate) {
+          navigator.vibrate(120);
+          }
           setTimeout(() => {
           document.getElementById("sheetPayInvoice")?.scrollIntoView({
               behavior: "smooth",
