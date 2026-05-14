@@ -24,8 +24,7 @@
           <a href="#gmail-claim" data-tab="gmail-claim">Gmail Claim</a>
           <a href="#payroll" data-tab="payroll">Payroll</a>
           <a href="#payouts" data-tab="payouts">Payouts</a>
-          <a href="#business" data-tab="business">Business</a>
-          <a href="#ai-draft" data-tab="ai-draft">AI Draft</a>
+          <a href="#business" data-tab="business">Business</a>          
         </div>
       </aside>
 
@@ -103,6 +102,27 @@
         </section>
 
         <section id="invoices" class="panel app-section hidden-section">
+
+<div class="mini-box" style="margin-bottom:24px;">
+  <p class="eyebrow">AI</p>
+
+  <h3>AI Invoice Draft</h3>
+
+  <textarea
+    id="aiPrompt"
+    placeholder="Example: create an invoice for 500 USDC for customer A"
+  ></textarea>
+
+  <button
+    onclick="generateAIDraft()"
+    style="margin-top:12px;"
+  >
+    Generate AI Draft
+  </button>
+
+  <pre id="aiResult"></pre>
+</div>
+
           <div class="section-head">
             <div>
               <p class="eyebrow">Invoices</p>
@@ -216,15 +236,6 @@
           <button id="btnSaveBiz">Save Profile</button>
         </section>
 
-        <section id="ai-draft" class="panel app-section hidden-section">
-          <p class="eyebrow">AI</p>
-          <h2>AI Invoice Draft</h2>
-
-          <textarea id="aiPrompt" placeholder="Example: create an invoice for 500 USDC for customer A"></textarea>
-          <button onclick="generateAIDraft()">Generate AI Draft</button>
-
-          <pre id="aiResult"></pre>
-        </section>
       </main>
     </div>
 
