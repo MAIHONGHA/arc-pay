@@ -1509,7 +1509,9 @@ btnVoiceInvoice?.addEventListener(
 
   window.__voiceRunning = true;
 
-    recognition.start();
+    setTimeout(() => {
+      recognition.start();
+    }, 300);
 
     recognition.onresult =
       async (event) => {
@@ -1529,6 +1531,7 @@ btnVoiceInvoice?.addEventListener(
 
         if (aiPrompt) {
           aiPrompt.value = transcript;
+          recognition.stop();
         }
 
         setStatus(
