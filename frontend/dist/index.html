@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ArcPay</title>
-    <script type="module" crossorigin src="/assets/index-CxxBfBJM.js"></script>
+    <script type="module" crossorigin src="/assets/index-BALpHF9i.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-msQXYkji.css">
   </head>
 
@@ -114,6 +114,27 @@
     id="aiPrompt"
     placeholder="Example: create an invoice for 500 USDC for customer A"
   ></textarea>
+
+<div class="voice-ai-box">
+
+  <select id="voiceLang">
+    <option value="vi-VN">🇻🇳 Vietnamese</option>
+    <option value="en-US">🇺🇸 English</option>
+    <option value="ja-JP">🇯🇵 Japanese</option>
+    <option value="ko-KR">🇰🇷 Korean</option>
+    <option value="zh-CN">🇨🇳 Chinese</option>
+    <option value="th-TH">🇹🇭 Thai</option>
+    <option value="auto">🌍 Auto Detect</option>
+  </select>
+
+  <button
+    id="btnVoiceInvoice"
+    class="secondary"
+  >
+    🎤 Speak Invoice
+  </button>
+
+</div>
 
   <button
     onclick="generateAIDraft()"

@@ -87,6 +87,11 @@ const btnSendClaimEmail = document.getElementById("btnSendClaimEmail");
 const claimResultEl = document.getElementById("claimResult");
 const isClaimPage = window.location.pathname.startsWith("/claim/");
 const btnScanQR = document.getElementById("btnScanQR");
+const btnVoiceInvoice =
+  document.getElementById("btnVoiceInvoice");
+
+const voiceLangEl =
+  document.getElementById("voiceLang");
 const qrScannerModal = document.getElementById("qrScannerModal");
 const btnCloseScanner = document.getElementById("btnCloseScanner");
 let qrScanner = null;
@@ -1160,34 +1165,54 @@ async function markInvoicePaid(txHash, fromAddress) {
 ========================= */
 
 window.generateAIDraft = async function () {
+
   const prompt = document.getElementById("aiPrompt").value;
 
-  const res = await fetch(`${API_BASE}/api/ai/invoice-draft`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ prompt })
-  });
-
-  const data = await res.json();
-
-  if (!data.success) {
-    alert("AI failed");
+  if (!prompt) {
+    alert("Please enter invoice prompt");
     return;
   }
 
+  const lower = prompt.toLowerCase();
+
+  let amount = "0";
+  let title = "Invoice";
+
+  const amountMatch = lower.match(/(\d+(\.\d+)?)/);
+
+  if (amountMatch) {
+    amount = amountMatch[1];
+  }
+
+  if (
+    lower.includes("coffee") ||
+    lower.includes("cafe")
+  ) {
+    title = "Coffee";
+  }
+
+  if (lower.includes("design")) {
+    title = "Design Work";
+  }
+
+  if (
+    lower.includes("salary") ||
+    lower.includes("lương")
+  ) {
+    title = "Salary";
+  }
+
+  if (lower.includes("game")) {
+    title = "Game Service";
+  }
+
+  document.getElementById("title").value = title;
+  document.getElementById("amount").value = amount;
+
   document.getElementById("aiResult").textContent =
-    JSON.stringify(data.draft, null, 2);
-
-  titleEl.value = data.draft.title || "";
-  amountEl.value = data.draft.amount || "";
-  noteEl.value = data.draft.description || "";
-
-  recipientEl.value =
-    data.draft.customer && data.draft.customer.startsWith("0x")
-      ? data.draft.customer
-      : "";
+    "AI Draft Ready:\n" +
+    "Title: " + title + "\n" +
+    "Amount: " + amount + " USDC";
 };
 
 /* =========================
@@ -1436,6 +1461,101 @@ invoiceModalEl?.addEventListener("click", (e) => {
     invoiceModalEl.classList.add("hidden");
   }
 });
+
+/* =========================
+   GLOBAL VOICE AI INVOICE
+========================= */
+
+btnVoiceInvoice?.addEventListener(
+  "click",
+  () => {
+
+    const SpeechRecognition =
+      window.SpeechRecognition ||
+      window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      setStatus(
+        "Speech recognition not supported.",
+        "error"
+      );
+      return;
+    }
+
+    const recognition =
+      new SpeechRecognition();
+
+    const selectedLang =
+      voiceLangEl?.value || "en-US";
+
+    recognition.lang =
+      selectedLang === "auto"
+        ? "en-US"
+        : selectedLang;
+
+    recognition.interimResults = false;
+
+    recognition.maxAlternatives = 1;
+
+    recognition.continuous = false;
+
+    setStatus(
+      "🎤 Listening... Speak naturally."
+    );
+
+    recognition.start();
+
+    recognition.onresult =
+      async (event) => {
+
+        const transcript =
+          event.results[0][0].transcript;
+
+        console.log(
+          "VOICE TRANSCRIPT:",
+          transcript
+        );
+
+        const aiPrompt =
+          document.getElementById(
+            "aiPrompt"
+          );
+
+        if (aiPrompt) {
+          aiPrompt.value = transcript;
+        }
+
+        setStatus(
+          "Voice captured.",
+          "success"
+        );
+
+        // AUTO GENERATE AI DRAFT
+        if (
+          typeof window.generateAIDraft ===
+          "function"
+        ) {
+          await window.generateAIDraft();
+        }
+      };
+
+    recognition.onerror = (event) => {
+      console.error(event);
+
+      setStatus(
+        "Voice recognition failed: " +
+          event.error,
+        "error"
+      );
+    };
+
+    recognition.onend = () => {
+      console.log(
+        "Voice recognition ended."
+      );
+    };
+  }
+);
 
 function showTab(tabId) {
   document.querySelectorAll(".app-section").forEach((section) => {
