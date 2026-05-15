@@ -1503,6 +1503,12 @@ btnVoiceInvoice?.addEventListener(
       "🎤 Listening... Speak naturally."
     );
 
+  if (window.__voiceRunning) {
+    return;
+  }
+
+  window.__voiceRunning = true;
+
     recognition.start();
 
     recognition.onresult =
@@ -1541,7 +1547,7 @@ btnVoiceInvoice?.addEventListener(
 
     recognition.onerror = (event) => {
       console.error(event);
-
+      window.__voiceRunning = false;
       setStatus(
         "Voice recognition failed: " +
           event.error,
@@ -1550,6 +1556,7 @@ btnVoiceInvoice?.addEventListener(
     };
 
     recognition.onend = () => {
+      window.__voiceRunning = false;
       console.log(
         "Voice recognition ended."
       );
