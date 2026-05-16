@@ -1531,6 +1531,7 @@ btnVoiceInvoice?.addEventListener(
 
         if (aiPrompt) {
           aiPrompt.value = transcript;
+          parseInvoicePrompt(transcript);
           recognition.stop();
         }
 
@@ -1587,3 +1588,37 @@ document.querySelectorAll("[data-tab]").forEach((link) => {
 });
 
 showTab(window.location.hash.replace("#", "") || "dashboard");
+
+function parseInvoicePrompt(text) {
+
+  const lower = text.toLowerCase();
+
+  // extract amount
+  const amountMatch =
+    lower.match(/(\d+(\.\d+)?)/);
+
+  if (amountMatch) {
+    document.getElementById(
+      "invoiceAmount"
+    ).value = amountMatch[1];
+  }
+
+  // coffee
+  if (
+    lower.includes("coffee")
+  ) {
+    document.getElementById(
+      "invoiceTitle"
+    ).value = "Coffee";
+  }
+
+  // pizza
+  if (
+    lower.includes("pizza")
+  ) {
+    document.getElementById(
+      "invoiceTitle"
+    ).value = "Pizza";
+  }
+
+}
