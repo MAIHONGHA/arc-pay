@@ -1053,7 +1053,7 @@ Return ONLY JSON:
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
-
+    console.log("GPT RAW:", text);
     const draft = JSON.parse(text);
 
     res.json({ success: true, draft });
