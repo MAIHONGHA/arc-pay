@@ -1209,10 +1209,15 @@ window.generateAIDraft = async function () {
   document.getElementById("title").value = title;
   document.getElementById("amount").value = amount;
 
-  document.getElementById("aiResult").textContent =
-    "AI Draft Ready:\n" +
-    "Title: " + title + "\n" +
-    "Amount: " + amount + " USDC";
+  document.getElementById("aiResult").textContent = `
+🧠 AI UNDERSTOOD
+
+Intent: ${detectedIntent}
+
+Title: ${invoiceTitle.value}
+
+Amount: ${invoiceAmount.value} USDC
+`;
 };
 
 /* =========================
@@ -1593,6 +1598,22 @@ function parseInvoicePrompt(text) {
 
   const lower = text.toLowerCase();
 
+let detectedIntent = "invoice";
+
+if (
+  lower.includes("salary") ||
+  lower.includes("payroll")
+) {
+  detectedIntent = "payroll";
+}
+
+if (
+  lower.includes("payout") ||
+  lower.includes("payment")
+) {
+  detectedIntent = "payout";
+}
+
   // extract amount
   const amountMatch =
     lower.match(/(\d+(\.\d+)?)/);
@@ -1603,22 +1624,45 @@ function parseInvoicePrompt(text) {
     ).value = amountMatch[1];
   }
 
-  // coffee
-  if (
-    lower.includes("coffee")
-  ) {
-    document.getElementById(
-      "invoiceTitle"
-    ).value = "Coffee";
+  const commercePatterns = [
+  {
+    keywords: ["coffee", "cà phê"],
+    title: "Coffee"
+  },
+  {
+    keywords: ["pizza"],
+    title: "Pizza"
+  },
+  {
+    keywords: ["salary", "lương"],
+    title: "Salary Payment"
+  },
+  {
+    keywords: ["design", "designer"],
+    title: "Design Service"
+  },
+  {
+    keywords: ["marketing"],
+    title: "Marketing Service"
+  },
+  {
+    keywords: ["hosting", "server"],
+    title: "Server Hosting"
   }
+];
 
-  // pizza
+for (const item of commercePatterns) {
   if (
-    lower.includes("pizza")
+    item.keywords.some(keyword =>
+      lower.includes(keyword)
+    )
   ) {
     document.getElementById(
       "invoiceTitle"
-    ).value = "Pizza";
+    ).value = item.title;
+
+    break;
   }
+}
 
 }
