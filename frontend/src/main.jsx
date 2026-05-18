@@ -1595,75 +1595,48 @@ document.querySelectorAll("[data-tab]").forEach((link) => {
 
 showTab(window.location.hash.replace("#", "") || "dashboard");
 
-function parseInvoicePrompt(text) {
+async function parseInvoicePrompt(prompt) {
 
-  const lower = text.toLowerCase();
+  try {
 
-let detectedIntent = "invoice";
+    const res = await fetch(
+      "/api/ai/invoice-draft",
+      {
+        method: "POST",
 
-if (
-  lower.includes("salary") ||
-  lower.includes("payroll")
-) {
-  detectedIntent = "payroll";
-}
+        headers: {
+          "Content-Type":
+            "application/json"
+        },
 
-if (
-  lower.includes("payout") ||
-  lower.includes("payment")
-) {
-  detectedIntent = "payout";
-}
+        body: JSON.stringify({
+          prompt
+        })
+      }
+    );
 
-  // extract amount
-  const amountMatch =
-    lower.match(/(\d+(\.\d+)?)/);
+    const data =
+      await res.json();
 
-  if (amountMatch) {
-    document.getElementById(
-      "amount"
-    ).value = amountMatch[1];
-  }
+    console.log(
+      "AI RESULT:",
+      data
+    );
 
-  const commercePatterns = [
-  {
-    keywords: ["coffee", "coffee"],
-    title: "Coffee"
-  },
-  {
-    keywords: ["pizza"],
-    title: "Pizza"
-  },
-  {
-    keywords: ["salary", "salary"],
-    title: "Salary Payment"
-  },
-  {
-    keywords: ["design", "designer"],
-    title: "Design Service"
-  },
-  {
-    keywords: ["marketing"],
-    title: "Marketing Service"
-  },
-  {
-    keywords: ["hosting", "server"],
-    title: "Server Hosting"
-  }
-];
-
-for (const item of commercePatterns) {
-  if (
-    item.keywords.some(keyword =>
-      lower.includes(keyword)
-    )
-  ) {
     document.getElementById(
       "title"
-    ).value = item.title;
+    ).value =
+      data.title || "Invoice";
 
-    break;
+    document.getElementById(
+      "amount"
+    ).value =
+      data.amount || "";
+
+  } catch (err) {
+
+    console.error(err);
+
   }
-}
 
 }

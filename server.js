@@ -1069,6 +1069,71 @@ Return ONLY JSON:
    INVOICES
 ========================= */
 
+app.post("/api/ai/invoice-draft", async (req, res) => {
+
+  try {
+
+    const { prompt } = req.body;
+
+    if (!openai) {
+      return res.status(500).json({
+        error: "OpenAI not configured"
+      });
+    }
+
+    const completion =
+      await openai.chat.completions.create({
+
+        model: "gpt-4.1-mini",
+
+        messages: [
+
+          {
+            role: "system",
+
+            content: `
+You are an AI commerce parser.
+
+Extract:
+- intent
+- title
+- amount
+- category
+
+Return ONLY JSON.`
+
+          },
+
+          {
+            role: "user",
+            content: prompt
+          }
+
+        ]
+
+      });
+
+    const text =
+      completion.choices[0]
+        .message.content;
+
+    const parsed =
+      JSON.parse(text);
+
+    res.json(parsed);
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+
+  }
+
+});
+
 app.get("/api/invoices", (req, res) => {
   const rows = db
     .prepare("SELECT * FROM invoices ORDER BY createdAt DESC")
