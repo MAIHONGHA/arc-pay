@@ -1626,12 +1626,12 @@ async function parseInvoicePrompt(prompt) {
     document.getElementById(
       "title"
     ).value =
-      data.title || "Invoice";
+      data.draft?.title || "Invoice";
 
-    document.getElementById(
-      "amount"
-    ).value =
-      data.amount || "";
+   document.getElementById(
+     "amount"
+   ).value =
+     data.draft?.amount || "";
 
   } catch (err) {
 
