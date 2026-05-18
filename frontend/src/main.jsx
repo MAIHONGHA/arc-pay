@@ -1209,14 +1209,15 @@ window.generateAIDraft = async function () {
   document.getElementById("title").value = title;
   document.getElementById("amount").value = amount;
 
-  document.getElementById("aiResult").textContent = `
+  document.getElementById("aiResult").textContent =`
+
 🧠 AI UNDERSTOOD
 
 Intent: ${detectedIntent}
 
-Title: ${invoiceTitle.value}
+Title: ${document.getElementById("title").value}
 
-Amount: ${invoiceAmount.value} USDC
+Amount: ${document.getElementById("amount").value} USDC
 `;
 };
 
