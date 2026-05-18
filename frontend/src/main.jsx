@@ -1620,13 +1620,13 @@ if (
 
   if (amountMatch) {
     document.getElementById(
-      "invoiceAmount"
+      "amount"
     ).value = amountMatch[1];
   }
 
   const commercePatterns = [
   {
-    keywords: ["coffee", "cà phê"],
+    keywords: ["coffee", "coffee"],
     title: "Coffee"
   },
   {
@@ -1634,7 +1634,7 @@ if (
     title: "Pizza"
   },
   {
-    keywords: ["salary", "lương"],
+    keywords: ["salary", "salary"],
     title: "Salary Payment"
   },
   {
@@ -1658,7 +1658,7 @@ for (const item of commercePatterns) {
     )
   ) {
     document.getElementById(
-      "invoiceTitle"
+      "title"
     ).value = item.title;
 
     break;
