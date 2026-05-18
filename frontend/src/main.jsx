@@ -1176,7 +1176,7 @@ window.generateAIDraft = async function () {
   const lower = prompt.toLowerCase();
 
   let amount = "0";
-  let title = "Invoice";
+  let title = "General Service";
 
   const amountMatch = lower.match(/(\d+(\.\d+)?)/);
 
@@ -1186,7 +1186,7 @@ window.generateAIDraft = async function () {
 
   if (
     lower.includes("coffee") ||
-    lower.includes("cafe")
+    lower.includes("cà phê")
   ) {
     title = "Coffee";
   }
