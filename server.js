@@ -2011,7 +2011,28 @@ app.get("/test-email", async (req, res) => {
   }
 });
 
+function checkInvoices() {
+
+  const result =
+    db.prepare(`
+      UPDATE invoices
+      SET status = 'OVERDUE'
+      WHERE
+        status != 'PAID'
+        AND dueDate IS NOT NULL
+        AND datetime(dueDate)
+          < datetime('now')
+    `).run();
+
+  console.log(
+    "checking invoices...",
+    result.changes
+  );
+
+}
+
 cron.schedule("*/1 * * * *", async () => {
+  checkInvoices();
   console.log("AUTO PAYOUT CHECK...");
 
   const payouts = db.prepare(`
@@ -2027,7 +2048,7 @@ cron.schedule("*/1 * * * *", async () => {
       UPDATE payouts
       SET status = 'REVIEW'
       WHERE id = ?
-      AND status = 'APPROVED'
+      AND status = 'PENDING'
     `).run(p.id);
 
     console.log("Payout needs confirmation:", p.id);
