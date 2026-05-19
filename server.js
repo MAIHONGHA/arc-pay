@@ -161,18 +161,19 @@ try {
 }
 
 try {
-
   db.prepare(`
     ALTER TABLE invoices
     ADD COLUMN recipientEmail TEXT
   `).run();
 
-} catch {}
+  console.log("recipientEmail column added");
+} catch {
+  console.log("recipientEmail already exists");
+}
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS claims (
     id TEXT PRIMARY KEY,
-    recipientEmail TEXT,
     recipientEmail TEXT NOT NULL,
     amount REAL NOT NULL,
     message TEXT,
