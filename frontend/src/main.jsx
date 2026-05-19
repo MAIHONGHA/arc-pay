@@ -625,9 +625,20 @@ async function createInvoice() {
         ? recipientEl.value
         : biz.wallet;
 
+    const recipientEmail =
+      document.getElementById(
+        "invoiceEmail"
+      ).value;
+
+    console.log(
+      "recipientEmail frontend:",
+      recipientEmail
+    );
+
     const body = {
       title: titleEl.value,
       amount: amountEl.value,
+      recipientEmail: recipientEmail,
       dueDate:
         document.getElementById(
           "invoiceDueDate"
@@ -714,6 +725,8 @@ async function loadInvoices() {
                 ? "status-paid"
                 : inv.status === "OVERDUE"
                 ? "status-overdue"
+                : inv.status === "REMINDER"
+                ? "status-reminder"
                 : "status-created"
             }
           ">

@@ -135,6 +135,7 @@ db.prepare(`
     fromAddress TEXT,
     createdAt TEXT NOT NULL,
     paidAt TEXT,
+    reminder_sent INTEGER DEFAULT 0,
     dueDate TEXT
   )
 `).run();
@@ -148,9 +149,30 @@ try {
 
 } catch {}
 
+try {
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN reminder_sent INTEGER DEFAULT 0
+  `).run();
+
+  console.log("✅ reminder_sent column added");
+} catch (err) {
+  console.log("reminder_sent already exists");
+}
+
+try {
+
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN recipientEmail TEXT
+  `).run();
+
+} catch {}
+
 db.prepare(`
   CREATE TABLE IF NOT EXISTS claims (
     id TEXT PRIMARY KEY,
+    recipientEmail TEXT,
     recipientEmail TEXT NOT NULL,
     amount REAL NOT NULL,
     message TEXT,
@@ -1210,6 +1232,8 @@ app.post("/api/invoices", (req, res) => {
       });
     }
 
+    const recipientEmail = req.body.recipientEmail || null;
+
     const id = makeInvoiceId();
 
     db.prepare(`
@@ -1218,6 +1242,7 @@ app.post("/api/invoices", (req, res) => {
          title,
          amount,
          recipientAddress,
+         recipientEmail,
          targetChain,
          note,
          status,
@@ -1229,6 +1254,7 @@ app.post("/api/invoices", (req, res) => {
         @title,
         @amount,
         @recipientAddress,
+        @recipientEmail,
         @targetChain,
         @note,
         'CREATED',
@@ -1240,6 +1266,7 @@ app.post("/api/invoices", (req, res) => {
       title,
       amount,
       recipientAddress,
+      recipientEmail,
       targetChain,
       note,
       createdAt,
@@ -1253,11 +1280,13 @@ app.post("/api/invoices", (req, res) => {
       invoice: rowToInvoice(row)
     });
   } catch (error) {
-    res.status(500).json({
-      ok: false,
-      error: error.message || "Create invoice failed"
-    });
-  }
+  console.error(error);
+
+  res.status(500).json({
+    ok: false,
+    error: error.message || "Create invoice failed"
+  });
+}
 });
 
 app.post("/api/invoices/:id/mark-paid", (req, res) => {
@@ -2011,17 +2040,24 @@ app.get("/test-email", async (req, res) => {
   }
 });
 
-function checkInvoices() {
+async function checkInvoices() {
 
   const result =
     db.prepare(`
       UPDATE invoices
-      SET status = 'OVERDUE'
-      WHERE
-        status != 'PAID'
-        AND dueDate IS NOT NULL
-        AND datetime(dueDate)
-          < datetime('now')
+      SET status = CASE
+        WHEN datetime(dueDate) < datetime('now')
+          THEN 'OVERDUE'
+
+        WHEN datetime(dueDate) <= datetime('now', '+1 day')
+          THEN 'REMINDER'
+
+        ELSE status
+      END
+
+        WHERE
+          status != 'PAID'
+          AND dueDate IS NOT NULL
     `).run();
 
   console.log(
@@ -2029,6 +2065,70 @@ function checkInvoices() {
     result.changes
   );
 
+  const reminders = db.prepare(`
+    SELECT *
+    FROM invoices
+    WHERE status = 'REMINDER'
+    AND reminder_sent = 0
+  `).all();
+
+  for (const inv of reminders) {
+    console.log(
+  "Sending reminder:",
+  inv.id
+);
+
+try {
+
+  console.log(
+    "recipientEmail:",
+    inv.recipientEmail
+  );
+
+  await resend.emails.send({
+  from: "ArcPay <no-reply@arcpay.pro>",
+
+  to: [
+   inv.recipientEmail
+  ],
+
+  subject:` Invoice Reminder ${inv.id}`,
+
+  html: `
+    <h2>Payment Reminder</h2>
+
+    <p>
+      Invoice: ${inv.title}
+    </p>
+
+    <p>
+      Amount: ${inv.amount} USDC
+    </p>
+
+    <p>
+      Status: ${inv.status}
+    </p>
+  `
+});
+
+  console.log(
+    "Reminder email sent:",
+    inv.id
+  );
+
+  db.prepare(`
+  UPDATE invoices
+  SET reminder_sent = 1
+  WHERE id = ?
+`).run(inv.id);
+
+} catch (err) {
+  console.error(
+    "Reminder email failed:",
+    err.message
+  );
+}
+}
 }
 
 cron.schedule("*/1 * * * *", async () => {
@@ -2188,7 +2288,15 @@ if (existingNextPayroll) {
 ========================= */
 
 app.listen(PORT, () => {
-  console.log(`ARC Pay Mini API running at http://localhost:${PORT}`);
-  console.log(`merchantAddress = ${MERCHANT_ADDRESS}`);
-  console.log(`circleKey = ${CIRCLE_API_KEY ? "loaded" : "missing"}`);
+  console.log(
+   ` ARC Pay Mini API running at http://localhost:${PORT}`
+  );
+
+  console.log(
+   ` merchantAddress = ${MERCHANT_ADDRESS}`
+  );
+
+  console.log(
+  ` circleKey = ${CIRCLE_API_KEY ? "loaded" : "missing"}`
+  );
 });
