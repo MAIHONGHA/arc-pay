@@ -982,6 +982,7 @@ function rowToInvoice(row) {
     fromAddress: row.fromAddress || null,
     createdAt: row.createdAt,
     paidAt: row.paidAt || null,
+    dueDate: row.dueDate,
     checkoutPath,
     checkoutUrl: checkoutPath,
     explorerAddressUrl: `${ARC_EXPLORER_URL}/address/${row.recipientAddress}`,
