@@ -705,7 +705,21 @@ async function loadInvoices() {
       div.innerHTML = `
         <div class="invoice-title">${escapeHtml(inv.title)}</div>
         <div>${formatUsdc(inv.amount)} USDC</div>
-        <div><b>Status:</b> ${escapeHtml(inv.status)}</div>
+        <div>
+          <b>Status:</b>
+
+          <span class="
+            ${
+              inv.status === "PAID"
+                ? "status-paid"
+                : inv.status === "OVERDUE"
+                ? "status-overdue"
+                : "status-created"
+            }
+          ">
+            ${escapeHtml(inv.status)}
+          </span>
+        </div>
         <div><b>ID:</b> ${escapeHtml(inv.id)}</div>
         <div>
          <b>Due:</b>

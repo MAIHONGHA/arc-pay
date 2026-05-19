@@ -1331,3 +1331,18 @@ pre {
   border:none !important;
   box-shadow:0 10px 30px rgba(0,224,255,.18);
 }
+
+.status-paid {
+  color: #00ff99;
+  font-weight: 700;
+}
+
+.status-created {
+  color: #ffcc00;
+  font-weight: 700;
+}
+
+.status-overdue {
+  color: #ff4d4f;
+  font-weight: 700;
+}
