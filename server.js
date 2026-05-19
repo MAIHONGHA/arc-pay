@@ -134,9 +134,19 @@ db.prepare(`
     txHash TEXT,
     fromAddress TEXT,
     createdAt TEXT NOT NULL,
-    paidAt TEXT
+    paidAt TEXT,
+    dueDate TEXT
   )
 `).run();
+
+try {
+
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN dueDate TEXT
+  `).run();
+
+} catch {}
 
 db.prepare(`
   CREATE TABLE IF NOT EXISTS claims (
@@ -1174,6 +1184,8 @@ app.post("/api/invoices", (req, res) => {
 
     const targetChain = String(req.body.targetChain || "Arc").trim() || "Arc";
     const note = String(req.body.note || "").trim();
+    const dueDate =
+      String(req.body.dueDate || "").trim();
     const createdAt = new Date().toISOString();
 
     if (!title) {
@@ -1201,14 +1213,16 @@ app.post("/api/invoices", (req, res) => {
 
     db.prepare(`
       INSERT INTO invoices (
-        id,
-        title,
-        amount,
-        recipientAddress,
-        targetChain,
-        note,
-        status,
-        createdAt
+         id,
+         title,
+         amount,
+         recipientAddress,
+         targetChain,
+         note,
+         status,
+         createdAt,
+         dueDate
+
       ) VALUES (
         @id,
         @title,
@@ -1217,7 +1231,8 @@ app.post("/api/invoices", (req, res) => {
         @targetChain,
         @note,
         'CREATED',
-        @createdAt
+        @createdAt,
+        @dueDate
       )
     `).run({
       id,
@@ -1226,7 +1241,8 @@ app.post("/api/invoices", (req, res) => {
       recipientAddress,
       targetChain,
       note,
-      createdAt
+      createdAt,
+      dueDate
     });
 
     const row = db.prepare("SELECT * FROM invoices WHERE id = ?").get(id);

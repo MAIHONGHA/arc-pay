@@ -628,6 +628,10 @@ async function createInvoice() {
     const body = {
       title: titleEl.value,
       amount: amountEl.value,
+      dueDate:
+        document.getElementById(
+          "invoiceDueDate"
+        ).value,
       recipientAddress,
       targetChain: "Arc",
       note: noteEl.value
