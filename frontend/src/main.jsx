@@ -690,6 +690,15 @@ async function loadInvoices() {
     }
 
     invoices.forEach((inv) => {
+      if (
+        inv.status !== "PAID" &&
+        inv.dueDate &&
+        new Date() >
+          new Date(inv.dueDate)
+      ) {
+
+       inv.status = "OVERDUE";
+      }
       const div = document.createElement("div");
       div.className = "invoice";
 
@@ -698,6 +707,10 @@ async function loadInvoices() {
         <div>${formatUsdc(inv.amount)} USDC</div>
         <div><b>Status:</b> ${escapeHtml(inv.status)}</div>
         <div><b>ID:</b> ${escapeHtml(inv.id)}</div>
+        <div>
+         <b>Due:</b>
+         ${inv.dueDate || "No due date"}
+        </div>
         <div><b>Recipient:</b> ${escapeHtml(inv.recipientAddress)}</div>
         <div class="row">
           <button data-open="${escapeHtml(inv.id)}">Open</button>
