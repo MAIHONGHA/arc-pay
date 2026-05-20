@@ -201,11 +201,11 @@ async function sendClaimEmail() {
       })
     });
 
-    claimResultEl.textContent = data.claimLink || JSON.stringify(data, null, 2);
+    claimResultEl.innerHTML = `
+  <div>${data.claimLink}</div>
 
-claimResultEl.innerHTML += 
   <div style="margin-top:20px;">
-    
+
     <button
       id="btnCardPayment"
       style="
@@ -224,7 +224,7 @@ claimResultEl.innerHTML +=
     </button>
 
   </div>
-;
+`;
 
 document
   .getElementById("btnCardPayment")
