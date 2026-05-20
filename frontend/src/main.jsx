@@ -202,6 +202,38 @@ async function sendClaimEmail() {
     });
 
     claimResultEl.textContent = data.claimLink || JSON.stringify(data, null, 2);
+
+claimResultEl.innerHTML += 
+  <div style="margin-top:20px;">
+    
+    <button
+      id="btnCardPayment"
+      style="
+        width:100%;
+        padding:16px;
+        border:none;
+        border-radius:16px;
+        cursor:pointer;
+        background:#2563eb;
+        color:white;
+        font-size:16px;
+        font-weight:bold;
+      "
+    >
+      Pay with Visa / Mastercard
+    </button>
+
+  </div>
+;
+
+document
+  .getElementById("btnCardPayment")
+  ?.addEventListener("click", () => {
+
+    alert("Visa/Mastercard flow coming soon");
+
+  });
+
     setStatus("Claim email sent.", "success");
   } catch (err) {
     setStatus("Send claim email failed: " + err.message, "error");
@@ -1322,22 +1354,6 @@ async function loadClaimPage() {
         gap:16px;
         margin-top:20px;
       ">
-
-         <button
-           id="btnCardPayment"
-           style="
-             padding:18px;
-             border:none;
-             border-radius:16px;
-             cursor:pointer;
-             background:#2563eb;
-             color:white;
-             font-size:16px;
-             font-weight:bold;
-           "
-         >
-           Pay with Visa / Mastercard
-         </button>
 
         <button
           id="btnWalletOption"
