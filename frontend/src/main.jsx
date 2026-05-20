@@ -1355,6 +1355,45 @@ async function loadClaimPage() {
 
       </div>
 
+<div style="
+  margin-top:20px;
+  color:white;
+  font-weight:bold;
+">
+  Pay with
+</div>
+
+<label style="
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:10px;
+  color:white;
+">
+  <input
+    type="radio"
+    name="paymentMethod"
+    value="wallet"
+    checked
+  />
+  Wallet
+</label>
+
+<label style="
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:10px;
+  color:white;
+">
+  <input
+    type="radio"
+    name="paymentMethod"
+    value="card"
+  />
+  Visa / Mastercard
+</label>
+
       <div
         id="walletBox"
         style="
