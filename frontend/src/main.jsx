@@ -1316,6 +1316,24 @@ async function loadClaimPage() {
 
       <p id="claimInfo">Loading...</p>
 
+    <button
+      id="btnCardPayment"
+      style="
+        margin-top:16px;
+        width:100%;
+        padding:16px;
+        border:none;
+        border-radius:16px;
+        cursor:pointer;
+        background:#2563eb;
+        color:white;
+        font-size:16px;
+        font-weight:bold;
+      "
+    >
+      Pay with Visa / Mastercard
+    </button>
+
       <div style="
         display:flex;
         flex-direction:column;
@@ -1354,45 +1372,6 @@ async function loadClaimPage() {
         </button>
 
       </div>
-
-<div style="
-  margin-top:20px;
-  color:white;
-  font-weight:bold;
-">
-  Pay with
-</div>
-
-<label style="
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-top:10px;
-  color:white;
-">
-  <input
-    type="radio"
-    name="paymentMethod"
-    value="wallet"
-    checked
-  />
-  Wallet
-</label>
-
-<label style="
-  display:flex;
-  align-items:center;
-  gap:8px;
-  margin-top:10px;
-  color:white;
-">
-  <input
-    type="radio"
-    name="paymentMethod"
-    value="card"
-  />
-  Visa / Mastercard
-</label>
 
       <div
         id="walletBox"
