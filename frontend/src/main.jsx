@@ -1546,56 +1546,6 @@ async function loadClaimPage() {
    EVENTS + INIT
 ========================= */
 
-<div style="margin-top:16px;">
-
-  <div
-    style="
-      margin-bottom:10px;
-      font-weight:bold;
-      color:white;
-    "
-  >
-    Pay with
-  </div>
-
-  <label
-    style="
-      display:flex;
-      align-items:center;
-      gap:8px;
-      margin-bottom:10px;
-      color:white;
-    "
-  >
-    <input
-      type="radio"
-      name="paymentMethod"
-      value="wallet"
-      checked
-    />
-
-    Wallet
-  </label>
-
-  <label
-    style="
-      display:flex;
-      align-items:center;
-      gap:8px;
-      color:white;
-    "
-  >
-    <input
-      type="radio"
-      name="paymentMethod"
-      value="card"
-    />
-
-    Visa / Mastercard
-  </label>
-
-</div>
-
 btnSaveCustomer?.addEventListener("click", saveCustomer);
 btnSendClaimEmail?.addEventListener(
   "click",
