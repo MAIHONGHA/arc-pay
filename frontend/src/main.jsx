@@ -1296,6 +1296,7 @@ async function loadDashboard() {
 ========================= */
 
 async function loadClaimPage() {
+
   const path = window.location.pathname;
 
   if (!path.startsWith("/claim/")) return;
@@ -1303,50 +1304,242 @@ async function loadClaimPage() {
   const claimId = path.split("/claim/")[1];
 
   document.body.innerHTML = `
-    <div style="padding:40px; max-width:500px; margin:auto;">
+    <div style="
+      padding:40px;
+      max-width:500px;
+      margin:auto;
+      color:white;
+      font-family:sans-serif;
+    ">
+
       <h2>Claim your USDC</h2>
+
       <p id="claimInfo">Loading...</p>
 
-      <input id="walletInput" placeholder="Your wallet (0x...)" style="width:100%; padding:10px; margin-top:10px;" />
+      <div style="
+        display:flex;
+        flex-direction:column;
+        gap:16px;
+        margin-top:20px;
+      ">
 
-      <button id="btnClaim" style="margin-top:10px; padding:10px; width:100%;">
-        Claim Now
-      </button>
+        <button
+          id="btnWalletOption"
+          style="
+            padding:18px;
+            border:none;
+            border-radius:16px;
+            cursor:pointer;
+            background:#2563eb;
+            color:white;
+            font-size:16px;
+          "
+        >
+          Withdraw to Web3 Wallet
+        </button>
 
-      <p id="claimStatus"></p>
+        <button
+          id="btnBankOption"
+          style="
+            padding:18px;
+            border:none;
+            border-radius:16px;
+            cursor:pointer;
+            background:#16a34a;
+            color:white;
+            font-size:16px;
+          "
+        >
+          Withdraw to Bank
+        </button>
+
+      </div>
+
+      <div
+        id="walletBox"
+        style="
+          display:none;
+          margin-top:24px;
+        "
+      >
+
+        <input
+          id="walletInput"
+          placeholder="Your wallet address"
+          style="
+            width:100%;
+            padding:14px;
+            border-radius:12px;
+            border:none;
+          "
+        />
+
+        <button
+          id="btnClaim"
+          style="
+            width:100%;
+            margin-top:16px;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:#06b6d4;
+            color:white;
+            font-size:16px;
+            cursor:pointer;
+          "
+        >
+          Claim Now
+        </button>
+
+      </div>
+
+      <div
+        id="bankBox"
+        style="
+          display:none;
+          margin-top:24px;
+        "
+      >
+
+        <input
+          placeholder="Bank Name"
+          style="
+            width:100%;
+            padding:14px;
+            margin-bottom:12px;
+            border-radius:12px;
+            border:none;
+          "
+        />
+
+        <input
+          placeholder="Account Number"
+          style="
+            width:100%;
+            padding:14px;
+            margin-bottom:12px;
+            border-radius:12px;
+            border:none;
+          "
+        />
+
+        <button
+          style="
+            width:100%;
+            padding:14px;
+            border:none;
+            border-radius:12px;
+            background:#22c55e;
+            color:white;
+            font-size:16px;
+            cursor:pointer;
+          "
+        >
+          Withdraw to Bank
+        </button>
+
+      </div>
+
+      <p
+        id="claimStatus"
+        style="
+          margin-top:20px;
+        "
+      ></p>
+
     </div>
   `;
 
   try {
-    const data = await api(`/api/claims/${claimId}`);
+
+    const data = await api(
+      `/api/claims/${claimId}`
+    );
 
     if (!data || !data.amount) {
-      document.body.innerHTML = "❌ Claim not found";
+
+      document.body.innerHTML =
+        "❌ Claim not found";
+
       return;
     }
 
-    document.getElementById("claimInfo").innerText =
+    document.getElementById(
+      "claimInfo"
+    ).innerText =
       `You received ${data.amount} USDC`;
 
-    document.getElementById("btnClaim").onclick = async () => {
-      const wallet = document.getElementById("walletInput").value;
-
-      try {
-        const result = await api(`/api/claims/${claimId}/claim`, {
-          method: "POST",
-          body: JSON.stringify({ walletAddress: wallet })
-        });
-
-        document.getElementById("claimStatus").innerText =
-          result.success ? "Claimed!" : `Error: ${result.error}`;
-      } catch (err) {
-        document.getElementById("claimStatus").innerText =
-          "Error: " + err.message;
-      }
-    };
   } catch (err) {
-    document.body.innerHTML = "❌ Claim not found: " + err.message;
+
+    document.body.innerHTML =
+      "❌ Claim not found";
+
+    return;
   }
+
+  document.getElementById(
+    "btnWalletOption"
+  ).onclick = () => {
+
+    document.getElementById(
+      "walletBox"
+    ).style.display = "block";
+
+    document.getElementById(
+      "bankBox"
+    ).style.display = "none";
+  };
+
+  document.getElementById(
+    "btnBankOption"
+  ).onclick = () => {
+
+    document.getElementById(
+      "bankBox"
+    ).style.display = "block";
+
+    document.getElementById(
+      "walletBox"
+    ).style.display = "none";
+  };
+
+  document.getElementById(
+    "btnClaim"
+  ).onclick = async () => {
+
+    const wallet =
+      document.getElementById(
+        "walletInput"
+      ).value;
+
+    try {
+
+      const result = await api(
+        `/api/claims/${claimId}/claim`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            walletAddress: wallet
+          })
+        }
+      );
+
+      document.getElementById(
+        "claimStatus"
+      ).innerText =
+        result.success
+          ? "Claimed!"
+          : "Error: " + result.error;
+
+    } catch (err) {
+
+      document.getElementById(
+        "claimStatus"
+      ).innerText =
+        "Error: " + err.message;
+    }
+  };
+
 }
 
 /* =========================
