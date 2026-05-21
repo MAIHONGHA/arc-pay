@@ -1844,8 +1844,7 @@ app.post("/api/claims/send-email", async (req, res) => {
 
     const id = crypto.randomUUID();
     const appUrl = String(process.env.APP_URL || "http://localhost:3000").replace(/\/+$/, "");
-    const claimLink = `${appUrl}/claim/${id}`;
-
+    
     db.prepare(`
       INSERT INTO claims (id, recipientEmail, amount, message, status, createdAt)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -1878,12 +1877,13 @@ if (error) {
   });
 }
 
-    const claimLink = `${req.protocol}://${req.get("host")}/claim/${claimId}`;
+    const claimLink = `${req.protocol}://${req.get("host")}/claim/${id}`;
+
     res.json({
-      success: true,
-      claimId,
-      claimLink
-    });
+    success: true,
+    claimId: id,
+    claimLink
+  });
   } catch (err) {
     console.error("send claim email error:", err);
     res.status(500).json({ error: err.message });
