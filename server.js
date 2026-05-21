@@ -1970,7 +1970,8 @@ console.log("CLAIM CREATED:", id);
       success: true,
       message: "USDC claimed successfully",
       walletAddress,
-      txHash: tx.hash
+      txHash: tx.hash,
+      claimedAt: new Date().toISOString()
     });
   } catch (err) {
     console.error("claim transfer error:", err);
@@ -2000,30 +2001,6 @@ app.get("/api/claim/:id", (req, res) => {
   }
 
   res.json(claim);
-});
-
-app.post("/api/claims/:id/claim", (req, res) => {
-  const { id } = req.params;
-  const { walletAddress } = req.body;
-
-  const claim = db.prepare("SELECT * FROM claims WHERE id = ?").get(id);
-
-  if (!claim) {
-    return res.status(404).json({ success: false, error: "Claim not found" });
-  }
-
-  db.prepare(`
-    UPDATE claims
-    SET status = 'CLAIMED',
-        walletAddress = ?
-    WHERE id = ?
-  `).run(walletAddress || null, id);
-
-  res.json({
-    success: true,
-    claimId: id,
-    walletAddress
-  });
 });
 
 app.get("/test-email", async (req, res) => {
