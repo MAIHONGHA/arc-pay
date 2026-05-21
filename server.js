@@ -1878,9 +1878,7 @@ if (error) {
   });
 }
 
-    const claimLink =
-  `${req.protocol}://${req.get("host")}/claim/${claimId}`;
-
+    const claimLink = `${req.protocol}://${req.get("host")}/claim/${claimId}`;
     res.json({
       success: true,
       claimId,
