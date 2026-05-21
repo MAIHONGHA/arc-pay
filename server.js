@@ -1878,9 +1878,13 @@ if (error) {
   });
 }
 
+    const claimLink =
+  `${req.protocol}://${req.get("host")}/claim/${claimId}`;
+
     res.json({
       success: true,
-      claimId: id
+      claimId,
+      claimLink
     });
   } catch (err) {
     console.error("send claim email error:", err);
