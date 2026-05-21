@@ -202,29 +202,80 @@ async function sendClaimEmail() {
     });
 
     claimResultEl.innerHTML = `
-  <div>${data.claimLink}</div>
 
-  <div style="margin-top:20px;">
+<div style="margin-bottom:12px;">
+  Status:
+  <span id="claimStatus">
+    PENDING
+  </span>
+</div>
 
-    <button
-      id="btnCardPayment"
-      style="
-        width:100%;
-        padding:16px;
-        border:none;
-        border-radius:16px;
-        cursor:pointer;
-        background:#2563eb;
-        color:white;
-        font-size:16px;
-        font-weight:bold;
-      "
-    >
-      Pay with Visa / Mastercard
-    </button>
+<div style="margin-bottom:12px;">
+  <a
+    href="${data.claimLink}"
+    target="_blank"
+    style="color:#67e8f9;font-weight:bold;"
+  >
+    Open Claim Page
+  </a>
+</div>
 
-  </div>
+<div style="word-break:break-all;">
+  ${data.claimLink}
+</div>
+
+<div id="claimInfo" style="margin-top:12px;"></div>
+
+<div style="margin-top:20px;">
+
+<button
+  id="btnCardPayment"
+  style="
+    width:100%;
+    padding:16px;
+    border:none;
+    border-radius:16px;
+    cursor:pointer;
+    background:#2563eb;
+    color:white;
+    font-size:16px;
+    font-weight:bold;
+  "
+>
+  Pay with Visa / Mastercard
+</button>
+
+</div>
+
 `;
+
+const claimId = data.claimId;
+
+setInterval(async () => {
+
+  try {
+
+    const res = await fetch(`/api/claims/${claimId}`);
+    const claim = await res.json();
+
+    if (claim.status === "CLAIMED") {
+
+      document.getElementById("claimStatus").innerHTML =
+        "CLAIMED ✅";
+
+      document.getElementById("claimInfo").innerHTML = `
+        <div>Wallet: ${claim.walletAddress || "-"}</div>
+        <div>Tx: ${claim.txHash || "-"}</div>
+        <div>Claimed At: ${claim.claimedAt || "-"}</div>
+      `;
+
+    }
+
+  } catch (err) {
+    console.error(err);
+  }
+
+}, 5000);
 
 document
   .getElementById("btnCardPayment")
