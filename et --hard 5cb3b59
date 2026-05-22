@@ -1,0 +1,73 @@
+[33me4a2869[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeature/next[m[33m, [m[1;31morigin/feature/next[m[33m)[m Rollback hide button
+[33m54400df[m Fix claim button id
+[33mf7c6051[m Improve claim status UI
+[33md402cc1[m Hide claim button after claimed
+[33m5cb3b59[m Add claim status tracking UI
+[33m56336de[m Add real USDC claim flow with txHash and claimedAt
+[33m3700027[m Fix claim link logic
+[33m6846bff[m Fix claim link
+[33m91af139[m Fix claim link syntax
+[33md48e449[m Add real claim link response
+[33me9747e5[m Fix sender card payment button
+[33maac8c1f[m Add card payment button to claim sender flow
+[33m52f4373[m Add Visa payment button
+[33mf9ad5a3[m Add Visa Mastercard button to claim page
+[33mc459d48[m add card payment option
+[33me3f1c0b[m fix payment method syntax
+[33mf59bc63[m add payment method flow
+[33m616f20a[m[33m ([m[1;32mmain[m[33m)[m new claim page
+[33m0942a85[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Fix extra catch syntax
+[33m94e82c9[m Add invoice recipient email + reminders
+[33md8dd566[m Add overdue invoice automation
+[33mb1e58fa[m Add invoice due date + overdue status
+[33m3aef03a[m Add invoice status colors
+[33m9f35ad0[m Add overdue invoice logic
+[33m3a56991[m Add invoice due date
+[33mfd2a163[m Fix AI invoice autofill
+[33m40e5fa1[m Add OpenAI AI invoice parser
+[33m4b831b4[m Add OpenAI invoice parser
+[33md59538a[m Fix AI autofill parser
+[33mb1ea955[m Fix AI autofill
+[33mb8a713e[m Improve AI commerce parser
+[33m0310378[m Upgrade AI Commerce Agent
+[33mffa3ad0[m Cleanup build assets
+[33m0985781[m Add AI invoice parser
+[33m486e827[m Fix voice recognition abort
+[33mfe9424c[m Fix Android speech recognition flow
+[33m6097d72[m ArcPay update
+[33me3f7dfd[m Integrate AI Draft into invoices UI
+[33m808d1a0[m Stable wallet routing and invoice payment flow
+[33m046f5bd[m Rename ArcPay_Min to ArcPay
+[33ma63e48f[m Add tab navigation and separate business customer sections
+[33m17e1270[m Remove open wallet button
+[33m5440276[m Add scan success vibration
+[33md4f6e4e[m Auto switch Arc before payment
+[33m7229918[m Add camera QR scanner and scan pay flow
+[33m8685da9[m Add invoice sheet QR actions and swipe close
+[33mea7ce82[m Add mobile invoice detail sheet
+[33me79e9cd[m Polish mobile bottom navigation and responsive UI
+[33m2d8d03f[m Upgrade ArcPay UI dashboard and payroll system
+[33m47b3558[m Backup before ArcPay dashboard rebuild
+[33m6419212[m Update ArcPay UI and payment flows
+[33md1eaf5f[m Add payouts table and API
+[33mad20e1e[m Fix resend domain
+[33mec9664c[m fix claim route response
+[33m022162c[m fix claim api
+[33m2f18618[m fix claim link slash
+[33mf2f95ce[m fix API base and claim page
+[33mbdd6089[m fix claim routes
+[33m8b2b7ed[m Fix Gmail SMTP IPv4 ENETUNREACH
+[33mc2d9cc7[m Add Gmail claim link and real USDC claim transfer
+[33mfb22c1e[m Complete dashboard payment UI
+[33m4ef433a[m Add realtime auto-paid blockchain detection
+[33m22e00da[m Fix OpenAI missing key crash
+[33m4c6d732[m Include frontend dist for production deploy
+[33m12e9f73[m Add AI invoice draft, realtime refresh, refresh and logout buttons
+[33m38794d1[m Update README
+[33mb387365[m Merge pull request #1 from MAIHONGHA/appkit-integration
+[33m10d16e0[m[33m ([m[1;31morigin/appkit-integration[m[33m)[m fix: use same-origin API on Railway
+[33m3a62bd3[m fix: Railway frontend build config
+[33m54b38fe[m feat: ArcPay Circle wallet integration update
+[33m5dff7b2[m Stable arcpay-min checkout
+[33m4bcc6fb[m[33m ([m[1;31morigin/archive-v1[m[33m)[m Initialize README with project details
+[33ma30f192[m ARC Payment MVP Stable V10

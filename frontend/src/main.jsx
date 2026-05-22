@@ -1484,6 +1484,73 @@ async function loadClaimPage() {
         "
       >
 
+<div
+  id="bankWithdrawForm"
+  style="
+    margin-top:16px;
+    display:none;
+    flex-direction:column;
+    gap:12px;
+  "
+>
+
+<input
+  id="bankCountry"
+  placeholder="Country"
+  style="
+    padding:14px;
+    border-radius:12px;
+    border:none;
+  "
+/>
+
+<input
+  id="bankName"
+  placeholder="Bank Name"
+  style="
+    padding:14px;
+    border-radius:12px;
+    border:none;
+  "
+/>
+
+<input
+  id="bankAccount"
+  placeholder="Account Number"
+  style="
+    padding:14px;
+    border-radius:12px;
+    border:none;
+  "
+/>
+
+<input
+  id="bankHolder"
+  placeholder="Account Holder"
+  style="
+    padding:14px;
+    border-radius:12px;
+    border:none;
+  "
+/>
+
+<button
+  id="btnRequestWithdraw"
+  style="
+    padding:16px;
+    border:none;
+    border-radius:14px;
+    background:#2563eb;
+    color:white;
+    font-weight:bold;
+    cursor:pointer;
+  "
+>
+  Request Bank Withdraw
+</button>
+
+</div>
+
         <input
           placeholder="Bank Name"
           style="
@@ -1584,6 +1651,10 @@ async function loadClaimPage() {
     document.getElementById(
       "walletBox"
     ).style.display = "none";
+
+    document.getElementById(
+      "bankWithdrawForm"
+    ).style.display = "flex";
   };
 
   document.getElementById(
@@ -1623,6 +1694,47 @@ async function loadClaimPage() {
     }
   };
 
+document
+  .getElementById(
+    "btnRequestWithdraw"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      const country =
+        document.getElementById(
+          "bankCountry"
+        ).value;
+
+      const bankName =
+        document.getElementById(
+          "bankName"
+        ).value;
+
+      const account =
+        document.getElementById(
+          "bankAccount"
+        ).value;
+
+      const holder =
+        document.getElementById(
+          "bankHolder"
+        ).value;
+
+      alert(
+        "Bank withdraw request submitted"
+      );
+
+      console.log({
+        country,
+        bankName,
+        account,
+        holder
+      });
+
+    }
+  );
 }
 
 /* =========================
