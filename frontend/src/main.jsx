@@ -228,22 +228,7 @@ async function sendClaimEmail() {
 
 <div style="margin-top:20px;">
 
-<button
-  id="btnCardPayment"
-  style="
-    width:100%;
-    padding:16px;
-    border:none;
-    border-radius:16px;
-    cursor:pointer;
-    background:#2563eb;
-    color:white;
-    font-size:16px;
-    font-weight:bold;
-  "
->
-  Pay with Visa / Mastercard
-</button>
+
 
 </div>
 
@@ -1550,44 +1535,7 @@ async function loadClaimPage() {
 </button>
 
 </div>
-
-        <input
-          placeholder="Bank Name"
-          style="
-            width:100%;
-            padding:14px;
-            margin-bottom:12px;
-            border-radius:12px;
-            border:none;
-          "
-        />
-
-        <input
-          placeholder="Account Number"
-          style="
-            width:100%;
-            padding:14px;
-            margin-bottom:12px;
-            border-radius:12px;
-            border:none;
-          "
-        />
-
-        <button
-          style="
-            width:100%;
-            padding:14px;
-            border:none;
-            border-radius:12px;
-            background:#22c55e;
-            color:white;
-            font-size:16px;
-            cursor:pointer;
-          "
-        >
-          Withdraw to Bank
-        </button>
-
+       
       </div>
 
       <p
