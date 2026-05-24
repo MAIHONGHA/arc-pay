@@ -1933,37 +1933,47 @@ window.openTransak = async function () {
 
   console.log(data);
 
-  if (data?.widgetUrl) {
+  function openCardPayment() {
 
-  const w = 460;
-  const h = 760;
+  console.log("PAY VISA CLICKED");
 
-  const left = (window.screen.width - w) / 2;
-  const top = (window.screen.height - h) / 2;
+  const email =
+    document.getElementById("claimEmail").value;
+
+  const amount =
+    document.getElementById("claimAmount").value;
+
+  if (!email) {
+    alert("Please enter the recipient's Gmail first!");
+    return;
+  }
+
+  if (!amount) {
+    alert("Please enter the amount first!");
+    return;
+  }
+
+  // 🔥 TEMP TEST KEY
+  const TRANSAK_KEY = "PASTE_KEY_HERE";
+
+  const transakURL =
+    `https://global.transak.com` +
+    `?apiKey=${TRANSAK_KEY}` +
+    `&cryptoCurrencyCode=USDC` +
+    `&network=polygon` +
+    `&fiatAmount=${amount}` +
+    `&email=${email}` +
+    `&themeColor=00bcd4`;
+
+  console.log("TRANSAK URL:", transakURL);
 
   window.open(
-    data.widgetUrl,
-    "TransakPopup",
-    `width=${w},height=${h},left=${left},top=${top}`
+    transakURL,
+    "_blank",
+    "width=450,height=700"
   );
-
-  setTimeout(async () => {
-
-    await triggerDemoSendTestUSDC();
-
-    alert("Payment success! Claim email sent.");
-
-    document.getElementById("claimEmail").value = "";
-    document.getElementById("claimAmount").value = "";
-    document.getElementById("claimMessage").value = "";
-
-  }, 15000);
-
-} else {
-  alert("Transak failed");
 }
 }
-
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");
 
