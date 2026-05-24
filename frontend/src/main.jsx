@@ -1933,7 +1933,7 @@ window.openTransak = async function () {
 
   console.log(data);
 
-  globalThis.openCardPayment = window.openCardPayment = async function () {
+  window.openCardPayment = async function () {
   console.log("openCardPayment ready:", typeof window.openCardPayment);  
   console.log("PAY VISA CLICKED");
 
@@ -1973,6 +1973,7 @@ window.openTransak = async function () {
 };
 }
 
+window.openCardPayment = openCardPayment;
 console.log("GLOBAL openCardPayment:", typeof globalThis.openCardPayment);
 console.log("GLOBAL openCardPayment:", typeof window.openCardPayment);
 const payoutRoot = document.getElementById("payout-root");
