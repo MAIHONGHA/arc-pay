@@ -1971,7 +1971,9 @@ window.openTransak = async function () {
 
   window.open(transakURL, "_blank", "width=450,height=700");
 };
-};
+}
+
+console.log("GLOBAL openCardPayment:", typeof window.openCardPayment);
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");
 
