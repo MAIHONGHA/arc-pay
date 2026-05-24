@@ -1887,8 +1887,12 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
       crypto.randomUUID();
 
     // generate claim link
+    const APP_URL =
+      process.env.APP_URL ||
+      "http://localhost:5173";
+
     const claimLink =
-     ` http://localhost:5173/claim/${claimId}`;
+       `${APP_URL}/claim/${claimId}`;
 
     // send email
     await resend.emails.send({
