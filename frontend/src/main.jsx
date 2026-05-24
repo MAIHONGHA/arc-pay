@@ -31,7 +31,7 @@ globalThis.openCardPayment = window.openCardPayment = async function () {
   console.log("CONFIG FROM RAILWAY:", config);
 
   const transakURL =
-  "https://global.transak.com" +
+  "https://global-stg.transak.com" +
   "?apiKey=" + config.config.transakApiKey +
   "&productsAvailed=BUY" +
   "&cryptoCurrencyCode=USDC" +
