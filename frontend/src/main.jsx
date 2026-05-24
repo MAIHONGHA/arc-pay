@@ -1954,15 +1954,17 @@ window.openTransak = async function () {
   console.log("CONFIG FROM RAILWAY:", config);
 
   const transakURL =
-    "https://global-stg.transak.com" +
-    "?apiKey=" + config.config.transakApiKey +
-    "&productsAvailed=BUY" +
-    "&cryptoCurrencyCode=USDC" +
-    "&network=base" +
-    "&fiatAmount=" + amount +
-    "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
-    "&email=" + encodeURIComponent(email) +
-    "&themeColor=00bcd4";
+  "https://global-stg.transak.com" +
+  "?apiKey=" + config.config.transakApiKey +
+  "&productsAvailed=BUY" +
+  "&cryptoCurrencyCode=USDC" +
+  "&defaultCryptoCurrency=USDC" +
+  "&network=base" +
+  "&fiatCurrency=USD" +
+  "&fiatAmount=" + amount +
+  "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
+  "&email=" + encodeURIComponent(email) +
+  "&themeColor=00bcd4";
 
   console.log("TRANSAK URL:", transakURL);
 
