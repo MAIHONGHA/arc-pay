@@ -1933,32 +1933,36 @@ window.openTransak = async function () {
 
   console.log(data);
 
-  if (data?.data?.widgetUrl) {
-    const w = 460;
-const h = 760;
-const left = (window.screen.width - w) / 2;
-const top = (window.screen.height - h) / 2;
+  if (data?.widgetUrl) {
 
-window.open(
-  data.data.widgetUrl,
-  "TransakPopup",
-  `width=${w},height=${h},left=${left},top=${top}`
-);
-    setTimeout(async () => {
+  const w = 460;
+  const h = 760;
 
-  await triggerDemoSendTestUSDC();
+  const left = (window.screen.width - w) / 2;
+  const top = (window.screen.height - h) / 2;
 
-  alert("Payment success! Claim email sent.");
+  window.open(
+    data.widgetUrl,
+    "TransakPopup",
+    `width=${w},height=${h},left=${left},top=${top}`
+  );
 
-  document.getElementById("claimEmail").value = "";
-  document.getElementById("claimAmount").value = "";
-  document.getElementById("claimMessage").value = "";
+  setTimeout(async () => {
 
-}, 15000);
-  } else {
-    alert("Transak failed");
-  }
-};
+    await triggerDemoSendTestUSDC();
+
+    alert("Payment success! Claim email sent.");
+
+    document.getElementById("claimEmail").value = "";
+    document.getElementById("claimAmount").value = "";
+    document.getElementById("claimMessage").value = "";
+
+  }, 15000);
+
+} else {
+  alert("Transak failed");
+}
+}
 
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");
