@@ -1934,6 +1934,7 @@ window.openTransak = async function () {
   console.log(data);
 
   window.openCardPayment = async function () {
+  console.log("openCardPayment ready:", typeof window.openCardPayment);  
   console.log("PAY VISA CLICKED");
 
   const email = document.getElementById("claimEmail")?.value || "";
