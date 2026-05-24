@@ -317,34 +317,6 @@
       </div>
     </div>
 
-<script>
-window.openCardPayment = async function () {
-  const email = document.getElementById('claimEmail')?.value || '';
-  const amount = document.getElementById('claimAmount')?.value || '5';
-
-  if (!email) {
-    alert('Please enter the recipient Gmail address!');
-    return;
-  }
-
-  const config = await fetch("https://arc-pay-production.up.railway.app/api/config")
-  .then(r => r.json());
-  console.log("CONFIG FROM RAILWAY:", config);
-  const key = config.config.transakApiKey; 
-  const url = 'https://global-stg.transak.com' +
-  '?apiKey=' + key +
-  '&productsAvailed=BUY' +
-  '&cryptoCurrencyCode=USDC' +
-  '&network=polygon' +
-  '&fiatAmount=' + amount +
-  '&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6' +
-  '&email=' + encodeURIComponent(email) +
-  '&themeColor=00bcd4';
-
-  window.open(url, '_blank', 'width=450,height=700');
-}
-</script>
-
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
