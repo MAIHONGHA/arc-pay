@@ -1934,14 +1934,10 @@ window.openTransak = async function () {
   console.log(data);
 
   window.openCardPayment = function () {
-
   console.log("PAY VISA CLICKED");
 
-  const email =
-    document.getElementById("claimEmail").value;
-
-  const amount =
-    document.getElementById("claimAmount").value;
+  const email = document.getElementById("claimEmail").value;
+  const amount = document.getElementById("claimAmount").value;
 
   if (!email) {
     alert("Please enter the recipient's Gmail first!");
@@ -1953,27 +1949,22 @@ window.openTransak = async function () {
     return;
   }
 
-  // 🔥 TEMP TEST KEY
   const TRANSAK_KEY = "PASTE_KEY_HERE";
 
   const transakURL =
-    `https://global.transak.com` +
-    `?apiKey=${TRANSAK_KEY}` +
-    `&cryptoCurrencyCode=USDC` +
-    `&network=polygon` +
-    `&fiatAmount=${amount}` +
-    `&email=${email}` +
-    `&themeColor=00bcd4`;
+  "https://global.transak.com" +
+  "?apiKey=" + TRANSAK_KEY +
+  "&cryptoCurrencyCode=USDC" +
+  "&network=polygon" +
+  "&fiatAmount=" + amount +
+  "&email=" + email +
+  "&themeColor=00bcd4";
 
   console.log("TRANSAK URL:", transakURL);
 
-  window.open(
-    transakURL,
-    "_blank",
-    "width=450,height=700"
-  );
-}
-}
+  window.open(transakURL, "_blank", "width=450,height=700");
+};
+};
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");
 
