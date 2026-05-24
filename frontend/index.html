@@ -317,6 +317,32 @@
       </div>
     </div>
 
+<script>
+async function openCardPayment() {
+  const email = document.getElementById('claimEmail')?.value || '';
+  const amount = document.getElementById('claimAmount')?.value || '5';
+
+  if (!email) {
+    alert('Please enter the recipient Gmail address!');
+    return;
+  }
+
+  const config = await fetch('/api/config').then(r => r.json());
+
+  const url = 'https://global.transak.com' +
+    '?apiKey=' + config.transakApiKey +
+    '&cryptoCurrencyCode=USDC' +
+    '&network=polygon' +
+    '&fiatAmount=' + amount +
+    '&email=' + encodeURIComponent(email) +
+    '&themeColor=00bcd4';
+
+  window.open(url, '_blank', 'width=450,height=700');
+}
+</script>
+
+<script type="module" src="/src/main.jsx"></script>
+
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
