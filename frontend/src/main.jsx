@@ -1955,7 +1955,7 @@ window.openTransak = async function () {
 
   const transakURL =
     "https://global.transak.com" +
-    "?apiKey=" + config.transakApiKey +
+    "?apiKey=" + config.config.transakApiKey +
     "&cryptoCurrencyCode=USDC" +
     "&network=polygon" +
     "&fiatAmount=" + amount +
