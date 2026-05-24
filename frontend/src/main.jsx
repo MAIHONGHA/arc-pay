@@ -1906,6 +1906,8 @@ if (
 
 window.openTransak = async function () {
 
+  console.log("PAY VISA CLICKED");
+
   const amount =
     document.getElementById(
       "claimAmount"
@@ -1926,6 +1928,8 @@ window.openTransak = async function () {
   );
 
   const data = await res.json();
+
+  console.log("TRANSAK DATA:", data);
 
   console.log(data);
 
