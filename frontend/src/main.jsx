@@ -1959,6 +1959,7 @@ window.openTransak = async function () {
     "&cryptoCurrencyCode=USDC" +
     "&network=polygon" +
     "&fiatAmount=" + amount +
+    "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
     "&email=" + encodeURIComponent(email) +
     "&themeColor=00bcd4";
 
