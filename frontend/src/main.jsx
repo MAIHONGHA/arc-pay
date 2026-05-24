@@ -1949,7 +1949,9 @@ window.openTransak = async function () {
     return;
   }
 
-  const config = await fetch("/api/config").then((r) => r.json());
+  const config = await fetch("https://arc-pay-production.up.railway.app/api/config")
+  .then(r => r.json());
+  console.log("CONFIG FROM RAILWAY:", config);
 
   const transakURL =
     "https://global.transak.com" +
