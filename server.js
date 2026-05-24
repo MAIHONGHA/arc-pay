@@ -1031,6 +1031,7 @@ app.get("/api/config", (req, res) => {
     ok: true,
     config: {
       merchantAddress: MERCHANT_ADDRESS,
+      transakApiKey: process.env.TRANSAK_API_KEY,
       arcChainId: ARC_CHAIN_ID,
       arcChainIdHex: ARC_CHAIN_ID_HEX,
       arcChainName: ARC_CHAIN_NAME,
