@@ -328,9 +328,9 @@ window.openCardPayment = async function () {
   }
 
   const config = await fetch('/api/config').then(r => r.json());
-
+  const key = config.config.transakApiKey; 
   const url = 'https://global.transak.com' +
-    '?apiKey=' + config.transakApiKey +
+    '?apiKey=' + key +
     '&cryptoCurrencyCode=USDC' +
     '&network=polygon' +
     '&fiatAmount=' + amount +
