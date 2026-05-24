@@ -1852,7 +1852,7 @@ invoiceSheetEl?.addEventListener("touchend", () => {
 
 async function triggerDemoSendTestUSDC() {
   await fetch(
-    "http://localhost:3000/api/demo/send-test-usdc",
+    `${window.location.origin}/api/transak/widget-url`,
     {
       method: "POST",
       headers: {
@@ -1912,7 +1912,7 @@ window.openTransak = async function () {
     )?.value || "10";
 
   const res = await fetch(
-    "http://localhost:3000/api/transak/widget-url",
+    `${window.location.origin}/api/demo/send-test-usdc`,
     {
       method: "POST",
       headers: {
