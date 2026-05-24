@@ -36,7 +36,7 @@ globalThis.openCardPayment = window.openCardPayment = async function () {
   "&productsAvailed=BUY" +
   "&cryptoCurrencyCode=USDC" +
   "&defaultCryptoCurrency=USDC" +
-  "&network=base" +
+  "&network=ethereum" +
   "&fiatCurrency=USD" +
   "&fiatAmount=" + amount +
   "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
