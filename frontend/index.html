@@ -318,7 +318,7 @@
     </div>
 
 <script>
-async function openCardPayment() {
+window.openCardPayment = async function () {
   const email = document.getElementById('claimEmail')?.value || '';
   const amount = document.getElementById('claimAmount')?.value || '5';
 
