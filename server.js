@@ -1763,7 +1763,7 @@ app.post("/api/transak/widget-url", async (req, res) => {
         body: JSON.stringify({
           widgetParams: {
             apiKey: process.env.TRANSAK_API_KEY,
-            referrerDomain: "http://localhost:5173",
+            referrerDomain: "https://arc-pay-production.up.railway.app",
             productsAvailed: "BUY",
             fiatAmount: Number(amount) || 10,
             fiatCurrency: "USD",
@@ -1771,7 +1771,7 @@ app.post("/api/transak/widget-url", async (req, res) => {
             network: "polygon",
           walletAddress: process.env.ARCPAY_TREASURY_WALLET,
             paymentMethod: "credit_debit_card",
-            redirectURL: "http://localhost:5173/transak-return"
+            redirectURL: "https://arc-pay-production.up.railway.app/transak-return"
          }
        })
       }
