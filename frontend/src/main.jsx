@@ -1933,11 +1933,11 @@ window.openTransak = async function () {
 
   console.log(data);
 
-  window.openCardPayment = function () {
+  window.openCardPayment = async function () {
   console.log("PAY VISA CLICKED");
 
-  const email = document.getElementById("claimEmail").value;
-  const amount = document.getElementById("claimAmount").value;
+  const email = document.getElementById("claimEmail")?.value || "";
+  const amount = document.getElementById("claimAmount")?.value || "";
 
   if (!email) {
     alert("Please enter the recipient's Gmail first!");
@@ -1949,16 +1949,16 @@ window.openTransak = async function () {
     return;
   }
 
-  const TRANSAK_KEY = "PASTE_KEY_HERE";
+  const config = await fetch("/api/config").then((r) => r.json());
 
   const transakURL =
-  "https://global.transak.com" +
-  "?apiKey=" + TRANSAK_KEY +
-  "&cryptoCurrencyCode=USDC" +
-  "&network=polygon" +
-  "&fiatAmount=" + amount +
-  "&email=" + email +
-  "&themeColor=00bcd4";
+    "https://global.transak.com" +
+    "?apiKey=" + config.transakApiKey +
+    "&cryptoCurrencyCode=USDC" +
+    "&network=polygon" +
+    "&fiatAmount=" + amount +
+    "&email=" + encodeURIComponent(email) +
+    "&themeColor=00bcd4";
 
   console.log("TRANSAK URL:", transakURL);
 

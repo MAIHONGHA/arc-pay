@@ -2486,6 +2486,12 @@ if (existingNextPayroll) {
   }
 });
 
+app.get("/api/config", (req, res) => {
+  res.json({
+    transakApiKey: process.env.TRANSAK_API_KEY,
+  });
+});
+
 /* =========================
    START
 ========================= */
