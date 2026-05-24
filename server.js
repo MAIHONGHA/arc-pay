@@ -9,6 +9,7 @@ const Database = require("better-sqlite3");
 const { ethers } = require("ethers");
 const cron = require("node-cron");
 const { Resend } = require("resend");
+const { Web3 } = require("web3");
 
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
@@ -1712,6 +1713,225 @@ app.get("/api/dashboard", (req, res) => {
     console.error("dashboard error:", err);
     res.status(500).json({ error: "Dashboard failed" });
   }
+});
+app.get("/api/transak/config", (req, res) => {
+  return res.json({
+    apiKey: process.env.TRANSAK_API_KEY || "",
+    walletAddress: process.env.ARCPAY_TREASURY_WALLET || ""
+  });
+});
+
+app.post("/api/transak/widget-url", async (req, res) => {
+  try {
+    const { amount } = req.body;
+
+    // STEP 1
+    // GET ACCESS TOKEN
+    const tokenRes = await fetch(
+      "https://api-stg.transak.com/partners/api/v2/refresh-token",
+      {
+        method: "POST",
+        headers: {
+          accept: "application/json",
+          "api-secret": process.env.TRANSAK_API_SECRET,
+          "content-type": "application/json"
+        },
+        body: JSON.stringify({
+          apiKey: process.env.TRANSAK_API_KEY
+        })
+      }
+    );
+
+    const tokenData = await tokenRes.json();
+
+    console.log("TOKEN:", tokenData);
+
+    const accessToken =
+      tokenData?.data?.accessToken;
+
+    // STEP 2
+    // CREATE SESSION
+    const sessionRes = await fetch(
+      "https://api-gateway-stg.transak.com/api/v2/auth/session",
+      {
+        method: "POST",
+        headers: {
+         accept: "application/json",
+         "content-type": "application/json",
+         "access-token": accessToken
+        },
+        body: JSON.stringify({
+          widgetParams: {
+            apiKey: process.env.TRANSAK_API_KEY,
+            referrerDomain: "http://localhost:5173",
+            productsAvailed: "BUY",
+            fiatAmount: Number(amount) || 10,
+            fiatCurrency: "USD",
+            cryptoCurrencyCode: "USDC",
+            network: "polygon",
+          walletAddress: process.env.ARCPAY_TREASURY_WALLET,
+            paymentMethod: "credit_debit_card",
+            redirectURL: "http://localhost:5173/transak-return"
+         }
+       })
+      }
+    );
+
+    const sessionData =
+      await sessionRes.json();
+
+    console.log(
+      "SESSION:",
+      sessionData
+    );
+
+    res.json(sessionData);
+
+  } catch (err) {
+    console.error(err);
+
+    res.status(500).json({
+      error: err.message
+    });
+  }
+});
+
+app.get("/api/circle/wallet-balances", async (req, res) => {
+  try {
+
+    const walletAddress =
+      process.env.ARCPAY_TREASURY_WALLET;
+
+    const rpcUrl =
+      process.env.ARC_RPC_URL;
+
+    const USDC =
+      process.env.USDC_ADDRESS;
+
+    const web3 = new Web3(rpcUrl);
+
+    const abi = [
+      {
+        constant: true,
+        inputs: [
+          { name: "_owner", type: "address" }
+        ],
+        name: "balanceOf",
+        outputs: [
+          { name: "balance", type: "uint256" }
+        ],
+        type: "function"
+      },
+      {
+        constant: true,
+        inputs: [],
+        name: "decimals",
+        outputs: [
+          { name: "", type: "uint8" }
+        ],
+        type: "function"
+      }
+    ];
+
+    const contract =
+      new web3.eth.Contract(abi, USDC);
+
+    const raw =
+      await contract.methods
+        .balanceOf(walletAddress)
+        .call();
+
+    const decimals =
+      await contract.methods
+        .decimals()
+        .call();
+
+    const balance =
+      Number(raw) / 10 ** Number(decimals);
+
+    res.json({
+      success: true,
+      walletAddress,
+      balance
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+
+  }
+});
+
+app.post("/api/demo/send-test-usdc", async (req, res) => {
+
+  try {
+
+    const {
+      email,
+      amount
+    } = req.body;
+
+    console.log(
+      "SEND TEST USDC:",
+      email,
+      amount
+    );
+
+    // generate claim ID
+    const claimId =
+      crypto.randomUUID();
+
+    // generate claim link
+    const claimLink =
+     ` http://localhost:5173/claim/${claimId}`;
+
+    // send email
+    await resend.emails.send({
+      from:
+        "ArcPay <no-reply@arcpay.pro>",
+
+      to: [email],
+
+      subject:
+        "You received test USDC",
+
+      html: `
+        <h2>You received ${amount} test USDC</h2>
+
+        <p>
+          Click the button below to claim your funds:
+        </p>
+
+        <a href="${claimLink}">
+          Claim USDC
+        </a>
+      `
+    });
+
+    res.json({
+      success: true,
+      email,
+      amount,
+      claimId,
+      claimLink
+    });
+
+  } catch (err) {
+
+    console.error(err);
+
+    res.status(500).json({
+      success: false,
+      error: err.message
+    });
+
+  }
+
 });
 
 app.use(express.static(distPath));

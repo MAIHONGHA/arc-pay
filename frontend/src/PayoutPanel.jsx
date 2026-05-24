@@ -20,6 +20,23 @@ export default function PayoutPanel() {
     }
   }
 
+async function openTransak() {
+  const res = await fetch("/api/transak/config");
+  const data = await res.json();
+
+  const walletAddress = "0xYourWallet";
+
+  const url =
+    "https://global-stg.transak.com" +
+    `?apiKey=${data.apiKey}` +
+    "&cryptoCurrencyCode=USDC" +
+    "&fiatCurrency=USD" +
+    "&network=ethereum" +
+    `&walletAddress=${walletAddress}`;
+
+  window.open(url, "_blank");
+}
+
   async function approvePayout(id) {
     if (!confirm("Approve scheduled payout?")) return;
 
@@ -50,6 +67,10 @@ export default function PayoutPanel() {
 
       <button onClick={loadPayouts}>
         {loading ? "Loading..." : "Refresh"}
+      </button>
+
+      <button onClick={openTransak}>
+         Pay with Visa / Mastercard
       </button>
 
       <div style={{ marginTop: 12 }}>

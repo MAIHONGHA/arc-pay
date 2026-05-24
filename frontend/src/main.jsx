@@ -1850,6 +1850,112 @@ invoiceSheetEl?.addEventListener("touchend", () => {
   sheetCurrentY = 0;
 });
 
+async function triggerDemoSendTestUSDC() {
+  await fetch(
+    "http://localhost:3000/api/demo/send-test-usdc",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        email: document.getElementById("claimEmail")?.value,
+        amount: document.getElementById("claimAmount")?.value
+      })
+    }
+  );
+  const result = await res.json();
+
+alert("Payment success! Claim email sent.");
+
+if (result.claimLink) {
+  document.getElementById("claimResult").innerHTML = `
+    <p>Status: CLAIM EMAIL SENT ✅</p>
+    <a href="${result.claimLink}" target="_blank">Open Claim Page</a>
+    <p>${result.claimLink}</p>
+  `;
+}
+}
+
+if (
+  window.location.pathname ===
+  "/transak-return"
+) {
+
+  document.body.innerHTML = 
+    <div style="
+      font-family:sans-serif;
+      padding:40px;
+      text-align:center;
+    ">
+      <h2>
+        Payment completed
+      </h2>
+
+      <p>
+        You can close this window.
+      </p>
+    </div>
+  ;
+
+  setTimeout(() => {
+    window.close();
+  }, 1000);
+
+}
+
+window.openTransak = async function () {
+
+  const amount =
+    document.getElementById(
+      "claimAmount"
+    )?.value || "10";
+
+  const res = await fetch(
+    "http://localhost:3000/api/transak/widget-url",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type":
+          "application/json"
+      },
+      body: JSON.stringify({
+        amount
+      })
+    }
+  );
+
+  const data = await res.json();
+
+  console.log(data);
+
+  if (data?.data?.widgetUrl) {
+    const w = 460;
+const h = 760;
+const left = (window.screen.width - w) / 2;
+const top = (window.screen.height - h) / 2;
+
+window.open(
+  data.data.widgetUrl,
+  "TransakPopup",
+  `width=${w},height=${h},left=${left},top=${top}`
+);
+    setTimeout(async () => {
+
+  await triggerDemoSendTestUSDC();
+
+  alert("Payment success! Claim email sent.");
+
+  document.getElementById("claimEmail").value = "";
+  document.getElementById("claimAmount").value = "";
+  document.getElementById("claimMessage").value = "";
+
+}, 15000);
+  } else {
+    alert("Transak failed");
+  }
+};
+
 const payoutRoot = document.getElementById("payout-root");
 const payrollRoot = document.getElementById("payroll-anchor");
 
