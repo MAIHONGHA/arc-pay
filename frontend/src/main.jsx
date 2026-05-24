@@ -1933,7 +1933,7 @@ window.openTransak = async function () {
 
   console.log(data);
 
-  function openCardPayment() {
+  window.openCardPayment = function () {
 
   console.log("PAY VISA CLICKED");
 
