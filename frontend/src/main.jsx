@@ -9,6 +9,46 @@ import { Html5Qrcode } from "html5-qrcode";
 
 window.Web3 = Web3;
 
+globalThis.openCardPayment = window.openCardPayment = async function () {
+  console.log("openCardPayment ready:", typeof window.openCardPayment);  
+  console.log("PAY VISA CLICKED");
+
+  const email = document.getElementById("claimEmail")?.value || "";
+  const amount = document.getElementById("claimAmount")?.value || "";
+
+  if (!email) {
+    alert("Please enter the recipient's Gmail first!");
+    return;
+  }
+
+  if (!amount) {
+    alert("Please enter the amount first!");
+    return;
+  }
+
+  const config = await fetch("https://arc-pay-production.up.railway.app/api/config")
+  .then(r => r.json());
+  console.log("CONFIG FROM RAILWAY:", config);
+
+  const transakURL =
+  "https://global-stg.transak.com" +
+  "?apiKey=" + config.config.transakApiKey +
+  "&productsAvailed=BUY" +
+  "&cryptoCurrencyCode=USDC" +
+  "&defaultCryptoCurrency=USDC" +
+  "&network=base" +
+  "&fiatCurrency=USD" +
+  "&fiatAmount=" + amount +
+  "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
+  "&email=" + encodeURIComponent(email) +
+  "&themeColor=00bcd4";
+
+  console.log("TRANSAK URL:", transakURL);
+
+  window.open(transakURL, "_blank", "width=450,height=700");
+};
+
+
 const API_BASE = window.location.origin;
 
 const ARC_CHAIN_ID = 5042002;
@@ -1932,47 +1972,7 @@ window.openTransak = async function () {
   console.log("TRANSAK DATA:", data);
 
   console.log(data);
-
-  globalThis.openCardPayment = window.openCardPayment = async function () {
-  console.log("openCardPayment ready:", typeof window.openCardPayment);  
-  console.log("PAY VISA CLICKED");
-
-  const email = document.getElementById("claimEmail")?.value || "";
-  const amount = document.getElementById("claimAmount")?.value || "";
-
-  if (!email) {
-    alert("Please enter the recipient's Gmail first!");
-    return;
-  }
-
-  if (!amount) {
-    alert("Please enter the amount first!");
-    return;
-  }
-
-  const config = await fetch("https://arc-pay-production.up.railway.app/api/config")
-  .then(r => r.json());
-  console.log("CONFIG FROM RAILWAY:", config);
-
-  const transakURL =
-  "https://global-stg.transak.com" +
-  "?apiKey=" + config.config.transakApiKey +
-  "&productsAvailed=BUY" +
-  "&cryptoCurrencyCode=USDC" +
-  "&defaultCryptoCurrency=USDC" +
-  "&network=base" +
-  "&fiatCurrency=USD" +
-  "&fiatAmount=" + amount +
-  "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
-  "&email=" + encodeURIComponent(email) +
-  "&themeColor=00bcd4";
-
-  console.log("TRANSAK URL:", transakURL);
-
-  window.open(transakURL, "_blank", "width=450,height=700");
-};
 }
-
 console.log("GLOBAL openCardPayment:", typeof globalThis.openCardPayment);
 console.log("GLOBAL openCardPayment:", typeof window.openCardPayment);
 const payoutRoot = document.getElementById("payout-root");
