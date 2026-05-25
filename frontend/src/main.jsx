@@ -67,28 +67,29 @@ globalThis.openCardPayment = window.openCardPayment = function () {
     ;
 
     setTimeout(() => {
+  const closeBtn = document.getElementById("closeCardModal");
+  const continueBtn = document.getElementById("continueCardPayment");
 
-  document.getElementById("closeCardModal").onclick = () => {
-    modal.remove();
-  };
+  if (closeBtn) {
+    closeBtn.onclick = () => {
+      modal.remove();
+    };
+  }
 
-  document.getElementById("continueCardPayment").onclick = () => {
+  if (continueBtn) {
+    continueBtn.onclick = () => {
+      const email = document.getElementById("cardRecipientEmail")?.value || "";
+      const amount = document.getElementById("cardAmount")?.value || "";
 
-    const email =
-      document.getElementById("cardRecipientEmail").value;
+      alert(
+        "Payment Intent Created\n\n" +
+        "Recipient: " + email +
+        "\nAmount: $" + amount
+      );
 
-    const amount =
-      document.getElementById("cardAmount").value;
-
-    alert(
-      "Payment Intent Created\n\n" +
-      "Recipient: " + email +
-      "\nAmount: $" + amount
-    );
-
-    modal.remove();
-  };
-
+      modal.remove();
+    };
+  }
 }, 0);
 }
 };
@@ -1934,89 +1935,7 @@ invoiceSheetEl?.addEventListener("touchend", () => {
   sheetCurrentY = 0;
 });
 
-async function triggerDemoSendTestUSDC() {
-  await fetch(
-    `${window.location.origin}/api/transak/widget-url`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        email: document.getElementById("claimEmail")?.value,
-        amount: document.getElementById("claimAmount")?.value
-      })
-    }
-  );
-  const result = await res.json();
 
-alert("Payment success! Claim email sent.");
-
-if (result.claimLink) {
-  document.getElementById("claimResult").innerHTML = `
-    <p>Status: CLAIM EMAIL SENT ✅</p>
-    <a href="${result.claimLink}" target="_blank">Open Claim Page</a>
-    <p>${result.claimLink}</p>
-  `;
-}
-}
-
-if (
-  window.location.pathname ===
-  "/transak-return"
-) {
-
-  document.body.innerHTML = 
-    <div style="
-      font-family:sans-serif;
-      padding:40px;
-      text-align:center;
-    ">
-      <h2>
-        Payment completed
-      </h2>
-
-      <p>
-        You can close this window.
-      </p>
-    </div>
-  ;
-
-  setTimeout(() => {
-    window.close();
-  }, 1000);
-
-}
-
-window.openTransak = async function () {
-
-  console.log("PAY VISA CLICKED");
-
-  const amount =
-    document.getElementById(
-      "claimAmount"
-    )?.value || "10";
-
-  const res = await fetch(
-    `${window.location.origin}/api/demo/send-test-usdc`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type":
-          "application/json"
-      },
-      body: JSON.stringify({
-        amount
-      })
-    }
-  );
-
-  const data = await res.json();
-
-  console.log("TRANSAK DATA:", data);
-
-  console.log(data);
-}
 console.log("GLOBAL openCardPayment:", typeof globalThis.openCardPayment);
 console.log("GLOBAL openCardPayment:", typeof window.openCardPayment);
 const payoutRoot = document.getElementById("payout-root");
