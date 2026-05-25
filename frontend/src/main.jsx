@@ -46,10 +46,29 @@ globalThis.openCardPayment = window.openCardPayment = function () {
       modal.style.display = "none";
     });
 
-    document.getElementById("continueCardPayment")?.addEventListener("click", () => {
-      alert("Payment Intent Created");
-      modal.style.display = "none";
-    });
+    document.getElementById("continueCardPayment")?.addEventListener("click", async () => {
+  const email = document.getElementById("cardRecipientEmail")?.value || "";
+  const amount = document.getElementById("cardAmount")?.value || "";
+
+  if (!email) {
+    alert("Please enter recipient Gmail");
+    return;
+  }
+
+  if (!amount) {
+    alert("Please enter amount");
+    return;
+  }
+
+  alert(
+    "Card payment intent created\n\n" +
+    "Recipient: " + email +
+    "\nAmount: $" + amount +
+    "\n\nNext: Circle card processing will connect here."
+  );
+
+  modal.style.display = "none";
+});
   }, 0);
 };
 
