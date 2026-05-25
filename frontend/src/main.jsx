@@ -48,11 +48,16 @@ globalThis.openCardPayment = window.openCardPayment = function () {
     document.body.appendChild(modal);
   }
 
-  document.getElementById("cardRecipientEmail").value =
-    document.getElementById("claimEmail")?.value || "";
+  const cardEmailInput = document.getElementById("cardRecipientEmail");
+const cardAmountInput = document.getElementById("cardAmount");
 
-  document.getElementById("cardAmount").value =
-    document.getElementById("claimAmount")?.value || "";
+if (cardEmailInput) {
+  cardEmailInput.value = document.getElementById("claimEmail")?.value || "";
+}
+
+if (cardAmountInput) {
+  cardAmountInput.value = document.getElementById("claimAmount")?.value || "";
+}
 
   modal.style.display = "flex";
 
