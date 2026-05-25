@@ -9,45 +9,87 @@ import { Html5Qrcode } from "html5-qrcode";
 
 window.Web3 = Web3;
 
-globalThis.openCardPayment = window.openCardPayment = async function () {
-  console.log("openCardPayment ready:", typeof window.openCardPayment);  
-  console.log("PAY VISA CLICKED");
+globalThis.openCardPayment = window.openCardPayment = function () {
 
-  const email = document.getElementById("claimEmail")?.value || "";
-  const amount = document.getElementById("claimAmount")?.value || "";
+  let modal = document.getElementById("cardCheckoutModal");
 
-  if (!email) {
-    alert("Please enter the recipient's Gmail first!");
-    return;
+  if (!modal) {
+    modal = document.createElement("div");
+
+    modal.id = "cardCheckoutModal";
+
+    modal.innerHTML = 
+      <div style="
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.7);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        z-index:9999;
+      ">
+        <div style="
+          width:380px;
+          background:#0f172a;
+          color:white;
+          padding:24px;
+          border-radius:20px;
+        ">
+          <h2>ArcPay Checkout</h2>
+
+          <input
+            id="cardRecipientEmail"
+            placeholder="Recipient Gmail"
+            style="width:100%;padding:12px;margin-top:12px;"
+          />
+
+          <input
+            id="cardAmount"
+            placeholder="Amount USD"
+            style="width:100%;padding:12px;margin-top:12px;"
+          />
+
+          <button
+            id="continueCardPayment"
+            style="width:100%;padding:12px;margin-top:16px;background:#22c55e;border:0;border-radius:10px;"
+          >
+            Continue
+          </button>
+
+          <button
+            id="closeCardModal"
+            style="width:100%;padding:10px;margin-top:10px;background:#334155;border:0;border-radius:10px;color:white;"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ;
+
+    document.body.appendChild(modal);
+
+    document.getElementById("closeCardModal").onclick = () => {
+      modal.remove();
+    };
+
+    document.getElementById("continueCardPayment").onclick = () => {
+
+      const email =
+        document.getElementById("cardRecipientEmail").value;
+
+      const amount =
+        document.getElementById("cardAmount").value;
+
+      alert(
+        "Payment Intent Created\\n\\n" +
+        "Recipient: " + email +
+        "\\nAmount: $" + amount
+      );
+
+      modal.remove();
+    };
   }
-
-  if (!amount) {
-    alert("Please enter the amount first!");
-    return;
-  }
-
-  const config = await fetch("https://arc-pay-production.up.railway.app/api/config")
-  .then(r => r.json());
-  console.log("CONFIG FROM RAILWAY:", config);
-
-  const transakURL =
-  "https://global-stg.transak.com" +
-  "?apiKey=" + config.config.transakApiKey +
-  "&productsAvailed=BUY" +
-  "&cryptoCurrencyCode=USDC" +
-  "&defaultCryptoCurrency=USDC" +
-  "&network=ethereum" +
-  "&fiatCurrency=USD" +
-  "&fiatAmount=" + amount +
-  "&walletAddress=0xa59615ffe6cabcdcbcff586c75efd12d2f7dd9f6" +
-  "&email=" + encodeURIComponent(email) +
-  "&themeColor=00bcd4";
-
-  console.log("TRANSAK URL:", transakURL);
-
-  window.open(transakURL, "_blank", "width=450,height=700");
 };
-
 
 const API_BASE = window.location.origin;
 
