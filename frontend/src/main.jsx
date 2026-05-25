@@ -48,17 +48,6 @@ globalThis.openCardPayment = window.openCardPayment = function () {
     document.body.appendChild(modal);
   }
 
-  const cardEmailInput = document.getElementById("cardRecipientEmail");
-const cardAmountInput = document.getElementById("cardAmount");
-
-if (cardEmailInput) {
-  cardEmailInput.value = document.getElementById("claimEmail")?.value || "";
-}
-
-if (cardAmountInput) {
-  cardAmountInput.value = document.getElementById("claimAmount")?.value || "";
-}
-
   modal.style.display = "flex";
 
   document.getElementById("closeCardModal").onclick = () => {
