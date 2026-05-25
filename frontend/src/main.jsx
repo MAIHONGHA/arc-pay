@@ -10,88 +10,48 @@ import { Html5Qrcode } from "html5-qrcode";
 window.Web3 = Web3;
 
 globalThis.openCardPayment = window.openCardPayment = function () {
+  alert("Pay with Card clicked");
 
   let modal = document.getElementById("cardCheckoutModal");
 
   if (!modal) {
     modal = document.createElement("div");
-
     modal.id = "cardCheckoutModal";
+    modal.style.cssText = `
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.75);
+      z-index: 999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
 
     modal.innerHTML = 
-      <div style="
-        position:fixed;
-        inset:0;
-        background:rgba(0,0,0,.7);
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        z-index:9999;
-      ">
-        <div style="
-          width:380px;
-          background:#0f172a;
-          color:white;
-          padding:24px;
-          border-radius:20px;
-        ">
-          <h2>ArcPay Checkout</h2>
-
-          <input
-            id="cardRecipientEmail"
-            placeholder="Recipient Gmail"
-            style="width:100%;padding:12px;margin-top:12px;"
-          />
-
-          <input
-            id="cardAmount"
-            placeholder="Amount USD"
-            style="width:100%;padding:12px;margin-top:12px;"
-          />
-
-          <button
-            id="continueCardPayment"
-            style="width:100%;padding:12px;margin-top:16px;background:#22c55e;border:0;border-radius:10px;"
-          >
-            Continue
-          </button>
-
-          <button
-            id="closeCardModal"
-            style="width:100%;padding:10px;margin-top:10px;background:#334155;border:0;border-radius:10px;color:white;"
-          >
-            Cancel
-          </button>
-        </div>
+      <div style="width:380px;background:#0f172a;color:white;padding:24px;border-radius:20px;">
+        <h2>ArcPay Checkout</h2>
+        <input id="cardRecipientEmail" placeholder="Recipient Gmail" style="width:100%;padding:12px;margin-top:12px;" />
+        <input id="cardAmount" placeholder="Amount USD" style="width:100%;padding:12px;margin-top:12px;" />
+        <button id="continueCardPayment" style="width:100%;padding:12px;margin-top:16px;">Continue</button>
+        <button id="closeCardModal" style="width:100%;padding:10px;margin-top:10px;">Cancel</button>
       </div>
     ;
 
-    setTimeout(() => {
-  const closeBtn = document.getElementById("closeCardModal");
-  const continueBtn = document.getElementById("continueCardPayment");
-
-  if (closeBtn) {
-    closeBtn.onclick = () => {
-      modal.remove();
-    };
+    document.body.appendChild(modal);
   }
 
-  if (continueBtn) {
-    continueBtn.onclick = () => {
-      const email = document.getElementById("cardRecipientEmail")?.value || "";
-      const amount = document.getElementById("cardAmount")?.value || "";
+  modal.style.display = "flex";
 
-      alert(
-        "Payment Intent Created\n\n" +
-        "Recipient: " + email +
-        "\nAmount: $" + amount
-      );
+  setTimeout(() => {
+    document.getElementById("closeCardModal")?.addEventListener("click", () => {
+      modal.style.display = "none";
+    });
 
-      modal.remove();
-    };
-  }
-}, 0);
-}
+    document.getElementById("continueCardPayment")?.addEventListener("click", () => {
+      alert("Payment Intent Created");
+      modal.style.display = "none";
+    });
+  }, 0);
 };
 
 const API_BASE = window.location.origin;
