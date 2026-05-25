@@ -10,7 +10,6 @@ import { Html5Qrcode } from "html5-qrcode";
 window.Web3 = Web3;
 
 globalThis.openCardPayment = window.openCardPayment = function () {
-  alert("Pay with Card clicked");
 
   let modal = document.getElementById("cardCheckoutModal");
 
