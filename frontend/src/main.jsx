@@ -66,29 +66,31 @@ globalThis.openCardPayment = window.openCardPayment = function () {
       </div>
     ;
 
-    document.body.appendChild(modal);
+    setTimeout(() => {
 
-    document.getElementById("closeCardModal").onclick = () => {
-      modal.remove();
-    };
+  document.getElementById("closeCardModal").onclick = () => {
+    modal.remove();
+  };
 
-    document.getElementById("continueCardPayment").onclick = () => {
+  document.getElementById("continueCardPayment").onclick = () => {
 
-      const email =
-        document.getElementById("cardRecipientEmail").value;
+    const email =
+      document.getElementById("cardRecipientEmail").value;
 
-      const amount =
-        document.getElementById("cardAmount").value;
+    const amount =
+      document.getElementById("cardAmount").value;
 
-      alert(
-        "Payment Intent Created\\n\\n" +
-        "Recipient: " + email +
-        "\\nAmount: $" + amount
-      );
+    alert(
+      "Payment Intent Created\n\n" +
+      "Recipient: " + email +
+      "\nAmount: $" + amount
+    );
 
-      modal.remove();
-    };
-  }
+    modal.remove();
+  };
+
+}, 0);
+}
 };
 
 const API_BASE = window.location.origin;
