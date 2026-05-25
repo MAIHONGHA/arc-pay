@@ -50,11 +50,17 @@ globalThis.openCardPayment = window.openCardPayment = function () {
 
   modal.style.display = "flex";
 
-  document.getElementById("closeCardModal").onclick = () => {
+  const closeBtn = document.getElementById("closeCardModal");
+const continueBtn = document.getElementById("continueCardPayment");
+
+if (closeBtn) {
+  closeBtn.onclick = () => {
     modal.style.display = "none";
   };
+}
 
-  document.getElementById("continueCardPayment").onclick = () => {
+if (continueBtn) {
+  continueBtn.onclick = () => {
     const email = document.getElementById("cardRecipientEmail")?.value || "";
     const amount = document.getElementById("cardAmount")?.value || "";
 
@@ -66,6 +72,7 @@ globalThis.openCardPayment = window.openCardPayment = function () {
 
     modal.style.display = "none";
   };
+}
 };
 
 const API_BASE = window.location.origin;
