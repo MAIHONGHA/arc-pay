@@ -1070,17 +1070,8 @@ app.post("/api/card-payment-intent", async (req, res) => {
     const transakUrl =
       "https://global-stg.transak.com" +
       "?apiKey=" + encodeURIComponent(process.env.TRANSAK_API_KEY) +
-      "&productsAvailed=BUY" +
-      "&cryptoCurrencyCode=USDC" +
-      "&defaultCryptoCurrency=USDC" +
-      "&network=polygon" +
-      "&fiatCurrency=USD" +
-      "&fiatAmount=" + encodeURIComponent(amount) +
-      "&walletAddress=" + encodeURIComponent(walletAddress) +
-      "&email=" + encodeURIComponent(recipientEmail) +
-      "&themeColor=00bcd4" +
-      "&partnerOrderId=" + encodeURIComponent(paymentId);
-
+      "&productsAvailed=BUY"; 
+      
     return res.json({
       ok: true,
       paymentId,
