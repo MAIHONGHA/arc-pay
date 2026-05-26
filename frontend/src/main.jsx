@@ -26,7 +26,7 @@ globalThis.openCardPayment = window.openCardPayment = function () {
       justify-content: center;
     `;
 
-    modal.innerHTML = 
+    modal.innerHTML = `
       <div style="width:380px;background:white;color:#111827;padding:24px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);">
         <h2 style="margin-top:0;">ArcPay Checkout</h2>
         <p>Pay with Visa / MasterCard</p>
@@ -43,7 +43,7 @@ globalThis.openCardPayment = window.openCardPayment = function () {
           Cancel
         </button>
       </div>
-    ;
+    `;
 
     document.body.appendChild(modal);
   }
@@ -607,12 +607,8 @@ async function handleGoogleRedirect() {
       emailEl.textContent = savedUser.email;
     }
 
-    const savedToken = localStorage.getItem("circleUserToken");
-    if (savedToken) {
-      try {
-        await loadCircleWallet(savedToken);
-      } catch {}
-    }
+    // Do not auto-load Circle wallet with old token.
+   // User must click Login Google / Setup Circle PIN to refresh token.
 
     return;
   }
