@@ -1068,10 +1068,10 @@ app.post("/api/card-payment-intent", async (req, res) => {
       MERCHANT_ADDRESS;
 
     const transakUrl =
-      "https://global-stg.transak.com" +
+      "https://global.transak.com" +
       "?apiKey=" + encodeURIComponent(process.env.TRANSAK_API_KEY) +
       "&productsAvailed=BUY"; 
-      
+
     return res.json({
       ok: true,
       paymentId,
