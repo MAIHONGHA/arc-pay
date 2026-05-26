@@ -33,7 +33,7 @@ const GOOGLE_CLIENT_ID = String(process.env.GOOGLE_CLIENT_ID || "");
 const CIRCLE_APP_ID = String(process.env.CIRCLE_APP_ID || "");
 
 const CIRCLE_API_KEY = String(
-  process.env.CIRCLE_WALLET_KEY ||
+  process.env.CIRCLE_API_KEY ||
     process.env.CIRCLE_API_KEY ||
     ""
 );
@@ -967,7 +967,7 @@ function requireCircle(res) {
   if (!CIRCLE_API_KEY) {
     res.status(500).json({
       ok: false,
-      error: "Missing CIRCLE_WALLET_KEY or CIRCLE_API_KEY in .env"
+      error: "Missing CIRCLE_API_KEY in .env"
     });
     return false;
   }
