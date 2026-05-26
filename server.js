@@ -1043,6 +1043,57 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+app.post("/api/card-payment-intent", async (req, res) => {
+  try {
+    const { recipientEmail, amount } = req.body;
+
+    if (!recipientEmail || !amount) {
+      return res.status(400).json({
+        ok: false,
+        error: "recipientEmail and amount are required"
+      });
+    }
+
+    if (!process.env.TRANSAK_API_KEY) {
+      return res.status(500).json({
+        ok: false,
+        error: "Missing TRANSAK_API_KEY"
+      });
+    }
+
+    const paymentId = crypto.randomUUID();
+
+    const walletAddress =
+      process.env.ARCPAY_TREASURY_WALLET ||
+      MERCHANT_ADDRESS;
+
+    const transakUrl =
+      "https://global-stg.transak.com" +
+      "?apiKey=" + encodeURIComponent(process.env.TRANSAK_API_KEY) +
+      "&productsAvailed=BUY" +
+      "&cryptoCurrencyCode=USDC" +
+      "&defaultCryptoCurrency=USDC" +
+      "&network=base" +
+      "&fiatCurrency=USD" +
+      "&fiatAmount=" + encodeURIComponent(amount) +
+      "&walletAddress=" + encodeURIComponent(walletAddress) +
+      "&email=" + encodeURIComponent(recipientEmail) +
+      "&themeColor=00bcd4" +
+      "&partnerOrderId=" + encodeURIComponent(paymentId);
+
+    return res.json({
+      ok: true,
+      paymentId,
+      transakUrl
+    });
+  } catch (err) {
+    return res.status(500).json({
+      ok: false,
+      error: err.message
+    });
+  }
+});
+
 app.get("/api/circle/config", (req, res) => {
   res.json({
     ok: true,

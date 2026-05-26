@@ -60,18 +60,37 @@ if (closeBtn) {
 }
 
 if (continueBtn) {
-  continueBtn.onclick = () => {
-    const email = document.getElementById("cardRecipientEmail")?.value || "";
-    const amount = document.getElementById("cardAmount")?.value || "";
+  continueBtn.onclick = async () => {
+  const email = document.getElementById("cardRecipientEmail")?.value || "";
+  const amount = document.getElementById("cardAmount")?.value || "";
 
-    alert(
-      "Card payment intent created\n\n" +
-      "Recipient: " + email +
-      "\nAmount: $" + amount
-    );
+  if (!email || !amount) {
+    alert("Please enter recipient Gmail and amount.");
+    return;
+  }
 
-    modal.style.display = "none";
-  };
+  const res = await fetch("/api/card-payment-intent", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      recipientEmail: email,
+      amount
+    })
+  });
+
+  const data = await res.json();
+
+  if (!data.ok) {
+    alert(data.error || "Create card payment failed");
+    return;
+  }
+
+  window.open(data.transakUrl, "_blank", "width=450,height=700");
+
+  modal.style.display = "none";
+};
 }
 };
 
