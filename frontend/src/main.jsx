@@ -7,6 +7,7 @@ import Web3 from "web3";
 import PayrollPanel from "./PayrollPanel.jsx";
 import { Html5Qrcode } from "html5-qrcode";
 
+
 window.Web3 = Web3;
 
 globalThis.openCardPayment = window.openCardPayment = function () {
@@ -1061,7 +1062,7 @@ function renderSelectedInvoice() {
 async function connectMetaMask() {
   try {
     if (!window.ethereum) {
-      setStatus("Install MetaMask first.", "error");
+      setStatus("Install a Web3 wallet first.", "error");
       return;
     }
 
@@ -1072,7 +1073,7 @@ async function connectMetaMask() {
     metamaskWallet = accounts[0] || null;
     metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
 
-    setStatus("MetaMask connected.", "success");
+    setStatus("Wallet connected.", "success");
   } catch (err) {
     setStatus("MetaMask connect failed: " + err.message, "error");
   }
@@ -1124,7 +1125,7 @@ async function switchArc() {
 async function payWithMetaMask() {
   try {
     if (!window.ethereum) {
-      setStatus("Install MetaMask first.", "error");
+      setStatus("Install a Web3 wallet first.", "error");
       return;
     }
 
@@ -1133,7 +1134,7 @@ async function payWithMetaMask() {
     }
 
     if (!metamaskWallet) {
-      setStatus("Connect MetaMask first.", "error");
+      setStatus("Connect wallet first.", "error");
       return;
     }
 
