@@ -1804,35 +1804,7 @@ btnConnectWallet?.addEventListener("click", connectMetaMask);
 btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
 btnSwitchArc?.addEventListener("click", switchArc);
 btnPay?.addEventListener("click", async () => {
-  const provider = walletProviderEl?.value;
-
-  if (!provider) {
-    setStatus("Please choose a wallet.", "error");
-    return;
-  }
-
-  if (provider === "circle") {
-    await payWithCircleWallet();
-    return;
-  }
-
-  if (provider === "metamask") {
-    await payWithMetaMask();
-    return;
-  }
-
-  if (provider === "okx") {
-    setStatus("OKX Wallet integration coming soon.", "error");
-    return;
-  }
-
-  if (provider === "coinbase") {
-    setStatus("Coinbase Wallet integration coming soon.", "error");
-    return;
-  }
-
-  setStatus("Please choose a supported wallet.", "error");
-  return;
+  await payWithMetaMask();
 });
 
 
