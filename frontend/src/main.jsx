@@ -1000,20 +1000,12 @@ if (copyRecipientBtn) {
 }
 
   if (payBtn) {
-  payBtn.onclick = async () => {
-    const circleWallet = circleWalletEl?.textContent?.trim();
+  payBtn.onclick = () => {
+    walletModalMode = "pay";
 
-    if (circleWallet && circleWallet !== "-") {
-      await payWithCircleWallet();
-      return;
-    }
-
-    if (metamaskWallet) {
-      await payWithMetaMask();
-      return;
-    }
-
-    setStatus("Login Google or connect wallet first.", "error");
+    document
+      .getElementById("walletModal")
+      ?.classList.remove("hidden");
   };
 }
 }

@@ -41,31 +41,6 @@
               <button id="btnGoogle">Login Google</button>
               <button id="btnConnectWallet">Connect Wallet</button>
 
-<div id="walletModal" class="wallet-modal hidden">
-  <div class="wallet-modal-card">
-    <h3>Choose Payment Wallet</h3>
-    
-    <button id="btnChooseCircle">Circle Wallet</button>
-    <button id="btnChooseMetaMask">MetaMask</button>
-    <button id="btnChooseOKX">OKX Wallet</button>
-    <button id="btnChooseCoinbase">Coinbase Wallet</button>
-
-    <button id="btnCloseWalletModal" class="secondary">Cancel</button>
-  </div>
-</div>
-
-              <!--
-<div class="mini-box wallet-selector-box">
-  <span>Pay With</span>
-  <select id="walletProvider">
-    <option value="metamask">MetaMask</option>
-    <option value="okx">OKX Wallet</option>
-    <option value="coinbase">Coinbase Wallet</option>
-    <option value="circle">Circle Wallet</option>
-  </select>
-</div>
--->
-
               <button id="btnPay">Pay Invoice</button>
               <button id="btnScanQR" class="secondary">Scan QR</button>
             </div>
@@ -322,6 +297,19 @@
         </div>
       </div>
     </div>
+
+<div id="walletModal" class="wallet-modal hidden">
+  <div class="wallet-modal-card">
+    <h3>Choose Payment Wallet</h3>
+    
+    <button id="btnChooseCircle">Circle Wallet</button>
+    <button id="btnChooseMetaMask">MetaMask</button>
+    <button id="btnChooseOKX">OKX Wallet</button>
+    <button id="btnChooseCoinbase">Coinbase Wallet</button>
+
+    <button id="btnCloseWalletModal" class="secondary">Cancel</button>
+  </div>
+</div>
 
     <div id="qrScannerModal" class="invoice-modal hidden">
       <div class="invoice-modal-content">

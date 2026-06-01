@@ -1379,3 +1379,22 @@ pre {
 .wallet-modal-card button{
   width:100%;
 }
+
+.wallet-modal {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483647 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+}
+
+.wallet-modal.hidden {
+  display: none !important;
+}
+
+.wallet-modal-card {
+  position: relative !important;
+  z-index: 2147483647 !important;
+}
