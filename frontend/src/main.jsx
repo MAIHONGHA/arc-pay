@@ -1001,7 +1001,19 @@ if (copyRecipientBtn) {
 
   if (payBtn) {
   payBtn.onclick = async () => {
-    await payWithMetaMask();
+    const circleWallet = circleWalletEl?.textContent?.trim();
+
+    if (circleWallet && circleWallet !== "-") {
+      await payWithCircleWallet();
+      return;
+    }
+
+    if (metamaskWallet) {
+      await payWithMetaMask();
+      return;
+    }
+
+    setStatus("Login Google or connect wallet first.", "error");
   };
 }
 }
@@ -1778,11 +1790,55 @@ btnSaveBiz?.addEventListener("click", saveBusinessProfile);
 
 btnGoogle?.addEventListener("click", connectGoogleCircle);
 btnSetupPin?.addEventListener("click", setupCirclePin);
-btnConnectWallet?.addEventListener("click", connectMetaMask);
+btnConnectWallet?.addEventListener("click", () => {
+  document.getElementById("walletModal")
+    ?.classList.remove("hidden");
+});
 btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
+document.getElementById("btnCloseWalletModal")
+  ?.addEventListener("click", () => {
+    document.getElementById("walletModal")
+      ?.classList.add("hidden");
+});
+
+document.getElementById("btnChooseMetaMask")
+  ?.addEventListener("click", async () => {
+    document.getElementById("walletModal")
+      ?.classList.add("hidden");
+
+    await connectMetaMask();
+});
+
+document.getElementById("btnChooseOKX")
+  ?.addEventListener("click", () => {
+    document.getElementById("walletModal")
+      ?.classList.add("hidden");
+
+    setStatus("OKX Wallet coming soon.", "success");
+});
+
+document.getElementById("btnChooseCoinbase")
+  ?.addEventListener("click", () => {
+    document.getElementById("walletModal")
+      ?.classList.add("hidden");
+
+    setStatus("Coinbase Wallet coming soon.", "success");
+});
 btnSwitchArc?.addEventListener("click", switchArc);
 btnPay?.addEventListener("click", async () => {
-  await payWithMetaMask();
+  const circleWallet = circleWalletEl?.textContent?.trim();
+
+  if (circleWallet && circleWallet !== "-") {
+    await payWithCircleWallet();
+    return;
+  }
+
+  if (metamaskWallet) {
+    await payWithMetaMask();
+    return;
+  }
+
+  setStatus("Login Google or connect wallet first.", "error");
 });
 
 
