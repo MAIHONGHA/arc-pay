@@ -1824,21 +1824,22 @@ document.getElementById("btnChooseCoinbase")
 
     setStatus("Coinbase Wallet coming soon.", "success");
 });
+
+document.getElementById("btnChooseCircle")
+?.addEventListener("click", async () => {
+
+  document.getElementById("walletModal")
+    ?.classList.add("hidden");
+
+  await payWithCircleWallet();
+
+});
+
 btnSwitchArc?.addEventListener("click", switchArc);
-btnPay?.addEventListener("click", async () => {
-  const circleWallet = circleWalletEl?.textContent?.trim();
-
-  if (circleWallet && circleWallet !== "-") {
-    await payWithCircleWallet();
-    return;
-  }
-
-  if (metamaskWallet) {
-    await payWithMetaMask();
-    return;
-  }
-
-  setStatus("Login Google or connect wallet first.", "error");
+btnPay?.addEventListener("click", () => {
+  document
+    .getElementById("walletModal")
+    ?.classList.remove("hidden");
 });
 
 
