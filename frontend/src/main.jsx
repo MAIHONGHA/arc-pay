@@ -1791,8 +1791,13 @@ btnSaveBiz?.addEventListener("click", saveBusinessProfile);
 btnGoogle?.addEventListener("click", connectGoogleCircle);
 btnSetupPin?.addEventListener("click", setupCirclePin);
 btnConnectWallet?.addEventListener("click", () => {
-  document.getElementById("walletModal")
+
+  walletModalMode = "connect";
+
+  document
+    .getElementById("walletModal")
     ?.classList.remove("hidden");
+
 });
 btnDisconnectWallet?.addEventListener("click", disconnectMetaMask);
 document.getElementById("btnCloseWalletModal")
@@ -1801,13 +1806,22 @@ document.getElementById("btnCloseWalletModal")
       ?.classList.add("hidden");
 });
 
-document.getElementById("btnChooseMetaMask")
+let walletModalMode = "connect";
+
+document
+  .getElementById("btnChooseMetaMask")
   ?.addEventListener("click", async () => {
-    document.getElementById("walletModal")
+    document
+      .getElementById("walletModal")
       ?.classList.add("hidden");
 
+    if (walletModalMode === "pay") {
+      await payWithMetaMask();
+      return;
+    }
+
     await connectMetaMask();
-});
+  });
 
 document.getElementById("btnChooseOKX")
   ?.addEventListener("click", () => {
@@ -1825,18 +1839,25 @@ document.getElementById("btnChooseCoinbase")
     setStatus("Coinbase Wallet coming soon.", "success");
 });
 
-document.getElementById("btnChooseCircle")
-?.addEventListener("click", async () => {
+document
+  .getElementById("btnChooseCircle")
+  ?.addEventListener("click", async () => {
+    document
+      .getElementById("walletModal")
+      ?.classList.add("hidden");
 
-  document.getElementById("walletModal")
-    ?.classList.add("hidden");
+    if (walletModalMode === "pay") {
+      await payWithCircleWallet();
+      return;
+    }
 
-  await payWithCircleWallet();
-
-});
+    await connectGoogleCircle();
+  });
 
 btnSwitchArc?.addEventListener("click", switchArc);
 btnPay?.addEventListener("click", () => {
+  walletModalMode = "pay";
+
   document
     .getElementById("walletModal")
     ?.classList.remove("hidden");
