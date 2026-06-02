@@ -1965,6 +1965,24 @@ app.post("/api/withdrawals/:id/status", (req, res) => {
       WHERE id = ?
     `).run(status, id);
 
+const row = db.prepare("SELECT * FROM withdrawals WHERE id = ?").get(id);
+
+await resend.emails.send({
+  from: "ArcPay <no-reply@arcpay.pro>",
+  to: [row.email],
+  subject: `ArcPay withdrawal ${status}`,
+  html: `
+    <h2>Withdrawal ${status}</h2>
+    <p>Your bank withdrawal request is now <b>${status}</b>.</p>
+    <ul>
+      <li>Amount: ${row.amount} USDC</li>
+      <li>Bank: ${row.bank_name}</li>
+      <li>Account: ${row.account_number}</li>
+      <li>Holder: ${row.account_holder}</li>
+    </ul>
+  `
+});
+
     res.json({
       success: true,
       withdrawalId: id,
