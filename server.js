@@ -2416,6 +2416,33 @@ app.get("/api/withdrawals", (req, res) => {
   res.json(rows);
 });
 
+app.post("/api/withdrawals/:id/status", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowed = ["PENDING", "REVIEW", "APPROVED", "COMPLETED", "REJECTED"];
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: "Invalid withdrawal status" });
+    }
+
+    db.prepare(`
+      UPDATE withdrawals
+      SET status = ?
+      WHERE id = ?
+    `).run(status, id);
+
+    res.json({
+      success: true,
+      withdrawalId: id,
+      status
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/claims/:id/claim", async (req, res) => {
   try {
     const { walletAddress } = req.body;
