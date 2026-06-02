@@ -536,18 +536,16 @@ An,an@test.com,0xdef...,80,0`}
      📄 Download Payslip
     </a>
 
+    <button
+      onClick={() => sendPayslip(item)}
+      style={{ marginLeft: 8 }}
+    >
+      📧 Email Payslip
+    </button>
+
     {item.status !== "PAID" && (
       <button onClick={() => editPayrollItem(item)}>
         Edit
-      </button>
-    )}
-
-    {item.status === "PAID" && (
-      <button
-        onClick={() => sendPayslip(item)}
-        style={{ marginLeft: 8 }}
-      >
-        Send Payslip
       </button>
     )}
 
