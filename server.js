@@ -186,6 +186,20 @@ db.prepare(`
   )
 `).run();
 
+db.prepare(`
+CREATE TABLE IF NOT EXISTS withdrawals (
+  id TEXT PRIMARY KEY,
+  email TEXT,
+  amount REAL,
+  country TEXT,
+  bank_name TEXT,
+  account_holder TEXT,
+  account_number TEXT,
+  status TEXT,
+  created_at TEXT
+)
+`).run();
+
 // payroll batches
 db.prepare(`
   CREATE TABLE IF NOT EXISTS payroll_batches (
@@ -2347,6 +2361,59 @@ app.get("/api/claims/:id", (req, res) => {
   }
 
   res.json({ claim });
+});
+
+app.post("/api/withdrawals", (req, res) => {
+  const {
+    email,
+    amount,
+    country,
+    bankName,
+    accountHolder,
+    accountNumber
+  } = req.body;
+
+  const id = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO withdrawals (
+      id,
+      email,
+      amount,
+      country,
+      bank_name,
+      account_holder,
+      account_number,
+      status,
+      created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    email,
+    amount,
+    country,
+    bankName,
+    accountHolder,
+    accountNumber,
+    "PENDING",
+    new Date().toISOString()
+  );
+
+  res.json({
+    success: true,
+    withdrawalId: id
+  });
+});
+
+app.get("/api/withdrawals", (req, res) => {
+  const rows = db.prepare(`
+    SELECT *
+    FROM withdrawals
+    ORDER BY created_at DESC
+  `).all();
+
+  res.json(rows);
 });
 
 app.post("/api/claims/:id/claim", async (req, res) => {
