@@ -1895,6 +1895,86 @@ app.post("/api/circle/transactions", async (req, res) => {
   }
 });
 
+app.post("/api/withdrawals", (req, res) => {
+  const {
+    email,
+    amount,
+    country,
+    bankName,
+    accountHolder,
+    accountNumber
+  } = req.body;
+
+  const id = crypto.randomUUID();
+
+  db.prepare(`
+    INSERT INTO withdrawals (
+      id,
+      email,
+      amount,
+      country,
+      bank_name,
+      account_holder,
+      account_number,
+      status,
+      created_at
+    )
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(
+    id,
+    email,
+    amount,
+    country,
+    bankName,
+    accountHolder,
+    accountNumber,
+    "PENDING",
+    new Date().toISOString()
+  );
+
+  res.json({
+    success: true,
+    withdrawalId: id
+  });
+});
+
+app.get("/api/withdrawals", (req, res) => {
+  const rows = db.prepare(`
+    SELECT *
+    FROM withdrawals
+    ORDER BY created_at DESC
+  `).all();
+
+  res.json(rows);
+});
+
+app.post("/api/withdrawals/:id/status", (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const allowed = ["PENDING", "REVIEW", "APPROVED", "COMPLETED", "REJECTED"];
+
+    if (!allowed.includes(status)) {
+      return res.status(400).json({ error: "Invalid withdrawal status" });
+    }
+
+    db.prepare(`
+      UPDATE withdrawals
+      SET status = ?
+      WHERE id = ?
+    `).run(status, id);
+
+    res.json({
+      success: true,
+      withdrawalId: id,
+      status
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 /* =========================
    FRONTEND FALLBACK
 ========================= */
@@ -2361,86 +2441,6 @@ app.get("/api/claims/:id", (req, res) => {
   }
 
   res.json({ claim });
-});
-
-app.post("/api/withdrawals", (req, res) => {
-  const {
-    email,
-    amount,
-    country,
-    bankName,
-    accountHolder,
-    accountNumber
-  } = req.body;
-
-  const id = crypto.randomUUID();
-
-  db.prepare(`
-    INSERT INTO withdrawals (
-      id,
-      email,
-      amount,
-      country,
-      bank_name,
-      account_holder,
-      account_number,
-      status,
-      created_at
-    )
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    id,
-    email,
-    amount,
-    country,
-    bankName,
-    accountHolder,
-    accountNumber,
-    "PENDING",
-    new Date().toISOString()
-  );
-
-  res.json({
-    success: true,
-    withdrawalId: id
-  });
-});
-
-app.get("/api/withdrawals", (req, res) => {
-  const rows = db.prepare(`
-    SELECT *
-    FROM withdrawals
-    ORDER BY created_at DESC
-  `).all();
-
-  res.json(rows);
-});
-
-app.post("/api/withdrawals/:id/status", (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-
-    const allowed = ["PENDING", "REVIEW", "APPROVED", "COMPLETED", "REJECTED"];
-
-    if (!allowed.includes(status)) {
-      return res.status(400).json({ error: "Invalid withdrawal status" });
-    }
-
-    db.prepare(`
-      UPDATE withdrawals
-      SET status = ?
-      WHERE id = ?
-    `).run(status, id);
-
-    res.json({
-      success: true,
-      withdrawalId: id,
-      status
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
 });
 
 app.post("/api/claims/:id/claim", async (req, res) => {
