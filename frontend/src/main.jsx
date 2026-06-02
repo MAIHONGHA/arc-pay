@@ -2190,12 +2190,25 @@ async function loadWithdrawals() {
         <div>${w.account_number}</div>
         <div>${w.amount} USDC</div>
         <div>Status: ${w.status}</div>
+        <button onclick="updateWithdrawalStatus('${w.id}', 'REVIEW')">Review</button>
+        <button onclick="updateWithdrawalStatus('${w.id}', 'APPROVED')">Approve</button>
+        <button onclick="updateWithdrawalStatus('${w.id}', 'COMPLETED')">Complete</button>
+        <button onclick="updateWithdrawalStatus('${w.id}', 'REJECTED')">Reject</button>
       </div>
     ).join("");
   } catch (err) {
     console.error(err);
   }
 }
+
+window.updateWithdrawalStatus = async function (id, status) {
+  await api(`/api/withdrawals/${id}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status })
+  });
+
+  await loadWithdrawals();
+};
 
 document
   .getElementById("btnLoadWithdrawals")
