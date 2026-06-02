@@ -1612,11 +1612,15 @@ async function loadClaimPage() {
     </div>
   `;
 
-  try {
+  let claimData = null;
 
-    const data = await api(
-      `/api/claims/${claimId}`
-    );
+try {
+
+  const data = await api(
+    `/api/claims/${claimId}`
+  );
+
+  claimData = data;
 
     if (!data || !data.amount) {
 
@@ -1740,8 +1744,8 @@ document
     "Content-Type": "application/json"
   },
   body: JSON.stringify({
-    email: claim?.recipientEmail || "",
-    amount: claim?.amount || 0,
+    email: claimData?.recipientEmail || "",
+    amount: claimData?.amount || 0,
     country,
     bankName,
     accountHolder: holder,
