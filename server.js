@@ -2410,7 +2410,7 @@ app.get("/api/withdrawals", (req, res) => {
   const rows = db.prepare(`
     SELECT *
     FROM withdrawals
-    ORDER BY created_at DESC
+    ORDER BY createdAt DESC
   `).all();
 
   res.json(rows);
