@@ -1734,16 +1734,29 @@ document
           "bankHolder"
         ).value;
 
-      alert(
-        "Bank withdraw request submitted"
-      );
+      const res = await fetch("/api/withdrawals", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    email: claim?.recipientEmail || "",
+    amount: claim?.amount || 0,
+    country,
+    bankName,
+    accountHolder: holder,
+    accountNumber: account
+  })
+});
 
-      console.log({
-        country,
-        bankName,
-        account,
-        holder
-      });
+const data = await res.json();
+
+if (!res.ok) {
+  alert(data.error || "Bank withdraw request failed");
+  return;
+}
+
+alert("Bank withdraw request submitted");
 
     }
   );
