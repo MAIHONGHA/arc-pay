@@ -1948,7 +1948,7 @@ app.get("/api/withdrawals", (req, res) => {
   res.json(rows);
 });
 
-app.post("/api/withdrawals/:id/status", (req, res) => {
+app.post("/api/withdrawals/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
