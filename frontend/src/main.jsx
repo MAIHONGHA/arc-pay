@@ -2165,3 +2165,38 @@ async function parseInvoicePrompt(prompt) {
   }
 
 }
+
+async function loadWithdrawals() {
+  try {
+    const rows = await api("/api/withdrawals");
+
+    const el = document.getElementById("withdrawalsList");
+    if (!el) return;
+
+    if (!rows.length) {
+      el.innerHTML = "No withdrawals found";
+      return;
+    }
+
+    el.innerHTML = rows.map(w => 
+      <div style="
+        padding:12px;
+        margin:10px 0;
+        background:#111827;
+        border-radius:10px;
+      ">
+        <div><b>${w.account_holder}</b></div>
+        <div>${w.bank_name}</div>
+        <div>${w.account_number}</div>
+        <div>${w.amount} USDC</div>
+        <div>Status: ${w.status}</div>
+      </div>
+    ).join("");
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+document
+  .getElementById("btnLoadWithdrawals")
+  ?.addEventListener("click", loadWithdrawals);
