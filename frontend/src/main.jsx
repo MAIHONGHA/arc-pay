@@ -2173,29 +2173,25 @@ async function loadWithdrawals() {
     const el = document.getElementById("withdrawalsList");
     if (!el) return;
 
-    if (!rows.length) {
+    if (!Array.isArray(rows) || rows.length === 0) {
       el.innerHTML = "No withdrawals found";
       return;
     }
 
-    el.innerHTML = rows.map(w => 
-      <div style="
-        padding:12px;
-        margin:10px 0;
-        background:#111827;
-        border-radius:10px;
-      ">
-        <div><b>${w.account_holder}</b></div>
-        <div>${w.bank_name}</div>
-        <div>${w.account_number}</div>
-        <div>${w.amount} USDC</div>
-        <div>Status: ${w.status}</div>
+    el.innerHTML = rows.map((w) => `
+      <div style="padding:12px;margin:10px 0;background:#111827;border-radius:10px;">
+        <div><b>${w.account_holder || "-"}</b></div>
+        <div>${w.bank_name || "-"}</div>
+        <div>${w.account_number || "-"}</div>
+        <div>${w.amount || 0} USDC</div>
+        <div>Status: ${w.status || "PENDING"}</div>
+
         <button onclick="updateWithdrawalStatus('${w.id}', 'REVIEW')">Review</button>
         <button onclick="updateWithdrawalStatus('${w.id}', 'APPROVED')">Approve</button>
         <button onclick="updateWithdrawalStatus('${w.id}', 'COMPLETED')">Complete</button>
         <button onclick="updateWithdrawalStatus('${w.id}', 'REJECTED')">Reject</button>
       </div>
-    ).join("");
+    `).join("");
   } catch (err) {
     console.error(err);
   }
