@@ -528,14 +528,6 @@ An,an@test.com,0xdef...,80,0`}
 
     <div>Status: {item.status}</div>
 
-    <a
-      href={`/api/payroll-items/${item.id}/payslip.pdf`}
-    target="_blank"
-      rel="noreferrer"
-    >
-     📄 Download Payslip
-    </a>
-
     <button
       onClick={() => sendPayslip(item)}
       style={{ marginLeft: 8 }}
