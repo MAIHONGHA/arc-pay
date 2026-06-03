@@ -2085,6 +2085,43 @@ app.get("/api/dashboard", (req, res) => {
       WHERE status='PAID'
     `).get();
 
+const recentActivity = [];
+
+if (latestPayment) {
+  recentActivity.push({
+    type: "invoice",
+    text: `Invoice paid: ${latestPayment.title} (${latestPayment.amount} USDC)`
+  });
+}
+
+const latestPayroll = db.prepare(`
+  SELECT title, total_amount
+  FROM payroll_batches
+  ORDER BY id DESC
+  LIMIT 1
+`).get();
+
+if (latestPayroll) {
+  recentActivity.push({
+    type: "payroll",
+    text: `Payroll executed: ${latestPayroll.title}`
+  });
+}
+
+const latestClaim = db.prepare(`
+  SELECT recipientEmail, amount
+  FROM claims
+  ORDER BY id DESC
+  LIMIT 1
+`).get();
+
+if (latestClaim) {
+  recentActivity.push({
+    type: "claim",
+    text: `Claim sent to ${latestClaim.recipientEmail}`
+  });
+}
+
     res.json({
   totalReceived: totalReceivedRow.total,
   paidCount: paidCountRow.count,
@@ -2095,7 +2132,8 @@ app.get("/api/dashboard", (req, res) => {
   totalClaims: totalClaimsRow.count,
   totalVolume: totalVolumeRow.total,
 
-  latestPayment: latestPayment || null
+  latestPayment: latestPayment || null,
+recentActivity
 });
   } catch (err) {
     console.error("dashboard error:", err);

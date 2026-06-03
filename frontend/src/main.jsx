@@ -1430,6 +1430,21 @@ async function loadDashboard() {
 
     document.getElementById("dashTotalVolume").innerText =
       Number(data.totalVolume || 0).toFixed(2) + " USDC";
+
+const feed = document.getElementById("activityFeed");
+
+if (feed) {
+  const items = data.recentActivity || [];
+
+  feed.innerHTML = items.length
+    ? items.map((item) => `
+        <div class="activity-item">
+          🟢 ${item.text}
+        </div>
+      `).join("")
+    : "No activity yet.";
+}
+
   } catch (err) {
     console.error("loadDashboard error:", err);
   }
