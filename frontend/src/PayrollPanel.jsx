@@ -546,7 +546,7 @@ An,an@test.com,0xdef...,80,0`}
     <button
   onClick={() =>
     window.open(
-      `/api/payroll/payslip/${item.id}`,
+      `/api/payroll-items/${item.id}/payslip.pdf`,
       "_blank"
     )
   }
