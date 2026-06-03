@@ -1418,6 +1418,17 @@ async function loadDashboard() {
 
     document.getElementById("dashLatestTx").innerText =
       data.latestPayment?.txHash ? shortTx(data.latestPayment.txHash) : "-";
+    document.getElementById("dashInvoices").innerText =
+      data.totalInvoices || 0;
+
+    document.getElementById("dashPayrolls").innerText =
+      data.totalPayrolls || 0;
+
+    document.getElementById("dashClaims").innerText =
+      data.totalClaims || 0;
+
+    document.getElementById("dashVolume").innerText =
+      Number(data.totalVolume || 0).toFixed(2) + " USDC";
   } catch (err) {
     console.error("loadDashboard error:", err);
   }

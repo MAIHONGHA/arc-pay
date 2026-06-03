@@ -2064,12 +2064,39 @@ app.get("/api/dashboard", (req, res) => {
       LIMIT 1
     `).get();
 
+    const totalInvoicesRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM invoices
+    `).get();
+
+    const totalPayrollsRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM payroll_batches
+    `).get();
+
+    const totalClaimsRow = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM claims
+    `).get();
+
+    const totalVolumeRow = db.prepare(`
+      SELECT COALESCE(SUM(amount),0) as total
+      FROM invoices
+      WHERE status='PAID'
+    `).get();
+
     res.json({
-      totalReceived: totalReceivedRow.total,
-      paidCount: paidCountRow.count,
-      pendingCount: pendingCountRow.count,
-      latestPayment: latestPayment || null
-    });
+  totalReceived: totalReceivedRow.total,
+  paidCount: paidCountRow.count,
+  pendingCount: pendingCountRow.count,
+
+  totalInvoices: totalInvoicesRow.count,
+  totalPayrolls: totalPayrollsRow.count,
+  totalClaims: totalClaimsRow.count,
+  totalVolume: totalVolumeRow.total,
+
+  latestPayment: latestPayment || null
+});
   } catch (err) {
     console.error("dashboard error:", err);
     res.status(500).json({ error: "Dashboard failed" });
