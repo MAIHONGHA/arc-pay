@@ -543,18 +543,6 @@ An,an@test.com,0xdef...,80,0`}
       📧 Email Payslip
     </button>
 
-    <button
-  onClick={() =>
-    window.open(
-      `/api/payroll-items/${item.id}/payslip.pdf`,
-      "_blank"
-    )
-  }
-  style={{ marginLeft: 8 }}
->
-  📄 View Payslip
-</button>
-
     {item.status !== "PAID" && (
       <button onClick={() => editPayrollItem(item)}>
         Edit
