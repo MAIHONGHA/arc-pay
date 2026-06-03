@@ -2213,10 +2213,27 @@ async function loadWithdrawals() {
         <div>${w.amount || 0} USDC</div>
         <div>Status: ${w.status || "PENDING"}</div>
 
-        <button onclick="updateWithdrawalStatus('${w.id}', 'REVIEW')">Review</button>
-        <button onclick="updateWithdrawalStatus('${w.id}', 'APPROVED')">Approve</button>
-        <button onclick="updateWithdrawalStatus('${w.id}', 'COMPLETED')">Complete</button>
-        <button onclick="updateWithdrawalStatus('${w.id}', 'REJECTED')">Reject</button>
+        ${w.status === "PENDING" ? `
+  <button onclick="updateWithdrawalStatus('${w.id}','REVIEW')">
+    Review
+  </button>
+` : ""}
+
+${w.status === "REVIEW" ? `
+  <button onclick="updateWithdrawalStatus('${w.id}','APPROVED')">
+    Approve
+  </button>
+
+  <button onclick="updateWithdrawalStatus('${w.id}','REJECTED')">
+    Reject
+  </button>
+` : ""}
+
+${w.status === "APPROVED" ? `
+  <button onclick="updateWithdrawalStatus('${w.id}','COMPLETED')">
+    Complete
+  </button>
+` : ""}
       </div>
     `).join("");
   } catch (err) {
