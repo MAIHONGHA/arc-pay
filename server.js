@@ -2095,9 +2095,13 @@ if (latestPayment) {
 }
 
 const latestPayroll = db.prepare(`
-  SELECT title, total_amount
-  FROM payroll_batches
-  ORDER BY id DESC
+  SELECT 
+    b.title,
+    COALESCE(SUM(i.final_amount), 0) AS total_amount
+  FROM payroll_batches b
+  LEFT JOIN payroll_items i ON i.batch_id = b.id
+  GROUP BY b.id
+  ORDER BY b.created_at DESC
   LIMIT 1
 `).get();
 
