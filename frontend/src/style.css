@@ -1579,3 +1579,91 @@ a {
 .hero-actions{
   padding-right: 260px;
 }
+
+.wallet-chip{
+  position: fixed !important;
+  top: 14px !important;
+  right: 10px !important;
+  z-index: 999999 !important;
+}
+
+@media (max-width: 900px){
+  .wallet-chip{
+    position: fixed !important;
+    top: 14px !important;
+    right: 10px !important;
+    width: auto !important;
+    margin: 0 !important;
+  }
+}
+
+body > .wallet-chip{
+  position: fixed !important;
+  top: 14px !important;
+  right: 10px !important;
+  z-index: 999999 !important;
+  display: flex !important;
+  gap: 12px !important;
+  align-items: center !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  background: rgba(8,13,28,0.92) !important;
+  border: 1px solid rgba(255,215,100,0.25) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+body > .hero-actions{
+  position: fixed !important;
+  top: 14px !important;
+  right: 260px !important;
+  z-index: 999998 !important;
+
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 8px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  flex-wrap: nowrap !important;
+}
+
+body > .hero-actions button{
+  width: auto !important;
+  min-width: auto !important;
+  height: 38px !important;
+  padding: 6px 12px !important;
+  border-radius: 999px !important;
+  font-size: 12px !important;
+}
+
+.wallet-menu{
+  position: fixed;
+  top: 58px;
+  right: 10px;
+  z-index: 999999;
+  width: 180px;
+  padding: 10px;
+  border-radius: 16px;
+  background: rgba(8,13,28,0.96);
+  border: 1px solid rgba(255,215,100,0.25);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 0 25px rgba(0,212,255,0.18);
+}
+
+.wallet-menu.hidden{
+  display:none;
+}
+
+.wallet-menu button{
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+body > .wallet-menu{
+  position: fixed !important;
+  top: 58px !important;
+  right: 10px !important;
+  z-index: 999999 !important;
+}

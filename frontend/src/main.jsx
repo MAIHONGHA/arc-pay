@@ -175,12 +175,61 @@ const isClaimPage = window.location.pathname.startsWith("/claim/");
 const btnScanQR = document.getElementById("btnScanQR");
 const btnVoiceInvoice =
   document.getElementById("btnVoiceInvoice");
-
 const voiceLangEl =
   document.getElementById("voiceLang");
 const qrScannerModal = document.getElementById("qrScannerModal");
 const btnCloseScanner = document.getElementById("btnCloseScanner");
 let qrScanner = null;
+const walletChip = document.querySelector(".wallet-chip");
+
+if (walletChip && walletChip.parentElement !== document.body) {
+  document.body.appendChild(walletChip);
+}
+
+const walletMenu = document.getElementById("walletMenu");
+
+if (walletMenu && walletMenu.parentElement !== document.body) {
+  document.body.appendChild(walletMenu);
+}
+
+const heroActions = document.querySelector(".hero-actions");
+
+if (heroActions && heroActions.parentElement !== document.body) {
+  document.body.appendChild(heroActions);
+}
+
+walletChip?.addEventListener("click", () => {
+  document.getElementById("walletMenu")?.classList.toggle("hidden");
+});
+
+document.getElementById("disconnectWalletChip")?.addEventListener("click", () => {
+  disconnectMetaMask();
+  document.getElementById("walletMenu")?.classList.add("hidden");
+});
+
+document.getElementById("copyWalletAddress")?.addEventListener("click", async () => {
+  if (!metamaskWallet) {
+    setStatus("No wallet connected.", "error");
+    return;
+  }
+
+  await navigator.clipboard.writeText(metamaskWallet);
+  setStatus("Wallet address copied.", "success");
+});
+
+document.getElementById("viewWalletExplorer")?.addEventListener("click", () => {
+  if (!metamaskWallet) {
+    setStatus("No wallet connected.", "error");
+    return;
+  }
+
+  window.open(
+    `https://testnet.arcscan.app/address/${metamaskWallet}`,
+    "_blank"
+  );
+
+  document.getElementById("walletMenu")?.classList.add("hidden");
+});
 
 function showToast(message, type = "success") {
   const toast = document.getElementById("toast");
@@ -1054,6 +1103,10 @@ async function connectMetaMask() {
 
     metamaskWallet = accounts[0] || null;
     metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
+    document.getElementById("walletChipAddress").innerText =
+    metamaskWallet
+    ? metamaskWallet.slice(0, 6) + "..." + metamaskWallet.slice(-4) + " ▾"
+    : "Disconnected ▾";
 
     setStatus("Wallet connected.", "success");
   } catch (err) {
@@ -1063,7 +1116,22 @@ async function connectMetaMask() {
 
 function disconnectMetaMask() {
   metamaskWallet = null;
-  metamaskWalletEl.textContent = "Disconnected";
+
+  if (metamaskWalletEl) {
+    metamaskWalletEl.textContent = "Disconnected";
+  }
+
+  const chipAddress = document.getElementById("walletChipAddress");
+  const chipBalance = document.getElementById("walletChipBalance");
+
+  if (chipAddress) {
+    chipAddress.innerText = "Disconnected ▾";
+  }
+
+  if (chipBalance) {
+    chipBalance.innerText = "0.00 USDC";
+  }
+
   setStatus("MetaMask disconnected locally.", "success");
 }
 
@@ -1430,6 +1498,26 @@ async function loadDashboard() {
 
     document.getElementById("dashTotalVolume").innerText =
       Number(data.totalVolume || 0).toFixed(2) + " USDC";
+
+const walletChipBalance = document.getElementById("walletChipBalance");
+const walletChipAddress = document.getElementById("walletChipAddress");
+
+if (walletChipBalance) {
+  walletChipBalance.innerText =
+    Number(data.totalVolume || data.totalReceived || 0).toFixed(2) + " USDC";
+}
+
+if (walletChipAddress) {
+  const walletText =
+    document.getElementById("dashConnectedWallet")?.innerText ||
+    metamaskWallet ||
+    "Disconnected";
+
+  walletChipAddress.innerText =
+  walletText && walletText !== "Disconnected"
+    ? walletText.slice(0, 6) + "..." + walletText.slice(-4) + " ▾"
+    : "Disconnected ▾";
+}
 
 const feed = document.getElementById("activityFeed");
 
@@ -1933,6 +2021,10 @@ if (window.ethereum) {
   window.ethereum.on("accountsChanged", (accounts) => {
     metamaskWallet = accounts?.[0] || null;
     metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
+    document.getElementById("walletChipAddress").innerText =
+  metamaskWallet
+    ? metamaskWallet.slice(0, 6) + "..." + metamaskWallet.slice(-4) + " ▾"
+    : "Disconnected ▾";
   });
 }
 
