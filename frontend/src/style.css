@@ -1706,3 +1706,15 @@ body > .wallet-menu{
     padding-top: 96px !important;
   }
 }
+
+.mini-action.hidden{
+  display:none !important;
+}
+
+.mini-action{
+  margin-top:10px;
+  width:100%;
+  padding:10px 12px;
+  border-radius:999px;
+  font-size:12px;
+}

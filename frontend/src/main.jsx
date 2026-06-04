@@ -582,13 +582,22 @@ async function loadCircleWallet(userToken) {
   const address = extractWalletAddress(listData);
 
   if (!address) {
-    circleWalletEl.textContent = JSON.stringify(listData, null, 2);
-    setStatus("Wallet loaded but address not found. Check console.", "error");
-    return null;
-  }
+  circleWalletEl.textContent = "No Circle wallet yet";
+
+  document
+    .getElementById("btnSetupPin")
+    ?.classList.remove("hidden");
+
+  setStatus("No Circle wallet found. Tap Create Circle Wallet.", "error");
+  return null;
+}
 
   circleWalletEl.textContent = address;
   setStatus("Circle wallet loaded.", "success");
+
+document
+  .getElementById("btnSetupPin")
+  ?.classList.add("hidden");
 
   return { wallet, address };
 }
