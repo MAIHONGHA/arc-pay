@@ -1667,3 +1667,42 @@ body > .wallet-menu{
   right: 10px !important;
   z-index: 999999 !important;
 }
+
+@media (max-width: 768px){
+  body > .hero-actions{
+    position: fixed !important;
+    top: 56px !important;
+    left: 10px !important;
+    right: 10px !important;
+    z-index: 999998 !important;
+
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  body > .hero-actions button{
+    height: 34px !important;
+    padding: 4px 6px !important;
+    font-size: 11px !important;
+    border-radius: 999px !important;
+    white-space: nowrap !important;
+  }
+
+  body > .wallet-chip{
+    top: 10px !important;
+    right: 10px !important;
+    max-width: 210px !important;
+    font-size: 11px !important;
+    padding: 6px 10px !important;
+  }
+
+  body > .wallet-menu{
+    top: 48px !important;
+    right: 10px !important;
+  }
+
+  .main-shell{
+    padding-top: 96px !important;
+  }
+}
