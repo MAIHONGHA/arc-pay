@@ -1541,44 +1541,41 @@ a {
   color: white !important;
 }
 
-.wallet-chip {
+.wallet-chip{
   position: fixed;
-  top: 18px;
-  right: 22px;
-  z-index: 9999;
+  top: 14px;
+  right: 18px;
+  z-index: 99999;
 
   display: flex;
+  gap: 12px;
   align-items: center;
-  gap: 14px;
 
-  padding: 10px 16px;
+  padding: 8px 14px;
   border-radius: 999px;
 
-  background: rgba(8, 13, 28, 0.88);
-  border: 1px solid rgba(255, 215, 100, 0.28);
+  background: rgba(8,13,28,0.92);
+  border: 1px solid rgba(255,215,100,0.25);
+
   backdrop-filter: blur(18px);
 
   box-shadow:
-    0 0 22px rgba(56, 189, 248, 0.18),
-    0 0 34px rgba(168, 85, 247, 0.16);
+    0 0 18px rgba(56,189,248,0.18),
+    0 0 30px rgba(168,85,247,0.16);
+
+  font-size: 12px;
 }
 
-.wallet-balance {
-  color: #67e8f9;
-  font-size: 13px;
-  font-weight: 900;
+.wallet-balance{
+  color:#67e8f9;
+  font-weight:900;
 }
 
-.wallet-address {
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 900;
+.wallet-address{
+  color:#fff;
+  font-weight:900;
 }
 
-@media (max-width: 900px) {
-  .wallet-chip {
-    position: static;
-    margin: 12px 0;
-    width: fit-content;
-  }
+.hero-actions{
+  padding-right: 260px;
 }
