@@ -1526,16 +1526,64 @@ document.getElementById("btnChooseMetaMask")?.addEventListener("click", async ()
   await connectMetaMask();
 });
 
+// OKX Wallet — real connection
+async function connectOKX() {
+  const okx = window.okxwallet;
+  if (!okx) {
+    setStatus("OKX Wallet not installed.", "error");
+    window.open("https://www.okx.com/download", "_blank");
+    return;
+  }
+  try {
+    const accounts = await okx.request({ method: "eth_requestAccounts" });
+    metamaskWallet = accounts[0] || null;
+    if (metamaskWalletEl) metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
+    updateWalletChip(metamaskWallet, null);
+    setStatus("OKX Wallet connected.", "success");
+  } catch (err) {
+    setStatus("OKX connect failed: " + err.message, "error");
+  }
+}
+
+// Coinbase Wallet — real connection
+async function connectCoinbase() {
+  const cb = window.coinbaseWalletExtension || window.ethereum;
+  if (!cb) {
+    setStatus("Coinbase Wallet not installed.", "error");
+    window.open("https://www.coinbase.com/wallet/downloads", "_blank");
+    return;
+  }
+  try {
+    const accounts = await cb.request({ method: "eth_requestAccounts" });
+    metamaskWallet = accounts[0] || null;
+    if (metamaskWalletEl) metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
+    updateWalletChip(metamaskWallet, null);
+    setStatus("Coinbase Wallet connected.", "success");
+  } catch (err) {
+    setStatus("Coinbase connect failed: " + err.message, "error");
+  }
+}
+
 // OKX Wallet option in modal
-document.getElementById("btnChooseOKX")?.addEventListener("click", () => {
+document.getElementById("btnChooseOKX")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
-  setStatus("OKX Wallet coming soon.", "success");
+  if (walletModalMode === "pay") {
+    await connectOKX();
+    if (metamaskWallet) await payWithMetaMask();
+    return;
+  }
+  await connectOKX();
 });
 
 // Coinbase Wallet option in modal
-document.getElementById("btnChooseCoinbase")?.addEventListener("click", () => {
+document.getElementById("btnChooseCoinbase")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
-  setStatus("Coinbase Wallet coming soon.", "success");
+  if (walletModalMode === "pay") {
+    await connectCoinbase();
+    if (metamaskWallet) await payWithMetaMask();
+    return;
+  }
+  await connectCoinbase();
 });
 
 // Google / Circle option in modal
