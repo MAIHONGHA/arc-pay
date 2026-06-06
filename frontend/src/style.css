@@ -1198,10 +1198,12 @@ button:hover,
 /* Override old fixed body-level elements */
 body > .hero-actions  { display: none !important; }
 body > .wallet-chip   { display: none !important; }
-body > .wallet-menu   {
+body > .wallet-menu {
   position: fixed !important;
   top: 58px !important;
-  right: 14px !important;
+  right: 10px !important;
+  z-index: 999999 !important;
+  width: 190px;
 }
 
 /* ══════════════════════════════
@@ -1471,4 +1473,13 @@ body > .wallet-menu   {
     right: 10px !important;
     z-index: 1000000 !important;
   }
+}
+
+.wallet-chip {
+  position: relative !important;
+}
+
+.wallet-menu {
+  top: calc(100% + 8px) !important;
+  right: 0 !important;
 }
