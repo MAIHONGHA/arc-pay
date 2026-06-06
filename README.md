@@ -54,7 +54,7 @@ The project focuses on practical USDC payment infrastructure rather than specula
 
  Live Demo
 
-https://arc-pay-production.up.railway.app/
+https://arcpay.pro/
 
 
 
