@@ -60,6 +60,23 @@ document.getElementById("walletChip")?.addEventListener("click", () => {
   document.getElementById("walletMenu")?.classList.toggle("hidden");
 });
 
+// Auto close dropdown on scroll (mobile fix)
+window.addEventListener("scroll", () => {
+  const walletMenu = document.getElementById("walletMenu");
+
+  if (walletMenu && !walletMenu.classList.contains("hidden")) {
+    walletMenu.classList.add("hidden");
+  }
+}, { passive: true });
+
+window.addEventListener("touchmove", () => {
+  const walletMenu = document.getElementById("walletMenu");
+
+  if (walletMenu && !walletMenu.classList.contains("hidden")) {
+    walletMenu.classList.add("hidden");
+  }
+}, { passive: true });
+
 // Sync topbar title when switching tabs
 document.querySelectorAll("[data-tab]").forEach((link) => {
   link.addEventListener("click", () => {
