@@ -2332,7 +2332,7 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
       to: [email],
 
       subject:
-        "You received test USDC",
+        "ArcPay Claim USDC",
 
       html: `
   <h2>You received ${amount} test USDC</h2>
