@@ -1,43 +1,113 @@
-# Arc Pay
+ ArcPay
 
-A decentralized USDC payment checkout platform built on the Arc ecosystem.
+ Decentralized USDC Payments on Arc Network.
 
-# Overview
+ArcPay is a decentralized payment platform built on the Arc ecosystem, enabling businesses and individuals to create invoices, receive USDC payments, manage payroll, send crypto claims through Gmail, and process payouts from a single unified dashboard.
 
-ARC Pay enables merchants, creators, and businesses to accept USDC payments instantly through wallet checkout and invoice links.
 
-# Features
 
-- Create payment invoices
-- Wallet connect checkout
-- QR code payment
-- Real-time payment status
-- USDC settlement on Arc chain
-- Fast deployment on Railway
+ Overview
 
-# Live Demo
+ArcPay simplifies real-world stablecoin payments by combining invoicing, payroll, payouts, wallet onboarding, QR payments, and email-based crypto claims into one unified platform.
 
-https://arc-pay-production.up.railway.app
+The project focuses on practical USDC payment infrastructure rather than speculative cryptocurrency trading.
 
-# Tech Stack
 
-- Frontend: HTML / CSS / JavaScript
-- Backend: Node.js / Express
-- Database: JSON / SQLite
-- Web3 Wallet Integration
-- Railway Deployment
 
-# Roadmap
+ Features
 
-- [x] MVP launch
-- [x] Wallet integration
-- [x] Railway production deploy
-- [ ] Merchant tools & smart checkout coming soon
+ Payments and Invoicing.
 
-# Author
+- Create USDC payment invoices
+- Share payment links
+- QR code payments
+- Real-time payment status tracking
+
+ Gmail Crypto Claims
+
+- Send USDC claims through Gmail
+- Simple onboarding flow for non-crypto users
+- Wallet onboarding support for recipients
+
+ Payroll and Payouts
+
+- Payroll batch management
+- Scheduled payment workflows
+- Employee payment tracking
+- Email payslip support
+
+ Wallet Support
+
+- MetaMask
+- Circle Wallet
+- OKX Wallet
+- Coinbase Wallet
+
+ Dashboard
+
+- Payment analytics
+- Invoice tracking
+- Claims monitoring
+- Activity overview
+
+
+
+ Live Demo
+
+https://arc-pay-production.up.railway.app/
+
+
+
+ Technology Stack
+
+ Frontend
+
+- HTML
+- CSS
+- JavaScript
+- React
+
+ Backend
+
+- Node.js
+- Express
+
+ Database
+
+- SQLite
+
+ Infrastructure
+
+- Railway
+- Arc Network
+- USDC
+- Circle Wallet Infrastructure
+
+
+
+ Roadmap
+
+- Stable multi-wallet support
+- Bank withdrawal integrations
+- AI payment assistant
+- Merchant payment tools
+- Advanced payroll automation
+- Mobile wallet optimization
+
+
+
+ Current Status
+
+The MVP version is currently live and deployed on the Arc ecosystem infrastructure.
+
+
+
+ Author
 
 MAI HONG HA
 
-# License
 
-MIT
+
+ License
+
+MIT License
