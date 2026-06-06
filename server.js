@@ -2319,7 +2319,7 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
     // generate claim link
     const APP_URL =
       process.env.APP_URL ||
-      "http://localhost:5173";
+      "https://arcpay.pro";
 
     const claimLink =
        `${APP_URL}/claim/${claimId}`;
