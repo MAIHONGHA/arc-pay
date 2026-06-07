@@ -56,8 +56,29 @@ function updateWalletChip(address, balance) {
 }
 
 // Wallet chip click — toggle dropdown menu
+function positionWalletMenu() {
+  const chip = document.getElementById("walletChip");
+  const menu = document.getElementById("walletMenu");
+  if (!chip || !menu) return;
+
+  const rect = chip.getBoundingClientRect();
+
+  menu.style.position = "fixed";
+  menu.style.top = `${rect.bottom + 8}px`;
+  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
+  menu.style.right = "auto";
+  menu.style.zIndex = "1000000";
+}
+
 document.getElementById("walletChip")?.addEventListener("click", () => {
-  document.getElementById("walletMenu")?.classList.toggle("hidden");
+  const menu = document.getElementById("walletMenu");
+  if (!menu) return;
+
+  menu.classList.toggle("hidden");
+
+  if (!menu.classList.contains("hidden")) {
+    positionWalletMenu();
+  }
 });
 
 // Auto close dropdown on scroll (mobile fix)
