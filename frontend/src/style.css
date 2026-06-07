@@ -1474,12 +1474,3 @@ body > .wallet-menu {
     z-index: 1000000 !important;
   }
 }
-
-.wallet-chip {
-  position: relative !important;
-}
-
-.wallet-menu {
-  top: calc(100% + 8px) !important;
-  right: 0 !important;
-}
