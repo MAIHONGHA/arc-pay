@@ -1466,9 +1466,4 @@ body > .wallet-menu {
   .main-shell {
     padding-top: 70px !important;
   }
-
-  .wallet-menu {
-  position: fixed !important;
-  z-index: 1000000 !important;
-}
 }
