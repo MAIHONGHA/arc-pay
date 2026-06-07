@@ -56,14 +56,7 @@ function updateWalletChip(address, balance) {
 }
 
 // Wallet chip click — toggle dropdown menu
-function positionWalletMenu() {
-  const chips = Array.from(document.querySelectorAll("#walletChip"));
-
-  const chip = chips.find((el) => {
-    const r = el.getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && r.top >= 0;
-  });
-
+function positionWalletMenu(chip) {
   const menu = document.getElementById("walletMenu");
   if (!chip || !menu) return;
 
@@ -71,10 +64,23 @@ function positionWalletMenu() {
 
   menu.style.position = "fixed";
   menu.style.top = `${rect.bottom + 8}px`;
-  menu.style.left = `${Math.max(8, rect.right - menu.offsetWidth)}px`;
+  menu.style.left = `${Math.max(8, rect.left)}px`;
   menu.style.right = "auto";
   menu.style.zIndex = "1000000";
 }
+
+document.querySelectorAll("#walletChip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const menu = document.getElementById("walletMenu");
+    if (!menu) return;
+
+    menu.classList.toggle("hidden");
+
+    if (!menu.classList.contains("hidden")) {
+      positionWalletMenu(chip);
+    }
+  });
+});
 
 document.getElementById("walletChip")?.addEventListener("click", () => {
   const menu = document.getElementById("walletMenu");

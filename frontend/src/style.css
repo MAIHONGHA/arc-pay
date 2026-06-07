@@ -1147,22 +1147,6 @@ button:hover,
   box-shadow: 0 0 28px rgba(56,189,248,0.5) !important;
 }
 
-/* ── Wallet dropdown menu ── */
-.wallet-menu {
-  position: fixed !important;
-  top: 58px !important;
-  right: 14px !important;
-  z-index: 99999 !important;
-  width: 190px;
-  padding: 8px;
-  border-radius: 12px;
-  background: rgba(10,15,35,0.97);
-  border: 1px solid rgba(56,189,248,0.2);
-  backdrop-filter: blur(20px);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  animation: dropIn 0.15s ease;
-}
-
 @keyframes dropIn {
   from { opacity:0; transform: translateY(-6px); }
   to   { opacity:1; transform: translateY(0); }
@@ -1198,13 +1182,7 @@ button:hover,
 /* Override old fixed body-level elements */
 body > .hero-actions  { display: none !important; }
 body > .wallet-chip   { display: none !important; }
-body > .wallet-menu {
-  position: fixed !important;
-  top: 58px !important;
-  right: 10px !important;
-  z-index: 999999 !important;
-  width: 190px;
-}
+
 
 /* ══════════════════════════════
    WALLET CONNECT MODAL
