@@ -1468,9 +1468,8 @@ body > .wallet-menu {
   }
 
   .wallet-menu {
-    position: fixed !important;
-    top: 62px !important;
-    right: 10px !important;
-    z-index: 1000000 !important;
-  }
+  position: fixed !important;
+  z-index: 1000000 !important;
+  right: auto !important;
+}
 }

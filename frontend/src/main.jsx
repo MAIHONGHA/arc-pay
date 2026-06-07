@@ -57,9 +57,12 @@ function updateWalletChip(address, balance) {
 
 // Wallet chip click — toggle dropdown menu
 function positionWalletMenu() {
-  const chip =
-    document.querySelector(".topbar #walletChip") ||
-    document.getElementById("walletChip");
+  const chips = Array.from(document.querySelectorAll("#walletChip"));
+
+  const chip = chips.find((el) => {
+    const r = el.getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && r.top >= 0;
+  });
 
   const menu = document.getElementById("walletMenu");
   if (!chip || !menu) return;
