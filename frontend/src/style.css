@@ -1470,6 +1470,5 @@ body > .wallet-menu {
   .wallet-menu {
   position: fixed !important;
   z-index: 1000000 !important;
-  right: auto !important;
 }
 }
