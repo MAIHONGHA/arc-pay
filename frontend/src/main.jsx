@@ -82,17 +82,6 @@ document.querySelectorAll("#walletChip").forEach((chip) => {
   });
 });
 
-document.getElementById("walletChip")?.addEventListener("click", () => {
-  const menu = document.getElementById("walletMenu");
-  if (!menu) return;
-
-  menu.classList.toggle("hidden");
-
-  if (!menu.classList.contains("hidden")) {
-    positionWalletMenu();
-  }
-});
-
 // Auto close dropdown on scroll (mobile fix)
 window.addEventListener("scroll", () => {
   const walletMenu = document.getElementById("walletMenu");
@@ -128,77 +117,281 @@ window.Web3 = Web3;
 
 globalThis.openCardPayment = window.openCardPayment = function () {
   let modal = document.getElementById("cardCheckoutModal");
-
   if (!modal) {
     modal = document.createElement("div");
     modal.id = "cardCheckoutModal";
-
     modal.style.cssText = `
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.75);
-      z-index: 999999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      position:fixed;inset:0;background:rgba(0,0,0,0.75);
+      z-index:999999;display:flex;align-items:center;justify-content:center;
     `;
+    document.body.appendChild(modal);
+  }
 
+  function renderStep1() {
     modal.innerHTML = `
-      <div style="width:380px;background:white;color:#111827;padding:24px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);">
-        <h2 style="margin-top:0;">ArcPay Checkout</h2>
-        <p>Pay with Visa / MasterCard</p>
-        <input id="cardRecipientEmail" placeholder="Recipient Gmail" style="width:100%;padding:12px;margin-top:12px;background:white;color:#111;border:1px solid #ccc;border-radius:10px;" />
-        <input id="cardAmount" placeholder="Amount USD" type="number" style="width:100%;padding:12px;margin-top:12px;background:white;color:#111;border:1px solid #ccc;border-radius:10px;" />
-        <button id="continueCardPayment" style="width:100%;padding:12px;margin-top:16px;background:#22c55e;border:0;border-radius:10px;font-weight:bold;">
-          Continue
+      <div style="width:340px;background:white;color:#111827;padding:24px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <h2 style="margin-top:0;">💳 Pay with Visa / MasterCard</h2>
+        <p style="color:#6b7280;font-size:13px;">ArcPay Sandbox — No real money</p>
+        <input id="cardRecipientEmail" placeholder="Recipient Gmail"
+          style="width:100%;padding:12px;margin-top:12px;background:#f9fafb;color:#111;border:1px solid #e5e7eb;border-radius:10px;box-sizing:border-box;" />
+        <input id="cardAmount" placeholder="Amount USD" type="number"
+          style="width:100%;padding:12px;margin-top:10px;background:#f9fafb;color:#111;border:1px solid #e5e7eb;border-radius:10px;box-sizing:border-box;" />
+        <button id="btnStep1Continue"
+          style="width:100%;padding:12px;margin-top:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;border:0;border-radius:10px;font-weight:bold;font-size:15px;cursor:pointer;">
+          Continue →
         </button>
-        <button id="closeCardModal" style="width:100%;padding:10px;margin-top:10px;background:#334155;color:white;border:0;border-radius:10px;">
+        <button id="btnStep1Cancel"
+          style="width:100%;padding:10px;margin-top:10px;background:#f3f4f6;color:#374151;border:0;border-radius:10px;cursor:pointer;">
           Cancel
         </button>
       </div>
     `;
-
-    document.body.appendChild(modal);
-  }
-
-  modal.style.display = "flex";
-
-  const closeBtn = document.getElementById("closeCardModal");
-  const continueBtn = document.getElementById("continueCardPayment");
-
-  if (closeBtn) {
-    closeBtn.onclick = () => {
-      modal.style.display = "none";
+    modal.style.display = "flex";
+    document.getElementById("btnStep1Cancel").onclick = () => { modal.style.display = "none"; };
+    document.getElementById("btnStep1Continue").onclick = () => {
+      const email = document.getElementById("cardRecipientEmail").value.trim();
+      const amount = document.getElementById("cardAmount").value.trim();
+      if (!email || !amount) { alert("Please enter Gmail and amount."); return; }
+      renderStep2(email, amount);
     };
   }
 
-  if (continueBtn) {
-    continueBtn.onclick = async () => {
-      const email = document.getElementById("cardRecipientEmail")?.value || "";
-      const amount = document.getElementById("cardAmount")?.value || "";
+  function renderStep2(email, amount) {
+    modal.innerHTML = `
+      <div style="width:340px;background:white;color:#111827;padding:24px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,.5);">
+        <label style="font-size:12px;color:#6b7280;margin-bottom:4px;display:block;">
+  Account Number
+</label>
 
-      if (!email || !amount) {
-        alert("Please enter recipient Gmail and amount.");
-        return;
-      }
+<div style="position:relative;margin-bottom:12px;">
+  <input
+    id="vcNumber"
+    placeholder="•••• •••• •••• ••••"
+    maxlength="19"
+    type="password"
+    autocomplete="off"
+    style="
+      width:100%;
+      padding:12px 44px 12px 12px;
+      background:#f9fafb;
+      color:#111;
+      border:1px solid #e5e7eb;
+      border-radius:10px;
+      box-sizing:border-box;
+    "
+  />
 
-      const res = await fetch("/api/card-payment-intent", {
+  <button
+    id="toggleVcNumber"
+    type="button"
+    style="
+      position:absolute;
+      right:10px;
+      top:8px;
+      background:transparent;
+      border:0;
+      cursor:pointer;
+      font-size:18px;
+    "
+  >
+    👁️
+  </button>
+</div>
+
+<div style="display:flex;gap:10px;">
+
+  <div style="flex:1;">
+    <label style="font-size:12px;color:#6b7280;margin-bottom:4px;display:block;">
+      Valid Until
+    </label>
+
+    <div style="position:relative;">
+      <input
+        id="vcExpiry"
+        placeholder="••/••"
+        maxlength="5"
+        type="password"
+        autocomplete="off"
+        style="
+          width:100%;
+          padding:12px 44px 12px 12px;
+          background:#f9fafb;
+          color:#111;
+          border:1px solid #e5e7eb;
+          border-radius:10px;
+          box-sizing:border-box;
+        "
+      />
+
+      <button
+        id="toggleVcExpiry"
+        type="button"
+        style="
+          position:absolute;
+          right:10px;
+          top:8px;
+          background:transparent;
+          border:0;
+          cursor:pointer;
+          font-size:18px;
+        "
+      >
+        👁️
+      </button>
+    </div>
+  </div>
+
+  <div style="flex:1;">
+    <label style="font-size:12px;color:#6b7280;margin-bottom:4px;display:block;">
+      Security Code
+    </label>
+
+    <div style="position:relative;">
+      <input
+        id="vcCvv"
+        placeholder="•••"
+        maxlength="3"
+        type="password"
+        autocomplete="off"
+        style="
+          width:100%;
+          padding:12px 44px 12px 12px;
+          background:#f9fafb;
+          color:#111;
+          border:1px solid #e5e7eb;
+          border-radius:10px;
+          box-sizing:border-box;
+        "
+      />
+
+      <button
+        id="toggleVcCvv"
+        type="button"
+        style="
+          position:absolute;
+          right:10px;
+          top:8px;
+          background:transparent;
+          border:0;
+          cursor:pointer;
+          font-size:18px;
+        "
+      >
+        👁️
+      </button>
+    </div>
+  </div>
+
+</div>
+
+        <div style="margin-top:14px;padding:12px;background:#f0fdf4;border-radius:10px;font-size:14px;color:#166534;">
+          📤 Sending <b>${amount} USDC</b> to <b>${email}</b>
+        </div>
+
+        <button id="btnPayNow"
+          style="width:100%;padding:14px;margin-top:16px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:0;border-radius:10px;font-weight:bold;font-size:15px;cursor:pointer;">
+          💸 Pay Now
+        </button>
+        <button id="btnStep2Back"
+          style="width:100%;padding:10px;margin-top:10px;background:#f3f4f6;color:#374151;border:0;border-radius:10px;cursor:pointer;">
+          ← Back
+        </button>
+      </div>
+    `;
+
+    document.getElementById("vcNumber").oninput = (e) => {
+      let v = e.target.value.replace(/\D/g, "").slice(0, 16);
+      e.target.value = v.match(/.{1,4}/g)?.join(" ") || v;
+    };
+
+document.getElementById("toggleVcNumber").onclick = () => {
+  const input = document.getElementById("vcNumber");
+  input.type = input.type === "password" ? "text" : "password";
+};
+
+document.getElementById("toggleVcExpiry").onclick = () => {
+  const input = document.getElementById("vcExpiry");
+  input.type = input.type === "password" ? "text" : "password";
+};
+
+document.getElementById("toggleVcCvv").onclick = () => {
+  const input = document.getElementById("vcCvv");
+  input.type = input.type === "password" ? "text" : "password";
+};
+
+    document.getElementById("vcExpiry").oninput = (e) => {
+      let v = e.target.value.replace(/\D/g, "").slice(0, 4);
+      if (v.length >= 2) v = v.slice(0,2) + "/" + v.slice(2);
+      e.target.value = v;
+    };
+
+    document.getElementById("btnStep2Back").onclick = renderStep1;
+    document.getElementById("btnPayNow").onclick = () => processPayment(email, amount);
+  }
+  
+  async function processPayment(email, amount, card) {
+    if (Number(amount) > card.limit) {
+      alert(`❌ Exceeds account limit: ${card.limit} USDC`);
+      return;
+    }
+
+    modal.innerHTML = `
+      <div style="background:white;padding:32px;border-radius:20px;text-align:center;color:#111;">
+        <div style="font-size:40px;">⏳</div>
+        <h3>Processing...</h3>
+        <p style="color:#6b7280;">Sending ${amount} USDC to ${email}</p>
+      </div>
+    `;
+
+    try {
+      const res = await fetch("/api/claims/send-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientEmail: email, amount })
+        body: JSON.stringify({
+          recipientEmail: email,
+          amount: amount,
+          message: `Payment via ${card.label}`
+        })
       });
 
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Payment failed");
 
-      if (!data.ok) {
-        alert(data.error || "Create card payment failed");
-        return;
-      }
+      modal.innerHTML = `
+        <div style="background:white;padding:32px;border-radius:20px;text-align:center;color:#111;max-width:340px;">
+          <div style="font-size:48px;">✅</div>
+          <h2 style="color:#10b981;">Payment Successful!</h2>
+          <p>${amount} USDC → <b>${email}</b></p>
+          <p style="font-size:13px;color:#6b7280;">${card.label}</p>
+          <a href="${data.claimLink}" target="_blank"
+            style="display:block;margin:16px 0;padding:12px;background:#eff6ff;border-radius:10px;color:#2563eb;font-size:13px;word-break:break-all;">
+            ${data.claimLink}
+          </a>
+          <button id="btnDone"
+            style="width:100%;padding:12px;background:linear-gradient(135deg,#10b981,#059669);color:white;border:0;border-radius:10px;font-weight:bold;cursor:pointer;">
+            Done ✓
+          </button>
+        </div>
+      `;
+      document.getElementById("btnDone").onclick = () => { modal.style.display = "none"; };
 
-      window.open(data.transakUrl, "_blank", "width=450,height=700");
-      modal.style.display = "none";
-    };
+    } catch (err) {
+      modal.innerHTML = `
+        <div style="background:white;padding:32px;border-radius:20px;text-align:center;color:#111;max-width:340px;">
+          <div style="font-size:48px;">❌</div>
+          <h3 style="color:#ef4444;">Payment Failed</h3>
+          <p>${err.message}</p>
+          <button id="btnRetry"
+            style="width:100%;padding:12px;margin-top:16px;background:#6366f1;color:white;border:0;border-radius:10px;cursor:pointer;">
+            Try Again
+          </button>
+        </div>
+      `;
+      document.getElementById("btnRetry").onclick = renderStep1;
+    }
   }
+
+  renderStep1();
 };
 
 // API base URL
