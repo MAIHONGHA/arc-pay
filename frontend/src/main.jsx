@@ -330,10 +330,6 @@ document.getElementById("toggleVcCvv").onclick = () => {
   }
   
   async function processPayment(email, amount, card) {
-    if (Number(amount) > card.limit) {
-      alert(`❌ Exceeds account limit: ${card.limit} USDC`);
-      return;
-    }
 
     modal.innerHTML = `
       <div style="background:white;padding:32px;border-radius:20px;text-align:center;color:#111;">
@@ -350,7 +346,7 @@ document.getElementById("toggleVcCvv").onclick = () => {
         body: JSON.stringify({
           recipientEmail: email,
           amount: amount,
-          message: `Payment via ${card.label}`
+          message: "Payment created through ArcPay sandbox preview"
         })
       });
 
@@ -362,7 +358,6 @@ document.getElementById("toggleVcCvv").onclick = () => {
           <div style="font-size:48px;">✅</div>
           <h2 style="color:#10b981;">Payment Successful!</h2>
           <p>${amount} USDC → <b>${email}</b></p>
-          <p style="font-size:13px;color:#6b7280;">${card.label}</p>
           <a href="${data.claimLink}" target="_blank"
             style="display:block;margin:16px 0;padding:12px;background:#eff6ff;border-radius:10px;color:#2563eb;font-size:13px;word-break:break-all;">
             ${data.claimLink}

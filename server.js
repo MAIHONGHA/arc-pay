@@ -2537,13 +2537,29 @@ app.post("/api/claims/send-email", async (req, res) => {
     const { data, error } = await resend.emails.send({
   from: "ArcPay <no-reply@arcpay.pro>",
   to: recipientEmail,
-  subject: `You received ${amount} USDC via ArcPay`,
-  html: ` 
-    <h2>You received ${amount} USDC</h2>
-    <p>${message || "You have a USDC claim waiting for you."}</p>
-    <p>Claim your USDC here:</p>
-    <p><a href="${claimLink}">${claimLink}</a></p>
-  `
+  subject: `ArcPay Payment Notification`,
+html: `
+  <div style="font-family:Arial,sans-serif;padding:20px;color:#111;">
+    <h2>ArcPay Payment Notification</h2>
+
+    <p>A payment has been prepared through ArcPay sandbox preview.</p>
+
+    <div style="margin-top:16px;padding:14px;background:#f3f4f6;border-radius:12px;">
+      <p><b>Recipient:</b> ${recipientEmail}</p>
+      <p><b>Amount:</b> ${amount} USDC</p>
+    </div>
+
+    <p style="margin-top:18px;">Open your payment page:</p>
+
+    <a href="${claimLink}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:white;text-decoration:none;border-radius:10px;font-weight:bold;">
+  Open your ArcPay envelope
+</a>
+
+    <p style="margin-top:24px;font-size:12px;color:#6b7280;">
+      This is a sandbox preview transaction from ArcPay.
+    </p>
+  </div>
+`
 });
 
 if (error) {
