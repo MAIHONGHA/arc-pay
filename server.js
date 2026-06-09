@@ -623,7 +623,7 @@ doc.end();
 const pdfBuffer = await pdfBufferPromise;
 
       await resend.emails.send({
-        from: "ArcPay <no-reply@arcpay.pro>",
+        from: "ArcPay <no-reply@arcblink.xyz>",
         to: [item.employee_email],
         subject: `Your salary has been paid - ${item.final_amount} USDC`,
         html: `
@@ -813,7 +813,7 @@ app.post("/api/payroll-items/:id/send-payslip", async (req, res) => {
     const pdfBuffer = await pdfBufferPromise;
 
     await resend.emails.send({
-      from: "ArcPay <no-reply@arcpay.pro>",
+      from: "ArcPay <no-reply@arcblink.xyz>",
       to: [item.employee_email],
       subject: `ArcPay Payslip - ${item.final_amount || 0} USDC`,
       html: `
@@ -2005,7 +2005,7 @@ app.post("/api/withdrawals/:id/status", async (req, res) => {
 const row = db.prepare("SELECT * FROM withdrawals WHERE id = ?").get(id);
 
 await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
   to: [row.email],
   subject: `ArcPay withdrawal ${status}`,
   html: `
@@ -2319,7 +2319,7 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
     // generate claim link
     const APP_URL =
       process.env.APP_URL ||
-      "https://arcpay.pro";
+      "https://arcblink.xyz";
 
     const claimLink =
       `${APP_URL}/?claim=${claimId}`;
@@ -2327,7 +2327,7 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
     // send email
     await resend.emails.send({
       from:
-        "ArcPay <no-reply@arcpay.pro>",
+       "ArcPay <no-reply@arcblink.xyz>",
 
       to: [email],
 
@@ -2535,7 +2535,7 @@ app.post("/api/claims/send-email", async (req, res) => {
     );
 
     const { data, error } = await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
   to: recipientEmail,
   subject: `You have a message from ArcPay`,
 html: `
@@ -2698,7 +2698,7 @@ app.get("/api/claim/:id", (req, res) => {
 app.get("/test-email", async (req, res) => {
   try {
     const data = await resend.emails.send({
-      from: "ArcPay <no-reply@arcpay.pro>",
+      from: "ArcPay <no-reply@arcblink.xyz>",
       to: ["maihongha14021992mhh12@gmail.com"],
       subject: "Test email from ArcPay 🚀",
       html: "<h1>ArcPay email is working!</h1>",
@@ -2757,7 +2757,7 @@ try {
   );
 
   await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
 
   to: [
    inv.recipientEmail
