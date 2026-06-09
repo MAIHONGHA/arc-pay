@@ -2546,7 +2546,7 @@ html: `
 
     <div style="margin-top:16px;padding:14px;background:#f3f4f6;border-radius:12px;">
       <p><b>Recipient:</b> ${recipientEmail}</p>
-      <p><b>Messages ID:</b> ${claimId}</p>
+      <p><b>ArcPay Message:</b> Ready</p>
     </div>
 
     <p style="margin-top:18px;">Open your ArcPay messages:</p>
