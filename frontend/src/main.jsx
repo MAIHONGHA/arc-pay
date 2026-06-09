@@ -429,6 +429,12 @@ let metamaskWallet = null;
 
 // DOM element references
 const statusEl = document.getElementById("status");
+const params = new URLSearchParams(window.location.search);
+const claimId = params.get("claim");
+
+if (claimId) {
+  openClaimPopup(claimId);
+}
 const emailEl = document.getElementById("email");
 const circleWalletEl = document.getElementById("circleWallet");
 const metamaskWalletEl = document.getElementById("metamaskWallet");
