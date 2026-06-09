@@ -2540,7 +2540,7 @@ app.post("/api/claims/send-email", async (req, res) => {
   subject: `You have a message from ArcPay`,
 html: `
   <div style="font-family:Arial,sans-serif;padding:20px;color:#111;">
-    <h2>ArcPay Payment Notification</h2>
+    <h2>ArcPay Message</h2>
 
     <p>You have a new ArcPay message waiting for you.</p>
 
@@ -2552,7 +2552,7 @@ html: `
     <p style="margin-top:18px;">Open your ArcPay messages:</p>
 
     <a href="${claimLink}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:white;text-decoration:none;border-radius:10px;font-weight:bold;">
-  Open your ArcPay envelope
+  Open your ArcPay messages
 </a>
 
     <p style="margin-top:24px;font-size:12px;color:#6b7280;">
