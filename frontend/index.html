@@ -1,11 +1,14 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ArcPay</title>
 
   <style>
+
     *{
       margin:0;
       padding:0;
@@ -19,6 +22,79 @@
       overflow-x:hidden;
     }
 
+    .nav{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      z-index:50;
+      height:78px;
+      padding:0 42px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:rgba(5,8,22,.72);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      background:linear-gradient(
+      135deg,
+      #06b6d4,
+      #8b5cf6,
+      #ec4899
+      );
+
+      box-shadow:
+      0 0 28px rgba(139,92,246,.35);
+    }
+
+    .brand span{
+      display:block;
+      font-size:11px;
+      color:#67e8f9;
+      letter-spacing:2px;
+      margin-top:3px;
+    }
+
+    .nav nav{
+      display:flex;
+      align-items:center;
+      gap:24px;
+    }
+
+    .nav a{
+      color:#cbd5e1;
+      text-decoration:none;
+      font-weight:700;
+    }
+
+    .nav-btn{
+      padding:12px 20px;
+      border-radius:14px;
+      color:white!important;
+
+      background:
+      linear-gradient(
+      135deg,
+      #06b6d4,
+      #8b5cf6
+      );
+    }
+
     .hero{
       min-height:100vh;
       display:flex;
@@ -27,17 +103,29 @@
       align-items:center;
       text-align:center;
       padding:40px 20px;
+
       background:
-      radial-gradient(circle at top,#172554 0%,#050816 55%);
+      radial-gradient(
+      circle at top,
+      #172554 0%,
+      #050816 55%
+      );
     }
 
     .badge{
       padding:10px 18px;
-      border:1px solid rgba(0,255,255,.3);
+
+      border:
+      1px solid rgba(0,255,255,.3);
+
       border-radius:999px;
+
       color:#67e8f9;
+
       margin-bottom:30px;
+
       font-size:14px;
+
       letter-spacing:2px;
     }
 
@@ -45,12 +133,15 @@
       font-size:72px;
       line-height:1;
       margin-bottom:25px;
-      background:linear-gradient(
+
+      background:
+      linear-gradient(
       to right,
       #ffffff,
       #67e8f9,
       #8b5cf6
       );
+
       -webkit-background-clip:text;
       -webkit-text-fill-color:transparent;
     }
@@ -79,20 +170,27 @@
     }
 
     .primary{
-      background:linear-gradient(
+      background:
+      linear-gradient(
       135deg,
       #06b6d4,
       #8b5cf6
       );
+
       color:white;
+
       box-shadow:
       0 0 30px rgba(139,92,246,.35);
     }
 
     .secondary{
-      border:1px solid rgba(255,255,255,.15);
+      border:
+      1px solid rgba(255,255,255,.15);
+
       color:white;
-      background:rgba(255,255,255,.04);
+
+      background:
+      rgba(255,255,255,.04);
     }
 
     .btn:hover{
@@ -101,13 +199,102 @@
 
     .features{
       padding:100px 20px;
+
       display:grid;
+
       grid-template-columns:
       repeat(auto-fit,minmax(260px,1fr));
+
       gap:25px;
+
       max-width:1200px;
+
       margin:auto;
     }
+
+.features{
+  width:100%;
+  max-width:1200px;
+  margin:80px auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:24px;
+  padding:20px;
+}
+
+.feature-card{
+  padding:28px;
+  border-radius:24px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
+  transition:.3s;
+}
+
+.feature-card:hover{
+  transform:translateY(-6px);
+  border-color:#67e8f9;
+  box-shadow:0 0 30px rgba(103,232,249,.18);
+}
+
+.feature-card h3{
+  font-size:22px;
+  margin-bottom:14px;
+}
+
+.feature-card p{
+  color:#94a3b8;
+  line-height:1.6;
+}
+
+.how{
+  padding:100px 20px;
+  max-width:1200px;
+  margin:auto;
+
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:30px;
+}
+
+.how-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:28px;
+  padding:40px;
+  text-align:center;
+  transition:0.3s;
+}
+
+.how-card:hover{
+  transform:translateY(-8px);
+  border-color:#6bdcff;
+  box-shadow:0 0 35px rgba(91,198,246,0.25);
+}
+
+.how-card span{
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:auto auto 20px;
+
+  background:linear-gradient(135deg,#06b6d4,#8b5cf6);
+  font-weight:800;
+  font-size:22px;
+}
+
+.how-card h3{
+  margin-bottom:16px;
+  font-size:24px;
+}
+
+.how-card p{
+  color:#aab8ff;
+  line-height:1.7;
+}
 
     .card{
       background:
@@ -149,6 +336,14 @@
 
     @media(max-width:768px){
 
+      .nav{
+        padding:0 20px;
+      }
+
+      .nav nav{
+        gap:14px;
+      }
+
       h1{
         font-size:48px;
       }
@@ -158,10 +353,45 @@
       }
 
     }
+
   </style>
+
 </head>
 
 <body>
+
+<header class="nav">
+
+  <div class="brand">
+
+    <div class="logo">
+      A
+    </div>
+
+    <div>
+      <strong>ArcPay</strong>
+      <span>ARC NETWORK • USDC</span>
+    </div>
+
+  </div>
+
+  <nav>
+
+    <a href="#features">
+      Features
+    </a>
+
+    <a href="#how">
+      How it works
+    </a>
+
+    <a href="/app.html" class="nav-btn">
+      Launch App
+    </a>
+
+  </nav>
+
+</header>
 
 <section class="hero">
 
@@ -174,9 +404,11 @@
   </h1>
 
   <p class="subtitle">
-    Decentralized USDC invoices, payroll,
-    payouts and Gmail crypto claims
+
+    Decentralized USDC invoices,
+    payroll, payouts and Gmail crypto claims
     powered by Arc Network.
+
   </p>
 
   <div class="buttons">
@@ -185,7 +417,7 @@
       Launch App
     </a>
 
-    <a class="btn secondary" href="#">
+    <a class="btn secondary" href="#features">
       Explore Features
     </a>
 
@@ -193,29 +425,96 @@
 
 </section>
 
-<section class="features">
+<section id="features" class="features">
 
-  <div class="card">
+  <div class="feature-card">
     <h3>USDC Invoices</h3>
-    <p>
-      Create decentralized invoices with
-      QR payments and shareable links.
-    </p>
+    <p>Create decentralized invoices with QR payments.</p>
   </div>
 
-  <div class="card">
-    <h3>Payroll Engine</h3>
-    <p>
-      Execute crypto payrolls with
-      scheduled payouts and review flows.
-    </p>
+  <div class="feature-card">
+    <h3>Smart Payroll</h3>
+    <p>Execute payroll payouts using USDC on Arc Network.</p>
   </div>
 
-  <div class="card">
+  <div class="feature-card">
     <h3>Gmail Claims</h3>
+    <p>Send crypto claims through email for non-crypto users.</p>
+  </div>
+
+  <div class="feature-card">
+    <h3>Circle Wallet</h3>
+    <p>Login with Google and create a Circle wallet instantly.</p>
+  </div>
+
+</section>
+
+<section class="features" id="features">
+
+  <div class="card">
+
+    <h3>
+      USDC Invoices
+    </h3>
+
+    <p>
+      Create decentralized invoices
+      with QR payments and shareable links.
+    </p>
+
+  </div>
+
+  <div class="card">
+
+    <h3>
+      Payroll Engine
+    </h3>
+
+    <p>
+      Execute crypto payrolls
+      with scheduled payouts and review flows.
+    </p>
+
+  </div>
+
+  <div class="card">
+
+    <h3>
+      Gmail Claims
+    </h3>
+
     <p>
       Send USDC claims through email
       for non-crypto native users.
+    </p>
+
+  </div>
+
+</section>
+
+<section class="how" id="how">
+
+  <div class="how-card">
+    <span>1</span>
+    <h3>Create Invoice</h3>
+    <p>
+      Generate USDC invoices with QR codes and shareable payment links.
+    </p>
+  </div>
+
+  <div class="how-card">
+    <span>2</span>
+    <h3>Connect Wallet</h3>
+    <p>
+      Use MetaMask, Circle Wallet, Coinbase or OKX wallet instantly.
+    </p>
+  </div>
+
+  <div class="how-card">
+    <span>3</span>
+    <h3>Receive Payments</h3>
+    <p>
+      Receive USDC payments directly on Arc Network.
     </p>
   </div>
 
@@ -223,3 +522,4 @@
 
 </body>
 </html>
+```
