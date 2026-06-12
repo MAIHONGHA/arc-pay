@@ -1458,3 +1458,16 @@ body > .wallet-chip   { display: none !important; }
     padding-top: 70px !important;
   }
 }
+
+.wallet-menu{
+  position: fixed !important;
+  top: 78px !important;
+  right: 24px !important;
+  z-index: 999999 !important;
+  display:flex;
+  flex-direction:column;
+}
+
+.wallet-menu.hidden{
+  display:none !important;
+}
