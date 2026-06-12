@@ -1,4 +1,5 @@
 import { defineConfig } from "vite";
+import { resolve } from "path";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
 
 export default defineConfig({
@@ -30,6 +31,15 @@ export default defineConfig({
   define: {
     global: "globalThis"
   },
+
+build: {
+  rollupOptions: {
+    input: {
+      main: resolve(__dirname, "index.html"),
+      app: resolve(__dirname, "app.html")
+    }
+  }
+},
 
   server: {
     proxy: {
