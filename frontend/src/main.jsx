@@ -6,6 +6,8 @@ import { W3SSdk } from "@circle-fin/w3s-pw-web-sdk";
 import Web3 from "web3";
 import PayrollPanel from "./PayrollPanel.jsx";
 import { Html5Qrcode } from "html5-qrcode";
+import { ethers } from "ethers";
+import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
 
 /* =========================
    WALLET CONNECT UI PATCH
@@ -415,6 +417,27 @@ const ERC20_ABI = [
     outputs: [{ name: "", type: "bool" }],
     type: "function"
   },
+  {
+  "constant": false,
+  "inputs": [
+    {
+      "name": "spender",
+      "type": "address"
+    },
+    {
+      "name": "amount",
+      "type": "uint256"
+    }
+  ],
+  "name": "approve",
+  "outputs": [
+    {
+      "name": "",
+      "type": "bool"
+    }
+  ],
+  "type": "function"
+},
   {
     constant: true,
     inputs: [{ name: "owner", type: "address" }],
@@ -1054,23 +1077,84 @@ async function createInvoice() {
   try {
     const biz = JSON.parse(localStorage.getItem("businessProfile") || "{}");
 
-    const recipientAddress =
-      recipientEl.value && recipientEl.value.trim() !== ""
-        ? recipientEl.value
-        : biz.wallet;
+const recipientAddress =
+  recipientEl.value && recipientEl.value.trim() !== ""
+    ? recipientEl.value
+    : metamaskWallet;
+
+if (!metamaskWallet) {
+  setStatus("Please connect a Web3 wallet before creating invoice.", "error");
+  return;
+}
 
     const recipientEmail = document.getElementById("invoiceEmail").value;
     console.log("recipientEmail frontend:", recipientEmail);
 
     const body = {
-      title: titleEl.value,
-      amount: amountEl.value,
-      recipientEmail,
-      dueDate: document.getElementById("invoiceDueDate").value,
-      recipientAddress,
-      targetChain: "Arc",
-      note: noteEl.value
+     title: titleEl.value,
+     amount: amountEl.value,
+     recipientEmail,
+     dueDate: document.getElementById("invoiceDueDate").value,
+     recipientAddress,
+     targetChain: "Arc",
+     note: noteEl.value,
     };
+
+if (!window.ethereum) {
+  throw new Error("MetaMask not found");
+}
+
+const provider = new ethers.BrowserProvider(window.ethereum);
+
+const signer = await provider.getSigner();
+
+const contract = new ethers.Contract(
+  CONTRACT_ADDRESS,
+  CONTRACT_ABI,
+  signer
+);
+
+const tx = await contract.createInvoice(
+  recipientAddress,
+  ethers.parseUnits(amountEl.value, 6),
+  noteEl.value
+);
+
+await tx.wait();
+
+const receipt = await tx.wait();
+
+let onchainId = null;
+
+for (const log of receipt.logs) {
+  try {
+    const parsed = contract.interface.parseLog(log);
+    if (parsed && parsed.args) {
+  console.log("Parsed event:", parsed.name, parsed.args);
+
+  const id =
+    parsed.args.invoiceId ??
+    parsed.args.id ??
+    parsed.args[0];
+
+  if (id !== undefined) {
+    onchainId = Number(id);
+    break;
+  }
+}
+  } catch (e) {}
+}
+
+if (onchainId === null) {
+  throw new Error("Cannot read onchain invoice id from contract event");
+}
+
+const txHash = tx.hash;
+console.log("Onchain invoice tx:", txHash);
+console.log("Onchain invoice id:", onchainId);
+
+body.txHash = txHash;
+body.onchainId = onchainId;
 
     const data = await api("/api/invoices", {
       method: "POST",
@@ -1261,6 +1345,21 @@ function renderSelectedInvoice() {
       <div>Status: ${escapeHtml(selectedInvoice.status || "")}</div>
       <div>ID: ${escapeHtml(selectedInvoice.id || "")}</div>
       <div>Recipient: ${escapeHtml(selectedInvoice.recipientAddress || "")}</div>
+      ${selectedInvoice.status === "PAID" && selectedInvoice.txHash ? `
+<div>
+  TX:
+  <a
+    href="https://testnet.arcscan.app/tx/${selectedInvoice.txHash}"
+    target="_blank"
+  >
+    View TX
+  </a>
+</div>
+` : `
+<div>
+  TX: -
+</div>
+`}
     `;
   }
 
@@ -1378,11 +1477,41 @@ async function payWithMetaMask() {
 
     setStatus("Sending MetaMask USDC transaction...");
 
-    const tx = await token.methods
-      .transfer(selectedInvoice.recipientAddress, amountUnits)
-      .send({ from: metamaskWallet, gas: 120000 });
+    const contract = new web3.eth.Contract(
+  CONTRACT_ABI,
+  CONTRACT_ADDRESS
+);
 
-    await markInvoicePaid(tx.transactionHash, metamaskWallet);
+setStatus("Approving USDC...");
+
+await token.methods
+  .approve(CONTRACT_ADDRESS, amountUnits)
+  .send({
+    from: metamaskWallet,
+    gas: 120000
+  });
+
+setStatus("Paying invoice onchain...");
+
+if (
+  selectedInvoice.onchainId === undefined ||
+  selectedInvoice.onchainId === null
+) {
+  throw new Error("Missing onchainId");
+}
+const tx = await contract.methods
+  .payInvoice(selectedInvoice.onchainId)
+  .send({
+    from: metamaskWallet,
+    gas: 250000
+  });
+
+await markInvoicePaid(tx.transactionHash, metamaskWallet);
+
+setStatus(
+  "Invoice paid onchain: " + tx.transactionHash,
+  "success"
+);
     setStatus("MetaMask payment success: " + tx.transactionHash, "success");
   } catch (err) {
     setStatus("MetaMask payment failed: " + err.message, "error");
