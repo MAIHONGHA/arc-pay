@@ -928,7 +928,7 @@ async function connectGoogleCircle() {
     return;
   }
 
-  const redirectUri = window.location.origin;
+  const redirectUri = window.location.origin + "/app.html";
 
   window.location.href =
     "https://accounts.google.com/o/oauth2/v2/auth" +
@@ -970,7 +970,7 @@ async function handleGoogleRedirect() {
   localStorage.setItem("googleUser", JSON.stringify(user));
   emailEl.textContent = user.email;
 
-  window.history.replaceState(null, "", window.location.pathname);
+  window.history.replaceState(null, "", "/app.html");
   setStatus("Google login success. Preparing Circle user...");
 
   try {
