@@ -1088,96 +1088,172 @@ async function setupCirclePin() {
 
 async function createInvoice() {
   console.log("CREATE INVOICE CLICKED");
+
   try {
-    const biz = JSON.parse(localStorage.getItem("businessProfile") || "{}");
+    const circleWallet =
+      circleWalletEl?.textContent &&
+      circleWalletEl.textContent.startsWith("0x")
+        ? circleWalletEl.textContent.trim()
+        : null;
 
-const circleWallet =
-  circleWalletEl?.textContent &&
-  circleWalletEl.textContent.startsWith("0x")
-    ? circleWalletEl.textContent.trim()
-    : null;
+    const recipientAddress =
+      recipientEl.value && recipientEl.value.trim() !== ""
+        ? recipientEl.value.trim()
+        : (metamaskWallet || circleWallet);
 
-const recipientAddress =
-  recipientEl.value && recipientEl.value.trim() !== ""
-    ? recipientEl.value
-    : (metamaskWallet || circleWallet);
-
-if (!metamaskWallet && !circleWallet) {
-  setStatus(
-    "Please connect MetaMask or Circle Wallet before creating invoice.",
-    "error"
-  );
-  return;
-}
+    if (!recipientAddress) {
+      setStatus("Please connect MetaMask or Circle Wallet before creating invoice.", "error");
+      return;
+    }
 
     const recipientEmail = document.getElementById("invoiceEmail").value;
-    console.log("recipientEmail frontend:", recipientEmail);
 
     const body = {
-     title: titleEl.value,
-     amount: amountEl.value,
-     recipientEmail,
-     dueDate: document.getElementById("invoiceDueDate").value,
-     recipientAddress,
-     targetChain: "Arc",
-     note: noteEl.value,
+      title: titleEl.value,
+      amount: amountEl.value,
+      recipientEmail,
+      dueDate: document.getElementById("invoiceDueDate").value,
+      recipientAddress,
+      targetChain: "Arc",
+      note: noteEl.value,
     };
 
-if (!window.ethereum) {
-  throw new Error("MetaMask not found");
-}
+    // =========================
+    // CASE 1: MetaMask create invoice
+    // =========================
+    if (metamaskWallet && window.ethereum) {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
 
-const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        signer
+      );
 
-const signer = await provider.getSigner();
+      const tx = await contract.createInvoice(
+        recipientAddress,
+        ethers.parseUnits(amountEl.value, 6),
+        noteEl.value
+      );
 
-const contract = new ethers.Contract(
-  CONTRACT_ADDRESS,
-  CONTRACT_ABI,
-  signer
-);
+      const receipt = await tx.wait();
 
-const tx = await contract.createInvoice(
-  recipientAddress,
-  ethers.parseUnits(amountEl.value, 6),
-  noteEl.value
-);
+      let onchainId = null;
 
+      for (const log of receipt.logs) {
+        try {
+          const parsed = contract.interface.parseLog(log);
+          const id = parsed.args.invoiceId ?? parsed.args.id ?? parsed.args[0];
 
+          if (id !== undefined) {
+            onchainId = Number(id);
+            break;
+          }
+        } catch (e) {}
+      }
 
-const receipt = await tx.wait();
+      if (onchainId === null) {
+        throw new Error("Cannot read onchain invoice id from contract event");
+      }
 
-let onchainId = null;
+      body.txHash = tx.hash;
+      body.onchainId = onchainId;
+    }
 
-for (const log of receipt.logs) {
-  try {
-    const parsed = contract.interface.parseLog(log);
-    if (parsed && parsed.args) {
-  console.log("Parsed event:", parsed.name, parsed.args);
+    // =========================
+    // CASE 2: Circle create invoice
+    // =========================
+    else if (circleWallet) {
+      const cfg = await api("/api/circle/config");
+      const appId = cfg?.config?.circleAppId;
 
-  const id =
-    parsed.args.invoiceId ??
-    parsed.args.id ??
-    parsed.args[0];
+      if (!appId) {
+        throw new Error("Missing CIRCLE_APP_ID.");
+      }
 
-  if (id !== undefined) {
-    onchainId = Number(id);
-    break;
-  }
-}
-  } catch (e) {}
-}
+      const { userToken, encryptionKey } = await getCircleAuth();
 
-if (onchainId === null) {
-  throw new Error("Cannot read onchain invoice id from contract event");
-}
+      const walletList = await listCircleWallets(userToken);
+      const wallet = extractWallet(walletList);
 
-const txHash = tx.hash;
-console.log("Onchain invoice tx:", txHash);
-console.log("Onchain invoice id:", onchainId);
+      if (!wallet || !wallet.id) {
+        throw new Error("No Circle wallet found.");
+      }
 
-body.txHash = txHash;
-body.onchainId = onchainId;
+      const readProvider = new ethers.JsonRpcProvider(ARC_RPC);
+      const readContract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        CONTRACT_ABI,
+        readProvider
+      );
+
+      const nextId = await readContract.nextInvoiceId();
+      const onchainId = Number(nextId);
+
+      const sdk = new W3SSdk({ appSettings: { appId } });
+      sdk.setAuthentication({ userToken, encryptionKey });
+
+      setStatus("Circle: creating invoice on contract...");
+
+      const createData = await api("/api/circle/contract-execution", {
+        method: "POST",
+        body: JSON.stringify({
+          userToken,
+          walletId: wallet.id,
+          contractAddress: CONTRACT_ADDRESS,
+          abiFunctionSignature: "createInvoice(address,uint256,string)",
+          abiParameters: [
+            recipientAddress,
+            toTokenUnits(amountEl.value, USDC_DECIMALS),
+            noteEl.value || ""
+          ]
+        })
+      });
+
+      const challengeId =
+        createData?.data?.challengeId || createData?.challengeId;
+
+      if (!challengeId) {
+        throw new Error("No Circle createInvoice challengeId returned.");
+      }
+
+      await new Promise((resolve, reject) => {
+        sdk.execute(challengeId, (error, result) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          console.log("Circle createInvoice approved:", result);
+          resolve(result);
+        });
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 9000));
+
+      const txData = await api("/api/circle/transactions", {
+        method: "POST",
+        body: JSON.stringify({ userToken })
+      });
+
+      const tx =
+        txData?.data?.transactions?.find((t) => {
+          const contract =
+            String(t.contractAddress || t.destinationAddress || "").toLowerCase();
+          return contract === CONTRACT_ADDRESS.toLowerCase();
+        }) ||
+        txData?.data?.transactions?.[0] ||
+        null;
+
+      body.txHash =
+        tx?.txHash ||
+        tx?.transactionHash ||
+        tx?.blockchainTxHash ||
+        tx?.id ||
+        "circle_create_pending";
+
+      body.onchainId = onchainId;
+    }
 
     const data = await api("/api/invoices", {
       method: "POST",
@@ -1187,6 +1263,7 @@ body.onchainId = onchainId;
     selectedInvoice = data.invoice;
     renderSelectedInvoice();
     await loadInvoices();
+
     setStatus("Invoice created.", "success");
   } catch (err) {
     setStatus("Create invoice failed: " + err.message, "error");
