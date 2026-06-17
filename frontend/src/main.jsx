@@ -1087,16 +1087,26 @@ async function setupCirclePin() {
 ========================= */
 
 async function createInvoice() {
+  console.log("CREATE INVOICE CLICKED");
   try {
     const biz = JSON.parse(localStorage.getItem("businessProfile") || "{}");
+
+const circleWallet =
+  circleWalletEl?.textContent &&
+  circleWalletEl.textContent.startsWith("0x")
+    ? circleWalletEl.textContent.trim()
+    : null;
 
 const recipientAddress =
   recipientEl.value && recipientEl.value.trim() !== ""
     ? recipientEl.value
-    : metamaskWallet;
+    : (metamaskWallet || circleWallet);
 
-if (!metamaskWallet) {
-  setStatus("Please connect a Web3 wallet before creating invoice.", "error");
+if (!metamaskWallet && !circleWallet) {
+  setStatus(
+    "Please connect MetaMask or Circle Wallet before creating invoice.",
+    "error"
+  );
   return;
 }
 
@@ -1133,7 +1143,7 @@ const tx = await contract.createInvoice(
   noteEl.value
 );
 
-await tx.wait();
+
 
 const receipt = await tx.wait();
 
@@ -1651,7 +1661,10 @@ async function payWithCircleWallet() {
       })
     });
 
-    console.log("Circle payInvoice response:", payData);
+    console.log(
+  "Circle payInvoice response:",
+  JSON.stringify(payData, null, 2)
+);
 
     const payChallengeId =
       payData?.data?.challengeId || payData?.challengeId;
