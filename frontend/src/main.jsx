@@ -1537,7 +1537,7 @@ setStatus(
 
 async function payWithCircleWallet() {
   try {
-    console.log("Circle pay clicked");
+    console.log("Circle contract pay clicked");
 
     if (!selectedInvoice) {
       setStatus("Open invoice first.", "error");
@@ -1546,6 +1546,14 @@ async function payWithCircleWallet() {
 
     if (selectedInvoice.status === "PAID") {
       setStatus("Invoice already paid.", "success");
+      return;
+    }
+
+    if (
+      selectedInvoice.onchainId === undefined ||
+      selectedInvoice.onchainId === null
+    ) {
+      setStatus("Missing onchainId. This invoice was not created on contract.", "error");
       return;
     }
 
@@ -1558,26 +1566,21 @@ async function payWithCircleWallet() {
     }
 
     const { userToken, encryptionKey } = await getCircleAuth();
+
     setStatus("Loading Circle wallet...");
 
     const walletList = await listCircleWallets(userToken);
-    console.log("Circle wallet list:", walletList);
-
     const wallet = extractWallet(walletList);
     const walletAddress = extractWalletAddress(walletList);
 
     if (!wallet || !wallet.id || !walletAddress) {
-      console.log("Wallet list:", walletList);
       setStatus("No Circle wallet found.", "error");
       return;
     }
 
     circleWalletEl.textContent = walletAddress;
-    setStatus("Checking Circle USDC balance...");
 
     const usdc = await findUsdcToken(userToken, wallet.id);
-    console.log("USDC token:", usdc);
-
     const invoiceAmount = Number(selectedInvoice.amount || 0);
 
     if (!Number.isFinite(usdc.balance) || usdc.balance < invoiceAmount) {
@@ -1585,73 +1588,131 @@ async function payWithCircleWallet() {
       return;
     }
 
-    setStatus("Creating Circle transfer challenge...");
-
-    const transferData = await api("/api/circle/transfer", {
-      method: "POST",
-      body: JSON.stringify({
-        userToken,
-        walletId: wallet.id,
-        tokenId: usdc.tokenId,
-        amount: String(selectedInvoice.amount),
-        destinationAddress: selectedInvoice.recipientAddress
-      })
-    });
-
-    console.log("Circle transfer response:", transferData);
-
-    const challengeId = transferData?.data?.challengeId || transferData?.challengeId;
-
-    if (!challengeId) {
-      setStatus("No Circle transfer challengeId returned. Check console.", "error");
-      return;
-    }
+    const amountUnits = toTokenUnits(selectedInvoice.amount, USDC_DECIMALS);
 
     const sdk = new W3SSdk({ appSettings: { appId } });
     sdk.setAuthentication({ userToken, encryptionKey });
 
-    sdk.execute(challengeId, async (error, result) => {
-      if (error) {
-        console.error("Circle payment error:", error);
-        setStatus("Circle payment failed: " + (error.message || JSON.stringify(error)), "error");
-        return;
-      }
+    // STEP 1: approve USDC for ArcPayInvoice contract
+    setStatus("Circle: approving USDC for ArcPay contract...");
 
-      console.log("Circle payment approved:", result);
-      setStatus("Circle payment approved. Waiting for transaction...");
-
-      // Wait for transaction to be indexed then mark invoice paid
-      setTimeout(async () => {
-        try {
-          const txData = await api("/api/circle/transactions", {
-            method: "POST",
-            body: JSON.stringify({ userToken })
-          });
-
-          console.log("Circle transactions:", txData);
-
-          const tx =
-            txData?.data?.transactions?.find((t) => {
-              const dst = String(t.destinationAddress || "").toLowerCase();
-              const recipient = String(selectedInvoice.recipientAddress || "").toLowerCase();
-              const amount = Number(t.amounts?.[0] || t.amount || 0);
-              return dst === recipient && amount === Number(selectedInvoice.amount || 0);
-            }) ||
-            txData?.data?.transactions?.[0] ||
-            null;
-
-          const txHash = tx?.txHash || tx?.transactionHash || tx?.id || "circle_pending";
-
-          await markInvoicePaid(txHash, walletAddress);
-          setStatus("Circle payment submitted: " + txHash, "success");
-        } catch (err) {
-          setStatus("Circle payment approved, but invoice update failed: " + err.message, "error");
-        }
-      }, 7000);
+    const approveData = await api("/api/circle/contract-execution", {
+      method: "POST",
+      body: JSON.stringify({
+        userToken,
+        walletId: wallet.id,
+        contractAddress: USDC_TOKEN,
+        abiFunctionSignature: "approve(address,uint256)",
+        abiParameters: [
+          CONTRACT_ADDRESS,
+          amountUnits
+        ]
+      })
     });
+
+    console.log("Circle approve response:", approveData);
+
+    const approveChallengeId =
+      approveData?.data?.challengeId || approveData?.challengeId;
+
+    if (!approveChallengeId) {
+      setStatus("No approve challengeId returned.", "error");
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      sdk.execute(approveChallengeId, (error, result) => {
+        if (error) {
+          console.error("Circle approve error:", error);
+          reject(error);
+          return;
+        }
+        console.log("Circle approve approved:", result);
+        resolve(result);
+      });
+    });
+
+    // small delay so approve is indexed
+    await new Promise((resolve) => setTimeout(resolve, 6000));
+
+    // STEP 2: call ArcPayInvoice.payInvoice(onchainId)
+    setStatus("Circle: paying invoice through ArcPay contract...");
+
+    const payData = await api("/api/circle/contract-execution", {
+      method: "POST",
+      body: JSON.stringify({
+        userToken,
+        walletId: wallet.id,
+        contractAddress: CONTRACT_ADDRESS,
+        abiFunctionSignature: "payInvoice(uint256)",
+        abiParameters: [
+          String(selectedInvoice.onchainId)
+        ]
+      })
+    });
+
+    console.log("Circle payInvoice response:", payData);
+
+    const payChallengeId =
+      payData?.data?.challengeId || payData?.challengeId;
+
+    if (!payChallengeId) {
+      setStatus("No payInvoice challengeId returned.", "error");
+      return;
+    }
+
+    await new Promise((resolve, reject) => {
+      sdk.execute(payChallengeId, (error, result) => {
+        if (error) {
+          console.error("Circle payInvoice error:", error);
+          reject(error);
+          return;
+        }
+        console.log("Circle payInvoice approved:", result);
+        resolve(result);
+      });
+    });
+
+    setStatus("Circle contract payment approved. Waiting for tx hash...");
+
+    setTimeout(async () => {
+      try {
+        const txData = await api("/api/circle/transactions", {
+          method: "POST",
+          body: JSON.stringify({ userToken })
+        });
+
+        console.log("Circle transactions after contract pay:", txData);
+
+        const tx =
+          txData?.data?.transactions?.find((t) => {
+            const contract =
+              String(t.contractAddress || t.destinationAddress || "").toLowerCase();
+            return contract === CONTRACT_ADDRESS.toLowerCase();
+          }) ||
+          txData?.data?.transactions?.[0] ||
+          null;
+
+        const txHash =
+          tx?.txHash ||
+          tx?.transactionHash ||
+          tx?.blockchainTxHash ||
+          tx?.id ||
+          "circle_contract_pending";
+
+        await markInvoicePaid(txHash, walletAddress);
+
+        setStatus("Circle invoice paid through contract: " + txHash, "success");
+      } catch (err) {
+        setStatus(
+          "Circle contract payment approved, but invoice update failed: " + err.message,
+          "error"
+        );
+      }
+    }, 9000);
   } catch (err) {
     console.error(err);
-    setStatus("Pay with Circle failed: " + err.message, "error");
+    setStatus("Pay with Circle contract failed: " + (err.message || JSON.stringify(err)), "error");
   }
 }
 
