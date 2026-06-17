@@ -143,6 +143,13 @@ db.prepare(`
 `).run();
 
 try {
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN onchainId INTEGER
+  `).run();
+} catch {}
+
+try {
 
   db.prepare(`
     ALTER TABLE invoices
@@ -1223,6 +1230,7 @@ function rowToInvoice(row) {
     note: row.note || "",
     status: row.status,
     txHash: row.txHash || null,
+    onchainId: row.onchainId,
     fromAddress: row.fromAddress || null,
     createdAt: row.createdAt,
     paidAt: row.paidAt || null,
@@ -1475,6 +1483,11 @@ app.post("/api/invoices", (req, res) => {
     const dueDate =
       String(req.body.dueDate || "").trim();
     const createdAt = new Date().toISOString();
+    const txHash = String(req.body.txHash || "").trim();
+    const onchainId =
+  req.body.onchainId !== undefined
+    ? Number(req.body.onchainId)
+    : null;
 
     if (!title) {
       return res.status(400).json({
@@ -1512,8 +1525,9 @@ app.post("/api/invoices", (req, res) => {
          note,
          status,
          createdAt,
-         dueDate
-
+         dueDate,
+         txHash,
+         onchainId
       ) VALUES (
         @id,
         @title,
@@ -1524,7 +1538,9 @@ app.post("/api/invoices", (req, res) => {
         @note,
         'CREATED',
         @createdAt,
-        @dueDate
+        @dueDate,
+        @txHash,
+        @onchainId
       )
     `).run({
       id,
@@ -1535,7 +1551,9 @@ app.post("/api/invoices", (req, res) => {
       targetChain,
       note,
       createdAt,
-      dueDate
+      dueDate,
+      txHash,
+      onchainId
     });
 
     const row = db.prepare("SELECT * FROM invoices WHERE id = ?").get(id);
