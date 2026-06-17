@@ -1920,6 +1920,60 @@ app.post("/api/circle/transfer", async (req, res) => {
   }
 });
 
+app.post("/api/circle/contract-execution", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const {
+      userToken,
+      walletId,
+      contractAddress,
+      abiFunctionSignature,
+      abiParameters
+    } = req.body;
+
+    if (!userToken) return res.status(400).json({ error: "Missing userToken" });
+    if (!walletId) return res.status(400).json({ error: "Missing walletId" });
+    if (!contractAddress || !isAddress(contractAddress)) {
+      return res.status(400).json({ error: "Invalid contractAddress" });
+    }
+    if (!abiFunctionSignature) {
+      return res.status(400).json({ error: "Missing abiFunctionSignature" });
+    }
+
+    const payload = {
+      idempotencyKey: crypto.randomUUID(),
+      walletId: String(walletId),
+      contractAddress: String(contractAddress),
+      abiFunctionSignature: String(abiFunctionSignature),
+      abiParameters: abiParameters || [],
+      feeLevel: "MEDIUM"
+    };
+
+    console.log("Circle contract execution payload:", payload);
+
+    const response = await fetch(
+      "https://api.circle.com/v1/w3s/user/transactions/contractExecution",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${CIRCLE_API_KEY}`,
+          "X-User-Token": userToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const data = await response.json();
+    console.log("Circle contract execution response:", response.status, data);
+
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/circle/transactions", async (req, res) => {
   try {
     if (!requireCircle(res)) return;
