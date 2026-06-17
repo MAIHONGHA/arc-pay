@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>ArcPay</title>
   </head>
 
@@ -55,8 +55,8 @@
           </div>
           <div class="topbar-right">
             <!-- Compact action buttons -->
-            <button id="btnPay" class="tb-btn-ghost">↗ Pay Invoice</button>
-            <button id="btnScanQR" class="tb-btn-ghost">⬡ Scan QR</button>
+            <button id="btnPay" class="tb-btn-ghost" style="display:none;">↗ Pay Invoice</button>
+            <button id="btnScanQR" class="tb-btn-ghost" style="display:none;">⬡ Scan QR</button>
             <!-- Wallet status chip -->
             <div class="wallet-chip" id="walletChip">
               <div class="wc-dot" id="wcDot"></div>
@@ -401,20 +401,13 @@
 
         <!-- Circle wallet trigger (hidden — called via Google login) -->
         <button id="btnChooseCircle" class="wm-option">
-          <span class="wm-option-icon" style="background:white;border-radius:8px;display:flex;align-items:center;justify-content:center;width:32px;height:32px;">
-            <span style="font-weight:900;color:#4285F4;font-size:20px;">G</span>
-        </span>
-
-        <span class="wm-option-name">
-          Continue with Google
-        </span>
-
-       <span class="wm-option-sub">
-         Pay with Circle Wallet
-       </span>
-
-      <span class="wm-option-arrow">→</span>
-      </button>
+  <span class="wm-option-icon" style="background:#0a0f1e;border-radius:8px;display:flex;align-items:center;justify-content:center;width:32px;height:32px;">
+    <span style="font-weight:900;color:#38bdf8;font-size:20px;">C</span>
+  </span>
+  <span class="wm-option-name">Circle Wallet</span>
+  <span class="wm-option-sub">Pay with Circle Wallet</span>
+  <span class="wm-option-arrow">→</span>
+</button>
 
         <!-- Modal footer -->
         <div class="wm-footer">

@@ -45,6 +45,19 @@ function updateWalletChip(address, balance) {
       btn.style.background = "rgba(0,232,135,0.15)";
       btn.style.borderColor = "rgba(0,232,135,0.3)";
     }
+
+// Show/hide action buttons based on connection
+const payBtn = document.getElementById("btnPay");
+const scanBtn = document.getElementById("btnScanQR");
+
+if (address && address !== "Disconnected") {
+  if (payBtn) payBtn.style.display = "block";
+  if (scanBtn) scanBtn.style.display = "block";
+} else {
+  if (payBtn) payBtn.style.display = "none";
+  if (scanBtn) scanBtn.style.display = "none";
+}
+
   } else {
     if (dot)  dot.classList.remove("connected");
     if (bal)  bal.textContent = "0.00 USDC";
