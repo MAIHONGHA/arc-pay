@@ -1555,7 +1555,7 @@ body > .wallet-chip   { display: none !important; }
   }
 }
 
-@media (max-width:700px) {
+@media (max-width:900px) {
   #app {
     display: block !important;
     grid-template-columns: none !important;
