@@ -1542,3 +1542,15 @@ body > .wallet-chip   { display: none !important; }
   }
 
 }
+
+@media (max-width:700px) {
+  .sidebar {
+    left: -280px !important;
+    transform: none !important;
+  }
+
+  .sidebar.open {
+    left: 0 !important;
+    transform: none !important;
+  }
+}
