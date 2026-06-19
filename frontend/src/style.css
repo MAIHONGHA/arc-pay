@@ -1651,3 +1651,37 @@ body > .wallet-chip   { display: none !important; }
     min-height: 130px !important;
   }
 }
+
+@media (min-width:901px) {
+  .sidebar {
+    display: grid !important;
+    grid-template-columns: auto 1fr auto !important;
+    align-items: center !important;
+    gap: 22px !important;
+    height: 82px !important;
+  }
+
+  .sidebar-menu {
+    display: flex !important;
+    flex-direction: row !important;
+    justify-content: center !important;
+    align-items: center !important;
+    gap: 8px !important;
+  }
+
+  .nav-wallet {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    width: auto !important;
+    margin-left: 0 !important;
+  }
+
+  .topbar {
+    display: none !important;
+  }
+
+  .main-shell {
+    padding-top: 24px !important;
+  }
+}
