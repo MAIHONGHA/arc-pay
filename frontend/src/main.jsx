@@ -8,6 +8,7 @@ import PayrollPanel from "./PayrollPanel.jsx";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
+import { openAppKitWallet } from "./appkit.js";
 
 /* =========================
    WALLET CONNECT UI PATCH
@@ -2068,11 +2069,7 @@ let walletModalMode = "connect";
 // MetaMask option in modal
 document.getElementById("btnChooseMetaMask")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
-  if (walletModalMode === "pay") {
-    await payWithMetaMask();
-    return;
-  }
-  await connectMetaMask();
+  await openAppKitWallet();
 });
 
 // OKX Wallet — real connection
@@ -2116,23 +2113,13 @@ async function connectCoinbase() {
 // OKX Wallet option in modal
 document.getElementById("btnChooseOKX")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
-  if (walletModalMode === "pay") {
-    await connectOKX();
-    if (metamaskWallet) await payWithMetaMask();
-    return;
-  }
-  await connectOKX();
+  await openAppKitWallet();
 });
 
 // Coinbase Wallet option in modal
 document.getElementById("btnChooseCoinbase")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
-  if (walletModalMode === "pay") {
-    await connectCoinbase();
-    if (metamaskWallet) await payWithMetaMask();
-    return;
-  }
-  await connectCoinbase();
+  await openAppKitWallet();
 });
 
 // Google / Circle option in modal
