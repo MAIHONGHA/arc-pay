@@ -2027,10 +2027,8 @@ async function loadClaimPage() {
 
 document.getElementById("btnMobileMenu")
   ?.addEventListener("click", () => {
-
-    document.body.classList.toggle("sidebar-open");
-
-});
+    document.querySelector(".sidebar")?.classList.toggle("open");
+  });
 
 btnSaveCustomer?.addEventListener("click", saveCustomer);
 
