@@ -1554,3 +1554,31 @@ body > .wallet-chip   { display: none !important; }
     transform: none !important;
   }
 }
+
+@media (max-width:700px) {
+  #app {
+    display: block !important;
+    grid-template-columns: none !important;
+  }
+
+  .main-shell {
+    padding-top: 70px !important;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 58px !important;
+    left: -280px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 260px !important;
+    height: calc(100vh - 58px) !important;
+    z-index: 999998 !important;
+    transform: none !important;
+  }
+
+  .sidebar.open {
+    left: 0 !important;
+    transform: none !important;
+  }
+}
