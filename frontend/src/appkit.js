@@ -29,7 +29,7 @@ const projectId = "70b21c44685fc62f9b501eb07b04a67b";
 const metadata = {
   name: "ArcPay",
   description: "ArcPay USDC payments on Arc Network",
-  url: window.location.origin,
+  url: "https://arcpay.pro/app.html",
   icons: ["https://arcpay.pro/favicon.ico"],
 };
 
@@ -44,7 +44,7 @@ export const appKit = createAppKit({
   projectId,
   metadata,
   features: {
-    analytics: true,
+    analytics: false,
     email: false,
     socials: false,
   },
