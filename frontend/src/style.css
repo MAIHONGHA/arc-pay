@@ -1699,3 +1699,24 @@ body > .wallet-chip   { display: none !important; }
     padding-top: 24px !important;
   }
 }
+
+/* FIX: content must scroll under fixed navbar, not overlap it */
+@media (min-width:901px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 82px !important;
+    z-index: 999999 !important;
+  }
+
+  .main-shell {
+    padding-top: 120px !important;
+  }
+
+  #dashboard-top,
+  .app-section {
+    scroll-margin-top: 120px !important;
+  }
+}
