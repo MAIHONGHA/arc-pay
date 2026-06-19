@@ -795,6 +795,13 @@ btnCloseScanner?.addEventListener("click", async () => {
   qrScannerModal?.classList.add("hidden");
 });
 
+qrScannerModal?.addEventListener("click", (e) => {
+  if (e.target === qrScannerModal) {
+    qrScannerModal.classList.add("hidden");
+    stopQRScanner?.();
+  }
+});
+
 /* =========================
    CIRCLE WALLET HELPERS
 ========================= */
