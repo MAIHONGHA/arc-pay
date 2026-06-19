@@ -1431,8 +1431,11 @@ body > .wallet-chip   { display: none !important; }
   }
 
   .topbar-left {
-    display: none !important;
-  }
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex: 0 0 auto !important;
+}
 
   .topbar-right {
     width: 100% !important;
@@ -1457,4 +1460,85 @@ body > .wallet-chip   { display: none !important; }
   .main-shell {
     padding-top: 70px !important;
   }
+}
+
+.mobile-menu-btn {
+  display: none;
+}
+
+@media (max-width:700px) {
+  body {
+    padding-bottom: 0 !important;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex !important;
+    width: 42px !important;
+    height: 42px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 12px !important;
+    font-size: 22px !important;
+    padding: 0 !important;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 58px !important;
+    left: -280px !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 260px !important;
+    height: calc(100vh - 58px) !important;
+    z-index: 999998 !important;
+    padding: 20px 14px !important;
+    transition: left .22s ease !important;
+    border-right: 1px solid rgba(56,189,248,.22) !important;
+    border-top: none !important;
+  }
+
+  .sidebar.open {
+    left: 0 !important;
+  }
+
+  .sidebar .brand {
+    display: flex !important;
+  }
+
+  .sidebar-menu {
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: none !important;
+    gap: 10px !important;
+    height: auto !important;
+  }
+
+  .sidebar-menu a {
+    justify-content: flex-start !important;
+    font-size: 14px !important;
+    padding: 14px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .topbar {
+    justify-content: space-between !important;
+  }
+
+  .topbar-right {
+    width: auto !important;
+    margin-left: auto !important;
+  }
+}
+
+@media (max-width: 768px){
+
+  .sidebar{
+    transform: translateX(-100%);
+    transition: .25s ease;
+  }
+
+  body.sidebar-open .sidebar{
+    transform: translateX(0);
+  }
+
 }

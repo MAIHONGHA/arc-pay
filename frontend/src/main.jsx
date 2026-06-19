@@ -2025,6 +2025,13 @@ async function loadClaimPage() {
    EVENT LISTENERS + INIT
 ========================= */
 
+document.getElementById("btnMobileMenu")
+  ?.addEventListener("click", () => {
+
+    document.body.classList.toggle("sidebar-open");
+
+});
+
 btnSaveCustomer?.addEventListener("click", saveCustomer);
 
 btnSendClaimEmail?.addEventListener("click", async () => {
