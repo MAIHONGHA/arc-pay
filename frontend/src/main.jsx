@@ -10,6 +10,8 @@ import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
 import { openAppKitWallet } from "./appkit.js";
 
+window.openAppKitWallet = openAppKitWallet;
+
 /* =========================
    WALLET CONNECT UI PATCH
    Integrated into main.jsx
