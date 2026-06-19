@@ -72,6 +72,20 @@ body {
   letter-spacing: 1.2px;
 }
 
+.nav-wallet{
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255,255,255,.08);
+}
+
+.nav-wallet .wallet-chip{
+  margin-bottom: 10px;
+}
+
+.nav-wallet .btn-connect{
+  width: 100%;
+}
+
 .sidebar-menu {
   display: flex;
   flex-direction: column;
