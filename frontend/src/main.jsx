@@ -2411,3 +2411,20 @@ window.updateWithdrawalStatus = async function (id, status) {
 };
 
 document.getElementById("btnLoadWithdrawals")?.addEventListener("click", loadWithdrawals);
+
+// Sync AppKit wallet address with ArcPay
+import { watchAccount } from "@wagmi/core";
+import { wagmiAdapter } from "./appkit.js";
+
+watchAccount(wagmiAdapter.wagmiConfig, {
+  onChange(account) {
+    if (account.address) {
+      metamaskWallet = account.address;
+      if (metamaskWalletEl) metamaskWalletEl.textContent = account.address;
+      updateWalletChip(account.address, null);
+    } else {
+      metamaskWallet = null;
+      updateWalletChip(null, null);
+    }
+  }
+});
