@@ -11,8 +11,6 @@ const cron = require("node-cron");
 const { Resend } = require("resend");
 const { Web3 } = require("web3");
 const ARC_MEMO_ADDRESS = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
-const USDC_ADDRESS =
-  "0x3600000000000000000000000000000000000000";
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
