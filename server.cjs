@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const PDFDocument = require("pdfkit");
 const express = require("express");
 const OpenAI = require("openai");
@@ -12,6 +11,8 @@ const cron = require("node-cron");
 const { Resend } = require("resend");
 const { Web3 } = require("web3");
 const ARC_MEMO_ADDRESS = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
+const USDC_ADDRESS =
+  "0x3600000000000000000000000000000000000000";
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
@@ -1251,6 +1252,16 @@ async function recordPaymentMemo({ txHash, type, amount, from, to, note }) {
 
     const wallet = new ethers.Wallet(PAYOUT_PRIVATE_KEY, provider);
 
+    const MEMO_ABI = [
+      "function memo(address target, bytes data, bytes32 memoId, bytes memoData)"
+    ];
+
+    const memoContract = new ethers.Contract(
+      ARC_MEMO_ADDRESS,
+      MEMO_ABI,
+      wallet
+    );
+
     const memoText = JSON.stringify({
       app: "ArcPay",
       type,
@@ -1262,13 +1273,25 @@ async function recordPaymentMemo({ txHash, type, amount, from, to, note }) {
       timestamp: new Date().toISOString()
     });
 
-    const memoTx = await wallet.sendTransaction({
-      to: ARC_MEMO_ADDRESS,
-      value: 0n,
-      data: ethers.hexlify(ethers.toUtf8Bytes(memoText))
-    });
+    const transferData = "0x";
+
+    const memoId = ethers.keccak256(
+      ethers.toUtf8Bytes(`arcpay-${type}-${txHash || Date.now()}`)
+    );
+
+    const memoData = ethers.toUtf8Bytes(memoText);
+
+    const memoTx = await memoContract.memo(
+      USDC_ADDRESS,
+      transferData,
+      memoId,
+      memoData
+    );
+
+    await memoTx.wait();
 
     console.log("ArcPay memo tx:", memoTx.hash);
+
     return memoTx.hash;
   } catch (err) {
     console.warn("Memo failed, payment still OK:", err.message);
