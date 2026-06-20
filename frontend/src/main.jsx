@@ -1629,6 +1629,53 @@ setStatus(
   }
 }
 
+async function payWithAppKit() {
+  try {
+    if (!selectedInvoice) {
+      setStatus("No invoice selected.", "error");
+      return;
+    }
+
+    const account = getAccount(wagmiAdapter.wagmiConfig);
+
+    if (!account?.address) {
+      walletModalMode = "pay";
+      await openAppKitWallet();
+      return;
+    }
+
+    const recipient =
+      selectedInvoice.recipientAddress ||
+      selectedInvoice.recipient ||
+      selectedInvoice.merchantAddress;
+
+    const amount = parseUnits(String(selectedInvoice.amount), 6);
+
+    const hash = await writeContract(wagmiAdapter.wagmiConfig, {
+      address: CONTRACT_ADDRESS,
+      abi: CONTRACT_ABI,
+      functionName: "payInvoice",
+      args: [selectedInvoice.id],
+    });
+
+    await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, { hash });
+
+    await api(`/api/invoices/${selectedInvoice.id}/mark-paid`, {
+      method: "POST",
+      body: JSON.stringify({
+        txHash: hash,
+        fromAddress: account.address,
+      }),
+    });
+
+    setStatus("Invoice paid with AppKit wallet.", "success");
+    await openInvoice(selectedInvoice.id);
+  } catch (err) {
+    console.error("AppKit pay failed:", err);
+    setStatus("AppKit pay failed: " + (err.message || err), "error");
+  }
+}
+
 /* =========================
    CIRCLE WALLET PAYMENT
 ========================= */
@@ -2074,7 +2121,7 @@ document.getElementById("btnChooseMetaMask")?.addEventListener("click", async ()
   document.getElementById("walletModal")?.classList.add("hidden");
 
   if (walletModalMode === "pay") {
-    await payWithMetaMask();
+    await payWithAppKit();
     return;
   }
 
