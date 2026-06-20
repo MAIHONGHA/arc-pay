@@ -11,7 +11,7 @@ const { ethers } = require("ethers");
 const cron = require("node-cron");
 const { Resend } = require("resend");
 const { Web3 } = require("web3");
-
+const ARC_MEMO_ADDRESS = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
@@ -1242,6 +1242,40 @@ function rowToInvoice(row) {
   };
 }
 
+async function recordPaymentMemo({ txHash, type, amount, from, to, note }) {
+  try {
+    if (!PAYOUT_PRIVATE_KEY) {
+      console.warn("Memo skipped: missing PAYOUT_PRIVATE_KEY");
+      return null;
+    }
+
+    const wallet = new ethers.Wallet(PAYOUT_PRIVATE_KEY, provider);
+
+    const memoText = JSON.stringify({
+      app: "ArcPay",
+      type,
+      amount: String(amount || ""),
+      from: from || "",
+      to: to || "",
+      note: note || "",
+      ref: txHash || "",
+      timestamp: new Date().toISOString()
+    });
+
+    const memoTx = await wallet.sendTransaction({
+      to: ARC_MEMO_ADDRESS,
+      value: 0n,
+      data: ethers.hexlify(ethers.toUtf8Bytes(memoText))
+    });
+
+    console.log("ArcPay memo tx:", memoTx.hash);
+    return memoTx.hash;
+  } catch (err) {
+    console.warn("Memo failed, payment still OK:", err.message);
+    return null;
+  }
+}
+
 /* =========================
    HEALTH / CONFIG
 ========================= */
@@ -1572,7 +1606,7 @@ app.post("/api/invoices", (req, res) => {
 }
 });
 
-app.post("/api/invoices/:id/mark-paid", (req, res) => {
+app.post("/api/invoices/:id/mark-paid", async (req, res) => {
   try {
     const row = db
       .prepare("SELECT * FROM invoices WHERE id = ?")
@@ -1609,6 +1643,15 @@ app.post("/api/invoices/:id/mark-paid", (req, res) => {
     const updated = db
       .prepare("SELECT * FROM invoices WHERE id = ?")
       .get(req.params.id);
+
+await recordPaymentMemo({
+  txHash: txHash || req.body.txHash || "",
+  type: "invoice",
+  amount: updated?.amount || 0,
+  from: fromAddress || req.body.fromAddress || "",
+  to: updated?.recipientAddress || "",
+  note: updated?.title || updated?.note || ""
+});
 
     res.json({
       ok: true,
