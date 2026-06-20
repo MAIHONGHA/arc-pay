@@ -8,8 +8,9 @@ import PayrollPanel from "./PayrollPanel.jsx";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
-import { openAppKitWallet } from "./appkit.js";
-
+import { openAppKitWallet, wagmiAdapter } from "./appkit.js";
+import { getAccount, writeContract, waitForTransactionReceipt } from "@wagmi/core";
+import { parseUnits } from "viem";
 window.openAppKitWallet = openAppKitWallet;
 
 /* =========================
@@ -2420,7 +2421,6 @@ document.getElementById("btnLoadWithdrawals")?.addEventListener("click", loadWit
 
 // Sync AppKit wallet address with ArcPay
 import { watchAccount } from "@wagmi/core";
-import { wagmiAdapter } from "./appkit.js";
 
 watchAccount(wagmiAdapter.wagmiConfig, {
   onChange(account) {
