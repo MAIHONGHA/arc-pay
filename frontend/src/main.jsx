@@ -1651,12 +1651,19 @@ async function payWithAppKit() {
 
     const amount = parseUnits(String(selectedInvoice.amount), 6);
 
-    const hash = await writeContract(wagmiAdapter.wagmiConfig, {
-      address: CONTRACT_ADDRESS,
-      abi: CONTRACT_ABI,
-      functionName: "payInvoice",
-      args: [selectedInvoice.id],
-    });
+    const contractInvoiceId =
+  selectedInvoice.onchainId ?? selectedInvoice.contractInvoiceId;
+
+if (contractInvoiceId === undefined || contractInvoiceId === null || contractInvoiceId === "") {
+  throw new Error("Missing onchain invoice id. Please recreate this invoice.");
+}
+
+const hash = await writeContract(wagmiAdapter.wagmiConfig, {
+  address: CONTRACT_ADDRESS,
+  abi: CONTRACT_ABI,
+  functionName: "payInvoice",
+  args: [BigInt(contractInvoiceId)],
+});
 
     await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, { hash });
 
