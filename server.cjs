@@ -143,6 +143,13 @@ db.prepare(`
 `).run();
 
 try {
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN onchainId INTEGER
+  `).run();
+} catch {}
+
+try {
 
   db.prepare(`
     ALTER TABLE invoices
@@ -623,7 +630,7 @@ doc.end();
 const pdfBuffer = await pdfBufferPromise;
 
       await resend.emails.send({
-        from: "ArcPay <no-reply@arcpay.pro>",
+        from: "ArcPay <no-reply@arcblink.xyz>",
         to: [item.employee_email],
         subject: `Your salary has been paid - ${item.final_amount} USDC`,
         html: `
@@ -813,7 +820,7 @@ app.post("/api/payroll-items/:id/send-payslip", async (req, res) => {
     const pdfBuffer = await pdfBufferPromise;
 
     await resend.emails.send({
-      from: "ArcPay <no-reply@arcpay.pro>",
+      from: "ArcPay <no-reply@arcblink.xyz>",
       to: [item.employee_email],
       subject: `ArcPay Payslip - ${item.final_amount || 0} USDC`,
       html: `
@@ -1223,6 +1230,7 @@ function rowToInvoice(row) {
     note: row.note || "",
     status: row.status,
     txHash: row.txHash || null,
+    onchainId: row.onchainId,
     fromAddress: row.fromAddress || null,
     createdAt: row.createdAt,
     paidAt: row.paidAt || null,
@@ -1475,6 +1483,11 @@ app.post("/api/invoices", (req, res) => {
     const dueDate =
       String(req.body.dueDate || "").trim();
     const createdAt = new Date().toISOString();
+    const txHash = String(req.body.txHash || "").trim();
+    const onchainId =
+  req.body.onchainId !== undefined
+    ? Number(req.body.onchainId)
+    : null;
 
     if (!title) {
       return res.status(400).json({
@@ -1512,8 +1525,9 @@ app.post("/api/invoices", (req, res) => {
          note,
          status,
          createdAt,
-         dueDate
-
+         dueDate,
+         txHash,
+         onchainId
       ) VALUES (
         @id,
         @title,
@@ -1524,7 +1538,9 @@ app.post("/api/invoices", (req, res) => {
         @note,
         'CREATED',
         @createdAt,
-        @dueDate
+        @dueDate,
+        @txHash,
+        @onchainId
       )
     `).run({
       id,
@@ -1535,7 +1551,9 @@ app.post("/api/invoices", (req, res) => {
       targetChain,
       note,
       createdAt,
-      dueDate
+      dueDate,
+      txHash,
+      onchainId
     });
 
     const row = db.prepare("SELECT * FROM invoices WHERE id = ?").get(id);
@@ -1902,6 +1920,60 @@ app.post("/api/circle/transfer", async (req, res) => {
   }
 });
 
+app.post("/api/circle/contract-execution", async (req, res) => {
+  try {
+    if (!requireCircle(res)) return;
+
+    const {
+      userToken,
+      walletId,
+      contractAddress,
+      abiFunctionSignature,
+      abiParameters
+    } = req.body;
+
+    if (!userToken) return res.status(400).json({ error: "Missing userToken" });
+    if (!walletId) return res.status(400).json({ error: "Missing walletId" });
+    if (!contractAddress || !isAddress(contractAddress)) {
+      return res.status(400).json({ error: "Invalid contractAddress" });
+    }
+    if (!abiFunctionSignature) {
+      return res.status(400).json({ error: "Missing abiFunctionSignature" });
+    }
+
+    const payload = {
+      idempotencyKey: crypto.randomUUID(),
+      walletId: String(walletId),
+      contractAddress: String(contractAddress),
+      abiFunctionSignature: String(abiFunctionSignature),
+      abiParameters: abiParameters || [],
+      feeLevel: "MEDIUM"
+    };
+
+    console.log("Circle contract execution payload:", payload);
+
+    const response = await fetch(
+      "https://api.circle.com/v1/w3s/user/transactions/contractExecution",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${CIRCLE_API_KEY}`,
+          "X-User-Token": userToken,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      }
+    );
+
+    const data = await response.json();
+    console.log("Circle contract execution response:", response.status, data);
+
+    res.status(response.status).json(data);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post("/api/circle/transactions", async (req, res) => {
   try {
     if (!requireCircle(res)) return;
@@ -2005,7 +2077,7 @@ app.post("/api/withdrawals/:id/status", async (req, res) => {
 const row = db.prepare("SELECT * FROM withdrawals WHERE id = ?").get(id);
 
 await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
   to: [row.email],
   subject: `ArcPay withdrawal ${status}`,
   html: `
@@ -2319,32 +2391,54 @@ app.post("/api/demo/send-test-usdc", async (req, res) => {
     // generate claim link
     const APP_URL =
       process.env.APP_URL ||
-      "http://localhost:5173";
+      "https://arcblink.xyz";
 
     const claimLink =
-       `${APP_URL}/claim/${claimId}`;
+      `${APP_URL}/?claim=${claimId}`;
 
     // send email
     await resend.emails.send({
       from:
-        "ArcPay <no-reply@arcpay.pro>",
+       "ArcPay <no-reply@arcblink.xyz>",
 
       to: [email],
 
       subject:
-        "You received test USDC",
+        "ArcPay Claim USDC",
 
       html: `
-        <h2>You received ${amount} test USDC</h2>
+  <h2>You received ${amount} test USDC</h2>
 
-        <p>
-          Click the button below to claim your funds:
-        </p>
+  <p>${message || ""}</p>
 
-        <a href="${claimLink}">
-          Claim USDC
-        </a>
-      `
+  <p>Click below to claim your funds:</p>
+
+  <p>
+    <a
+      href="${claimLink}"
+      target="_blank"
+      style="
+        display:inline-block;
+        padding:12px 20px;
+        background:#4f46e5;
+        color:white;
+        text-decoration:none;
+        border-radius:10px;
+        font-weight:bold;
+      "
+    >
+      Claim USDC
+    </a>
+  </p>
+
+  <p>Or copy this link:</p>
+
+  <p>
+    <a href="${claimLink}">
+      ${claimLink}
+    </a>
+  </p>
+`
     });
 
     res.json({
@@ -2513,15 +2607,31 @@ app.post("/api/claims/send-email", async (req, res) => {
     );
 
     const { data, error } = await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
   to: recipientEmail,
-  subject: `You received ${amount} USDC via ArcPay`,
-  html: ` 
-    <h2>You received ${amount} USDC</h2>
-    <p>${message || "You have a USDC claim waiting for you."}</p>
-    <p>Claim your USDC here:</p>
-    <p><a href="${claimLink}">${claimLink}</a></p>
-  `
+  subject: `You have a message from ArcPay`,
+html: `
+  <div style="font-family:Arial,sans-serif;padding:20px;color:#111;">
+    <h2>ArcPay Message</h2>
+
+    <p>You have a new ArcPay message waiting for you.</p>
+
+    <div style="margin-top:16px;padding:14px;background:#f3f4f6;border-radius:12px;">
+      <p><b>Recipient:</b> ${recipientEmail}</p>
+      <p><b>ArcPay Message:</b> Ready</p>
+    </div>
+
+    <p style="margin-top:18px;">Open your ArcPay messages:</p>
+
+    <a href="${claimLink}" style="display:inline-block;padding:12px 18px;background:#2563eb;color:white;text-decoration:none;border-radius:10px;font-weight:bold;">
+  Open your ArcPay messages
+</a>
+
+    <p style="margin-top:24px;font-size:12px;color:#6b7280;">
+      This message was generated automatically by ArcPay.
+    </p>
+  </div>
+`
 });
 
 if (error) {
@@ -2660,7 +2770,7 @@ app.get("/api/claim/:id", (req, res) => {
 app.get("/test-email", async (req, res) => {
   try {
     const data = await resend.emails.send({
-      from: "ArcPay <no-reply@arcpay.pro>",
+      from: "ArcPay <no-reply@arcblink.xyz>",
       to: ["maihongha14021992mhh12@gmail.com"],
       subject: "Test email from ArcPay 🚀",
       html: "<h1>ArcPay email is working!</h1>",
@@ -2719,7 +2829,7 @@ try {
   );
 
   await resend.emails.send({
-  from: "ArcPay <no-reply@arcpay.pro>",
+  from: "ArcPay <no-reply@arcblink.xyz>",
 
   to: [
    inv.recipientEmail

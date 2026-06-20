@@ -1,367 +1,525 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ArcPay</title>
-  </head>
+<head>
 
-  <body>
-    <div id="app">
-      <aside class="sidebar">
-        <div class="brand">
-          <div class="brand-logo">A</div>
-          <div>
-            <div class="brand-title">ArcPay</div>
-            <div class="brand-subtitle">ARC NETWORK · USDC</div>
-          </div>
-        </div>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ArcPay</title>
 
-        <div class="sidebar-menu">
-          <a href="#dashboard" data-tab="dashboard">Dashboard</a>
-          <a href="#invoices" data-tab="invoices">Invoices</a>
-          <a href="#customers" data-tab="customers">Customers</a>
-          <a href="#gmail-claim" data-tab="gmail-claim">Gmail Claim</a>
-          <a href="#payroll" data-tab="payroll">Payroll</a>
-          <a href="#payouts" data-tab="payouts">Payouts</a>
-          <a href="#business" data-tab="business">Business</a>          
-        </div>
-      </aside>
+  <style>
 
-      <main class="main-shell">
-        <section id="dashboard-top" class="panel hero-panel">
-          <div class="hero-top">
-            <div>
-              <p class="eyebrow">Crypto payments dashboard</p>
-              <h1>ArcPay</h1>
-              <p class="muted">Invoices, payroll, payouts, Circle wallet, MetaMask and email claims in one dashboard.</p>
-            </div>
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+    }
 
-            <div class="hero-actions">
-              <button id="btnGoogle">Login Google</button>
-              <button id="btnConnectWallet">Connect Wallet</button>
+    body{
+      background:#050816;
+      color:white;
+      font-family:Arial, sans-serif;
+      overflow-x:hidden;
+    }
 
-              <button id="btnPay">Pay Invoice</button>
-              <button id="btnScanQR" class="secondary">Scan QR</button>
-            </div>
-          </div>
+    .nav{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      z-index:50;
+      height:78px;
+      padding:0 42px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      background:rgba(5,8,22,.72);
+      backdrop-filter:blur(18px);
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
 
-          <section class="dashboard">
-            <div class="stat-card">
-              <div class="stat-label">Total Received</div>
-              <div class="stat-value" id="dashTotal">0 USDC</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Paid Invoices</div>
-              <div class="stat-value" id="dashPaid">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Pending</div>
-              <div class="stat-value" id="dashPending">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Latest TX</div>
-              <div class="stat-value small" id="dashLatestTx">-</div>
-            </div>
-            <div class="stat-card">
-            <div class="stat-label">Total Invoices</div>
-              <div class="stat-value" id="dashTotalInvoices">0</div>
-            </div>
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
 
-            <div class="stat-card">
-              <div class="stat-label">Total Payrolls</div>
-              <div class="stat-value" id="dashTotalPayrolls">0</div>
-            </div>
+    .logo{
+      width:44px;
+      height:44px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+      background:linear-gradient(
+      135deg,
+      #06b6d4,
+      #8b5cf6,
+      #ec4899
+      );
 
-            <div class="stat-card">
-              <div class="stat-label">Total Claims</div>
-              <div class="stat-value" id="dashTotalClaims">0</div>
-            </div>
+      box-shadow:
+      0 0 28px rgba(139,92,246,.35);
+    }
 
-            <div class="stat-card">
-              <div class="stat-label">Total Volume</div>
-              <div class="stat-value" id="dashTotalVolume">0 USDC</div>
-            </div>
-          </section>
+    .brand span{
+      display:block;
+      font-size:11px;
+      color:#67e8f9;
+      letter-spacing:2px;
+      margin-top:3px;
+    }
 
-          <div class="status-grid">
-            <div class="mini-box">
-              <span>Status</span>
-              <b id="status">Ready.</b>
-            </div>
-            <div class="mini-box">
-              <span>Google Email</span>
-              <b id="email">-</b>
-            </div>
-            <div class="mini-box">
-              <span>Circle Wallet</span>
-              <b id="circleWallet">-</b>
-            </div>
-            <div class="mini-box">
-              <span>Connected Wallet</span>
-              <b id="metamaskWallet">Disconnected</b>
-            </div>
-          </div>
-        </section>
+    .nav nav{
+      display:flex;
+      align-items:center;
+      gap:24px;
+    }
 
-        <section id="dashboard" class="panel app-section">
-        <p class="eyebrow">Overview</p>
-          <h2>Dashboard</h2>
-          <p class="muted">
-            Wallet, payment status and live stats are always shown above.
-        </p>
+    .nav a{
+      color:#cbd5e1;
+      text-decoration:none;
+      font-weight:700;
+    }
 
-        <div class="mini-box" style="margin-top:24px;">
-        <p class="eyebrow">Activity</p>
-        <h3>Recent Activity</h3>
+    .nav-btn{
+      padding:12px 20px;
+      border-radius:14px;
+      color:white!important;
 
-        <div id="activityFeed">
-          No activity yet.
-        </div>
-      </div>
+      background:
+      linear-gradient(
+      135deg,
+      #06b6d4,
+      #8b5cf6
+      );
+    }
 
-    </section>
+    .hero{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+      padding:40px 20px;
 
-        <section id="invoices" class="panel app-section hidden-section">
+      background:
+      radial-gradient(
+      circle at top,
+      #172554 0%,
+      #050816 55%
+      );
+    }
 
-<div class="mini-box" style="margin-bottom:24px;">
-  <p class="eyebrow">AI</p>
+    .badge{
+      padding:10px 18px;
 
-  <h3>AI Invoice Draft</h3>
+      border:
+      1px solid rgba(0,255,255,.3);
 
-  <textarea
-    id="aiPrompt"
-    placeholder="Example: create an invoice for 500 USDC for customer A"
-  ></textarea>
+      border-radius:999px;
 
-<div class="voice-ai-box">
+      color:#67e8f9;
 
-  <select id="voiceLang">
-    <option value="vi-VN">🇻🇳 Vietnamese</option>
-    <option value="en-US">🇺🇸 English</option>
-    <option value="ja-JP">🇯🇵 Japanese</option>
-    <option value="ko-KR">🇰🇷 Korean</option>
-    <option value="zh-CN">🇨🇳 Chinese</option>
-    <option value="th-TH">🇹🇭 Thai</option>
-    <option value="auto">🌍 Auto Detect</option>
-  </select>
+      margin-bottom:30px;
 
-  <button
-    id="btnVoiceInvoice"
-    class="secondary"
-  >
-    🎤 Speak Invoice
-  </button>
+      font-size:14px;
 
-</div>
+      letter-spacing:2px;
+    }
 
-  <button
-    onclick="generateAIDraft()"
-    style="margin-top:12px;"
-  >
-    Generate AI Draft
-  </button>
+    h1{
+      font-size:72px;
+      line-height:1;
+      margin-bottom:25px;
 
-  <pre id="aiResult"></pre>
-</div>
+      background:
+      linear-gradient(
+      to right,
+      #ffffff,
+      #67e8f9,
+      #8b5cf6
+      );
 
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Invoices</p>
-              <h2>Create Invoice</h2>
-            </div>
-          </div>
+      -webkit-background-clip:text;
+      -webkit-text-fill-color:transparent;
+    }
 
-          <label>Title</label>
-          <input id="title" placeholder="e.g. Coffee" />
+    .subtitle{
+      max-width:850px;
+      font-size:22px;
+      line-height:1.6;
+      color:#94a3b8;
+      margin-bottom:50px;
+    }
 
-          <label>Amount USDC</label>
-          <input id="amount" placeholder="0.8" />
+    .buttons{
+      display:flex;
+      gap:20px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
 
-          <label>Due Date</label>
+    .btn{
+      padding:18px 34px;
+      border-radius:18px;
+      text-decoration:none;
+      font-weight:bold;
+      transition:.3s;
+    }
 
-          <input
-           type="date"
-           id="invoiceDueDate"
-          />
+    .primary{
+      background:
+      linear-gradient(
+      135deg,
+      #06b6d4,
+      #8b5cf6
+      );
 
-          <label>Recipient Address</label>
-          <input id="recipient" placeholder="Leave empty to use merchant wallet" />
+      color:white;
 
-          <label>Recipient Email</label>
+      box-shadow:
+      0 0 30px rgba(139,92,246,.35);
+    }
 
-          <input
-           id="invoiceEmail"
-           type="email"
-           placeholder="customer@gmail.com"
-          />
+    .secondary{
+      border:
+      1px solid rgba(255,255,255,.15);
 
-          <label>Note</label>
-          <textarea id="note" placeholder="Optional note"></textarea>
+      color:white;
 
-          <div class="row">
-            <button id="btnCreateInvoice">Create Invoice</button>
-            <button id="btnLoadInvoices">Load Invoices</button>
-          </div>
+      background:
+      rgba(255,255,255,.04);
+    }
 
-          <div class="split-grid">
-            <div class="mini-box invoice-detail-card">
-              <span>Selected Invoice</span>
-              <div id="selectedInvoice">No invoice selected.</div>
-            </div>
+    .btn:hover{
+      transform:translateY(-3px);
+    }
 
-            <div class="mini-box">
-              <span>Invoice QR</span>
-              <div id="qrBox" class="qr-empty">Open an invoice to show QR.</div>
-            </div>
-          </div>
+    .features{
+      padding:100px 20px;
 
-          <h3>Invoice History</h3>
-          <div id="invoiceList"></div>
-        </section>
+      display:grid;
 
-        <section id="customers" class="panel app-section hidden-section">
-          <p class="eyebrow">Customer</p>
-          <h2>Customer</h2>
+      grid-template-columns:
+      repeat(auto-fit,minmax(260px,1fr));
 
-          <input id="custName" placeholder="Customer Name" />
-          <input id="custEmail" placeholder="Customer Email" />
-          <input id="custWallet" placeholder="Customer Wallet (0x...)" />
+      gap:25px;
 
-          <button id="btnSaveCustomer">Save Customer</button>
+      max-width:1200px;
 
-          <label>Select Customer</label>
-          <select id="customerSelect">
-            <option value="">-- Choose customer --</option>
-          </select>
-        </section>
+      margin:auto;
+    }
 
-        <section id="gmail-claim" class="panel app-section hidden-section">
-          <p class="eyebrow">Email payout</p>
-          <h2>Send USDC by Gmail</h2>
+.features{
+  width:100%;
+  max-width:1200px;
+  margin:80px auto;
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+  gap:24px;
+  padding:20px;
+}
 
-          <input id="claimEmail" placeholder="Recipient Gmail" />
-          <input id="claimAmount" placeholder="Amount USDC" />
-          <textarea id="claimMessage" placeholder="Message"></textarea>
+.feature-card{
+  padding:28px;
+  border-radius:24px;
+  background:rgba(255,255,255,.04);
+  border:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
+  transition:.3s;
+}
 
-          <button id="btnSendClaimEmail">Send Claim Email</button>
-          <button onclick="openCardPayment()">
-            Pay with Visa / Mastercard
-          </button>
-          <pre id="claimResult"></pre>
-        </section>
+.feature-card:hover{
+  transform:translateY(-6px);
+  border-color:#67e8f9;
+  box-shadow:0 0 30px rgba(103,232,249,.18);
+}
 
-        <section id="payroll" class="panel app-section hidden-section">
-          <p class="eyebrow">Payroll</p>
-          <h2>Create Payroll & Payroll History</h2>
+.feature-card h3{
+  font-size:22px;
+  margin-bottom:14px;
+}
 
-          <div class="payroll-analytics">
-            <div class="analytics-grid">
-              <div class="analytics-card">
-                <span>Total Payroll</span>
-                <h3 id="payrollTotal">$0</h3>
-              </div>
-              <div class="analytics-card">
-                <span>Total Employees</span>
-                <h3 id="payrollEmployees">0</h3>
-              </div>
-              <div class="analytics-card">
-                <span>Paid Payrolls</span>
-                <h3 id="payrollPaid">0</h3>
-              </div>
-              <div class="analytics-card">
-                <span>Pending Payrolls</span>
-                <h3 id="payrollPending">0</h3>
-              </div>
-            </div>
-          </div>
+.feature-card p{
+  color:#94a3b8;
+  line-height:1.6;
+}
 
-          <div id="payroll-anchor"></div>
-        </section>
+.how{
+  padding:100px 20px;
+  max-width:1200px;
+  margin:auto;
 
-        <section id="payouts" class="panel app-section hidden-section">
-          <p class="eyebrow">Payouts</p>
-          <h2>Payout Queue</h2>
-          <div id="payout-root"></div>
-        </section>
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:30px;
+}
 
-        <section id="business" class="panel app-section hidden-section">
-          <p class="eyebrow">Business</p>
-          <h2>Business Profile</h2>
+.how-card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:28px;
+  padding:40px;
+  text-align:center;
+  transition:0.3s;
+}
 
-          <input id="bizName" placeholder="Business Name" />
-          <input id="bizEmail" placeholder="Business Email" />
-          <input id="bizWallet" placeholder="Merchant Wallet Address" />
+.how-card:hover{
+  transform:translateY(-8px);
+  border-color:#6bdcff;
+  box-shadow:0 0 35px rgba(91,198,246,0.25);
+}
 
-          <button id="btnSaveBiz">Save Profile</button>
-          <hr style="margin:20px 0;" />
+.how-card span{
+  width:58px;
+  height:58px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:auto auto 20px;
 
-          <h3>Withdrawal Requests</h3>
+  background:linear-gradient(135deg,#06b6d4,#8b5cf6);
+  font-weight:800;
+  font-size:22px;
+}
 
-          <button id="btnLoadWithdrawals">
-            Refresh Withdrawals
-          </button>
+.how-card h3{
+  margin-bottom:16px;
+  font-size:24px;
+}
 
-          <div id="withdrawalsList">
-            No withdrawals loaded
-          </div>
-        </section>
+.how-card p{
+  color:#aab8ff;
+  line-height:1.7;
+}
 
-      </main>
+    .card{
+      background:
+      linear-gradient(
+      180deg,
+      rgba(255,255,255,.05),
+      rgba(255,255,255,.02)
+      );
+
+      border:
+      1px solid rgba(255,255,255,.08);
+
+      border-radius:24px;
+
+      padding:30px;
+
+      transition:.3s;
+    }
+
+    .card:hover{
+      transform:translateY(-6px);
+
+      border-color:
+      rgba(103,232,249,.4);
+
+      box-shadow:
+      0 0 30px rgba(103,232,249,.12);
+    }
+
+    .card h3{
+      margin-bottom:16px;
+      font-size:22px;
+    }
+
+    .card p{
+      color:#94a3b8;
+      line-height:1.7;
+    }
+
+    @media(max-width:768px){
+
+      .nav{
+        padding:0 20px;
+      }
+
+      .nav nav{
+        gap:14px;
+      }
+
+      h1{
+        font-size:48px;
+      }
+
+      .subtitle{
+        font-size:18px;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<header class="nav">
+
+  <div class="brand">
+
+    <div class="logo">
+      A
     </div>
 
-    <div id="toast" class="toast hidden"></div>
-
-    <div id="invoiceSheet" class="invoice-sheet hidden">
-      <div class="invoice-sheet-backdrop" id="closeInvoiceSheet"></div>
-
-      <div class="invoice-sheet-content">
-        <div class="sheet-handle"></div>
-
-        <div class="sheet-head">
-          <div>
-            <p class="eyebrow">Invoice Detail</p>
-            <h2 id="sheetTitle">Invoice</h2>
-          </div>
-
-          <button id="btnCloseInvoiceSheet" class="sheet-close">×</button>
-        </div>
-
-        <div id="sheetBody" class="sheet-body">
-          No invoice selected.
-        </div>
-
-        <div id="sheetQR" class="sheet-qr"></div>
-
-        <div class="sheet-actions">
-          <button id="sheetCopyLink">Copy Link</button>
-          <button id="sheetPayInvoice">Pay Invoice</button>
-        </div>
-      </div>
+    <div>
+      <strong>ArcPay</strong>
+      <span>ARC NETWORK • USDC</span>
     </div>
 
-<div id="walletModal" class="wallet-modal hidden">
-  <div class="wallet-modal-card">
-    <h3>Choose Payment Wallet</h3>
-    
-    <button id="btnChooseCircle">Circle Wallet</button>
-    <button id="btnChooseMetaMask">MetaMask</button>
-    <button id="btnChooseOKX">OKX Wallet</button>
-    <button id="btnChooseCoinbase">Coinbase Wallet</button>
-
-    <button id="btnCloseWalletModal" class="secondary">Cancel</button>
   </div>
-</div>
 
-    <div id="qrScannerModal" class="invoice-modal hidden">
-      <div class="invoice-modal-content">
-        <button id="btnCloseScanner" class="close-btn">x</button>
-        <p class="eyebrow">CAMERA SCAN</p>
-        <h2>Scan Invoice QR</h2>
-        <div id="qrScanner" style="width:100%;"></div>
-      </div>
-    </div>
+  <nav>
 
-    <script type="module" src="/src/main.jsx"></script>
-  </body>
+    <a href="#features">
+      Features
+    </a>
+
+    <a href="#how">
+      How it works
+    </a>
+
+    <a href="/app.html" class="nav-btn">
+      Launch App
+    </a>
+
+  </nav>
+
+</header>
+
+<section class="hero">
+
+  <div class="badge">
+    ARC + CIRCLE PAYMENTS
+  </div>
+
+  <h1>
+    ArcPay
+  </h1>
+
+  <p class="subtitle">
+
+    Decentralized USDC invoices,
+    payroll, payouts and Gmail crypto claims
+    powered by Arc Network.
+
+  </p>
+
+  <div class="buttons">
+
+    <a class="btn primary" href="/app.html">
+      Launch App
+    </a>
+
+    <a class="btn secondary" href="#features">
+      Explore Features
+    </a>
+
+  </div>
+
+</section>
+
+<section id="features" class="features">
+
+  <div class="feature-card">
+    <h3>USDC Invoices</h3>
+    <p>Create decentralized invoices with QR payments.</p>
+  </div>
+
+  <div class="feature-card">
+    <h3>Smart Payroll</h3>
+    <p>Execute payroll payouts using USDC on Arc Network.</p>
+  </div>
+
+  <div class="feature-card">
+    <h3>Gmail Claims</h3>
+    <p>Send crypto claims through email for non-crypto users.</p>
+  </div>
+
+  <div class="feature-card">
+    <h3>Circle Wallet</h3>
+    <p>Login with Google and create a Circle wallet instantly.</p>
+  </div>
+
+</section>
+
+<section class="features" id="features">
+
+  <div class="card">
+
+    <h3>
+      USDC Invoices
+    </h3>
+
+    <p>
+      Create decentralized invoices
+      with QR payments and shareable links.
+    </p>
+
+  </div>
+
+  <div class="card">
+
+    <h3>
+      Payroll Engine
+    </h3>
+
+    <p>
+      Execute crypto payrolls
+      with scheduled payouts and review flows.
+    </p>
+
+  </div>
+
+  <div class="card">
+
+    <h3>
+      Gmail Claims
+    </h3>
+
+    <p>
+      Send USDC claims through email
+      for non-crypto native users.
+    </p>
+
+  </div>
+
+</section>
+
+<section class="how" id="how">
+
+  <div class="how-card">
+    <span>1</span>
+    <h3>Create Invoice</h3>
+    <p>
+      Generate USDC invoices with QR codes and shareable payment links.
+    </p>
+  </div>
+
+  <div class="how-card">
+    <span>2</span>
+    <h3>Connect Wallet</h3>
+    <p>
+      Use MetaMask, Circle Wallet, Coinbase or OKX wallet instantly.
+    </p>
+  </div>
+
+  <div class="how-card">
+    <span>3</span>
+    <h3>Receive Payments</h3>
+    <p>
+      Receive USDC payments directly on Arc Network.
+    </p>
+  </div>
+
+</section>
+
+</body>
 </html>
+```

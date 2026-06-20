@@ -1,0 +1,29 @@
+{
+  "language": "Solidity",
+  "sources": {
+    "contracts/ArcPayInvoice.sol": {
+      "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ninterface IERC20 {\r\n    function transferFrom(\r\n        address from,\r\n        address to,\r\n        uint256 amount\r\n    ) external returns (bool);\r\n}\r\n\r\ncontract ArcPayInvoice {\r\n    IERC20 public usdc;\r\n\r\n    struct Invoice {\r\n        uint256 id;\r\n        address payer;\r\n        address merchant;\r\n        uint256 amount;\r\n        bool paid;\r\n        string note;\r\n    }\r\n\r\n    uint256 public nextInvoiceId;\r\n\r\n    mapping(uint256 => Invoice) public invoices;\r\n\r\n    event InvoiceCreated(\r\n        uint256 id,\r\n        address merchant,\r\n        uint256 amount,\r\n        string note\r\n    );\r\n\r\n    event InvoicePaid(\r\n        uint256 id,\r\n        address payer,\r\n        address merchant,\r\n        uint256 amount\r\n    );\r\n\r\n    constructor(address usdcAddress) {\r\n        usdc = IERC20(usdcAddress);\r\n    }\r\n\r\n    function createInvoice(\r\n        address merchant,\r\n        uint256 amount,\r\n        string memory note\r\n    ) public {\r\n        invoices[nextInvoiceId] = Invoice({\r\n            id: nextInvoiceId,\r\n            payer: address(0),\r\n            merchant: merchant,\r\n            amount: amount,\r\n            paid: false,\r\n            note: note\r\n        });\r\n\r\n        emit InvoiceCreated(\r\n            nextInvoiceId,\r\n            merchant,\r\n            amount,\r\n            note\r\n        );\r\n\r\n        nextInvoiceId++;\r\n    }\r\n\r\n    function payInvoice(uint256 invoiceId) public {\r\n        Invoice storage invoice = invoices[invoiceId];\r\n\r\n        require(!invoice.paid, \"Already paid\");\r\n        require(invoice.merchant != address(0), \"Invoice not found\");\r\n\r\n        bool ok = usdc.transferFrom(\r\n            msg.sender,\r\n            invoice.merchant,\r\n            invoice.amount\r\n        );\r\n\r\n        require(ok, \"USDC transfer failed\");\r\n\r\n        invoice.payer = msg.sender;\r\n        invoice.paid = true;\r\n\r\n        emit InvoicePaid(\r\n            invoiceId,\r\n            msg.sender,\r\n            invoice.merchant,\r\n            invoice.amount\r\n        );\r\n    }\r\n}"
+    }
+  },
+  "settings": {
+    "evmVersion": "paris",
+    "optimizer": {
+      "enabled": false,
+      "runs": 200
+    },
+    "outputSelection": {
+      "*": {
+        "*": [
+          "abi",
+          "evm.bytecode",
+          "evm.deployedBytecode",
+          "evm.methodIdentifiers",
+          "metadata"
+        ],
+        "": [
+          "ast"
+        ]
+      }
+    }
+  }
+}
