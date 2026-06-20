@@ -2071,6 +2071,12 @@ let walletModalMode = "connect";
 // MetaMask option in modal
 document.getElementById("btnChooseMetaMask")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
+
+  if (walletModalMode === "pay") {
+    await payWithMetaMask();
+    return;
+  }
+
   await openAppKitWallet();
 });
 
