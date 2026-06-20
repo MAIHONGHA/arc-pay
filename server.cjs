@@ -1665,14 +1665,16 @@ app.post("/api/invoices/:id/mark-paid", async (req, res) => {
       .prepare("SELECT * FROM invoices WHERE id = ?")
       .get(req.params.id);
 
-await recordPaymentMemo({
-  txHash: txHash || req.body.txHash || "",
-  type: "invoice",
-  amount: updated?.amount || 0,
-  from: fromAddress || req.body.fromAddress || "",
-  to: updated?.recipientAddress || "",
-  note: updated?.title || updated?.note || ""
-});
+// Memo disabled for now.
+// Arc Memo must wrap the real USDC transfer, not run after payment.
+// await recordPaymentMemo({
+//   txHash: txHash || req.body.txHash || "",
+//   type: "invoice",
+//   amount: invoiceRow?.amount || 0,
+//   from: fromAddress || req.body.fromAddress || "",
+//   to: invoiceRow?.recipientAddress || "",
+//   note: invoiceRow?.title || invoiceRow?.note || ""
+// });
 
     res.json({
       ok: true,
