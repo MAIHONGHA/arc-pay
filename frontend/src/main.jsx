@@ -1459,6 +1459,20 @@ function openInvoiceSheet(inv) {
     };
   }
 
+if (payBtn) {
+  if (inv.status === "PAID") {
+    payBtn.textContent = "Paid";
+    payBtn.disabled = true;
+    payBtn.style.opacity = "0.6";
+    payBtn.style.cursor = "not-allowed";
+  } else {
+    payBtn.textContent = "Pay Invoice";
+    payBtn.disabled = false;
+    payBtn.style.opacity = "1";
+    payBtn.style.cursor = "pointer";
+  }
+}
+
   if (payBtn) {
   payBtn.onclick = async () => {
     if (metamaskWallet) {
