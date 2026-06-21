@@ -9,7 +9,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
 import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
 import { openAppKitWallet, wagmiAdapter } from "./appkit.js";
-import { getAccount, writeContract, waitForTransactionReceipt } from "@wagmi/core";
+import { getAccount, readContract, writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { parseUnits } from "viem";
 window.openAppKitWallet = openAppKitWallet;
 
@@ -1101,6 +1101,9 @@ async function createInvoice() {
   console.log("CREATE INVOICE CLICKED");
 
   try {
+    const appKitAccount = getAccount(wagmiAdapter.wagmiConfig);
+    const appKitWallet = appKitAccount?.address || null;
+
     const circleWallet =
       circleWalletEl?.textContent &&
       circleWalletEl.textContent.startsWith("0x")
@@ -1110,7 +1113,7 @@ async function createInvoice() {
     const recipientAddress =
       recipientEl.value && recipientEl.value.trim() !== ""
         ? recipientEl.value.trim()
-        : (metamaskWallet || circleWallet);
+        : (metamaskWallet || appKitWallet || circleWallet);
 
     if (!recipientAddress) {
       setStatus("Please connect MetaMask or Circle Wallet before creating invoice.", "error");
@@ -1171,6 +1174,32 @@ async function createInvoice() {
       body.txHash = tx.hash;
       body.onchainId = onchainId;
     }
+
+else if (appKitWallet) {
+  setStatus("AppKit: creating invoice on contract...");
+
+  const nextId = await readContract(wagmiAdapter.wagmiConfig, {
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "nextInvoiceId",
+  });
+
+  const hash = await writeContract(wagmiAdapter.wagmiConfig, {
+    address: CONTRACT_ADDRESS,
+    abi: CONTRACT_ABI,
+    functionName: "createInvoice",
+    args: [
+      recipientAddress,
+      parseUnits(String(amountEl.value), 6),
+      noteEl.value || "",
+    ],
+  });
+
+  await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, { hash });
+
+  body.txHash = hash;
+  body.onchainId = Number(nextId);
+}
 
     // =========================
     // CASE 2: Circle create invoice
@@ -2213,6 +2242,12 @@ btnPay?.addEventListener("click", async () => {
     await payWithMetaMask();
     return;
   }
+
+const appKitAccount = getAccount(wagmiAdapter.wagmiConfig);
+if (appKitAccount?.address) {
+  await payWithAppKit();
+  return;
+}
 
   const circleAddress = circleWalletEl?.textContent?.trim();
   if (circleAddress && circleAddress.startsWith("0x")) {
