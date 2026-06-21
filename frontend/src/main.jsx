@@ -1717,6 +1717,21 @@ if (contractInvoiceId === undefined || contractInvoiceId === null || contractInv
   throw new Error("Missing onchain invoice id. Please recreate this invoice.");
 }
 
+setStatus("AppKit: approving USDC...", "info");
+
+const approveHash = await writeContract(wagmiAdapter.wagmiConfig, {
+  address: USDC_TOKEN,
+  abi: ERC20_ABI,
+  functionName: "approve",
+  args: [CONTRACT_ADDRESS, amount],
+});
+
+await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, {
+  hash: approveHash,
+});
+
+setStatus("AppKit: paying invoice...", "info");
+
 const hash = await writeContract(wagmiAdapter.wagmiConfig, {
   address: CONTRACT_ADDRESS,
   abi: CONTRACT_ABI,
