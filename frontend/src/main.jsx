@@ -1475,10 +1475,16 @@ if (payBtn) {
 
   if (payBtn) {
   payBtn.onclick = async () => {
-    if (metamaskWallet) {
-      await payWithMetaMask();
-      return;
-    }
+    if (metamaskWallet && window.ethereum) {
+  await payWithMetaMask();
+  return;
+}
+
+const appKitAccount = getAccount(wagmiAdapter.wagmiConfig);
+if (appKitAccount?.address) {
+  await payWithAppKit();
+  return;
+}
 
     const circleAddress = circleWalletEl?.textContent?.trim();
     if (circleAddress && circleAddress.startsWith("0x")) {
