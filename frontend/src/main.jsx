@@ -1431,11 +1431,21 @@ function openInvoiceSheet(inv) {
   }
 
   if (payBtn) {
-    payBtn.onclick = () => {
-      walletModalMode = "pay";
-      document.getElementById("walletModal")?.classList.remove("hidden");
-    };
-  }
+  payBtn.onclick = async () => {
+    if (metamaskWallet) {
+      await payWithMetaMask();
+      return;
+    }
+
+    const circleAddress = circleWalletEl?.textContent?.trim();
+    if (circleAddress && circleAddress.startsWith("0x")) {
+      await payWithCircleWallet();
+      return;
+    }
+
+    setStatus("Please connect Web3 wallet or Circle Wallet first.", "error");
+  };
+}
 }
 
 function closeInvoiceSheet() {
@@ -2128,9 +2138,9 @@ document.getElementById("btnChooseMetaMask")?.addEventListener("click", async ()
   document.getElementById("walletModal")?.classList.add("hidden");
 
   if (walletModalMode === "pay") {
-    await payWithAppKit();
-    return;
-  }
+  await payWithMetaMask();
+  return;
+}
 
   await openAppKitWallet();
 });
@@ -2205,9 +2215,19 @@ btnSetupPin?.addEventListener("click", setupCirclePin);
 btnSwitchArc?.addEventListener("click", switchArc);
 
 // Pay Invoice button opens wallet modal in pay mode
-btnPay?.addEventListener("click", () => {
-  walletModalMode = "pay";
-  document.getElementById("walletModal")?.classList.remove("hidden");
+btnPay?.addEventListener("click", async () => {
+  if (metamaskWallet) {
+    await payWithMetaMask();
+    return;
+  }
+
+  const circleAddress = circleWalletEl?.textContent?.trim();
+  if (circleAddress && circleAddress.startsWith("0x")) {
+    await payWithCircleWallet();
+    return;
+  }
+
+  setStatus("Please connect Web3 wallet or Circle Wallet first.", "error");
 });
 
 btnPayCircle?.addEventListener("click", payWithCircleWallet);
