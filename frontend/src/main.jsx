@@ -466,6 +466,31 @@ const ERC20_ABI = [
 
 let selectedInvoice = null;
 let metamaskWallet = null;
+let activeWalletType = null; // "web3" | "circle"
+
+function clearCircleWalletLocal() {
+  if (circleWalletEl) {
+    circleWalletEl.textContent = "-";
+  }
+
+  if (activeWalletType === "circle") {
+    activeWalletType = null;
+  }
+}
+
+function clearWeb3WalletLocal() {
+  metamaskWallet = null;
+
+  if (metamaskWalletEl) {
+    metamaskWalletEl.textContent = "Disconnected";
+  }
+
+  updateWalletChip(null, null);
+
+  if (activeWalletType === "web3") {
+    activeWalletType = null;
+  }
+}
 
 // DOM element references
 const statusEl = document.getElementById("status");
@@ -891,6 +916,8 @@ async function loadCircleWallet(userToken) {
   }
 
   circleWalletEl.textContent = address;
+  clearWeb3WalletLocal();
+activeWalletType = "circle";
   setStatus("Circle wallet loaded.", "success");
   document.getElementById("btnSetupPin")?.classList.add("hidden");
 
@@ -1553,6 +1580,8 @@ async function connectMetaMask() {
 
     // Update topbar wallet chip
     updateWalletChip(metamaskWallet, null);
+    clearCircleWalletLocal();
+activeWalletType = "web3";
     setStatus("Wallet connected.", "success");
   } catch (err) {
     setStatus("MetaMask connect failed: " + err.message, "error");
@@ -2222,6 +2251,8 @@ async function connectOKX() {
     metamaskWallet = accounts[0] || null;
     if (metamaskWalletEl) metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
     updateWalletChip(metamaskWallet, null);
+    clearCircleWalletLocal();
+activeWalletType = "web3";
     setStatus("OKX Wallet connected.", "success");
   } catch (err) {
     setStatus("OKX connect failed: " + err.message, "error");
@@ -2241,6 +2272,8 @@ async function connectCoinbase() {
     metamaskWallet = accounts[0] || null;
     if (metamaskWalletEl) metamaskWalletEl.textContent = metamaskWallet || "Disconnected";
     updateWalletChip(metamaskWallet, null);
+    clearCircleWalletLocal();
+activeWalletType = "web3";
     setStatus("Coinbase Wallet connected.", "success");
   } catch (err) {
     setStatus("Coinbase connect failed: " + err.message, "error");
@@ -2565,9 +2598,15 @@ watchAccount(wagmiAdapter.wagmiConfig, {
       metamaskWallet = account.address;
       if (metamaskWalletEl) metamaskWalletEl.textContent = account.address;
       updateWalletChip(account.address, null);
+      clearCircleWalletLocal();
+activeWalletType = "web3";
     } else {
-      metamaskWallet = null;
-      updateWalletChip(null, null);
-    }
+  metamaskWallet = null;
+  updateWalletChip(null, null);
+
+  if (activeWalletType === "web3") {
+    activeWalletType = null;
   }
+ }
+}
 });
