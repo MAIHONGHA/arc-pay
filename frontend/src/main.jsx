@@ -2183,14 +2183,7 @@ async function connectCoinbase() {
   }
 }
 
-// OKX Wallet option in modal
-document.getElementById("btnChooseOKX")?.addEventListener("click", async () => {
-  document.getElementById("walletModal")?.classList.add("hidden");
-  await openAppKitWallet();
-});
-
-// Coinbase Wallet option in modal
-document.getElementById("btnChooseCoinbase")?.addEventListener("click", async () => {
+document.getElementById("btnChooseWeb3")?.addEventListener("click", async () => {
   document.getElementById("walletModal")?.classList.add("hidden");
   await openAppKitWallet();
 });
