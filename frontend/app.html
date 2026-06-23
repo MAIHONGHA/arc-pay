@@ -45,9 +45,6 @@
           <a href="#business" data-tab="business">Business</a>
         </div>
         <div class="topbar-right">
-            <!-- Compact action buttons -->
-            <button id="btnPay" class="tb-btn-ghost" style="display:none;">↗ Pay Invoice</button>
-            <button id="btnScanQR" class="tb-btn-ghost" style="display:none;">⬡ Scan QR</button>
             <!-- Wallet status chip -->
             <div class="wallet-chip" id="walletChip">
               <div class="wc-dot" id="wcDot"></div>
@@ -72,6 +69,8 @@
 
         <!-- Wallet dropdown menu -->
         <div class="wallet-menu hidden" id="walletMenu">
+          <button id="btnPay" class="tb-btn-ghost" style="display:none;">↗ Pay Invoice</button>
+          <button id="btnScanQR" class="tb-btn-ghost" style="display:none;">⬡ Scan QR</button>
           <button id="copyWalletAddress">📋 Copy Address</button>
           <button id="viewWalletExplorer">🔍 View Explorer</button>
           <button id="disconnectWalletChip">⏻ Disconnect</button>
