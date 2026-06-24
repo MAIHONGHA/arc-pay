@@ -739,7 +739,7 @@ async function sendClaimEmail() {
 ========================= */
 
 function getInvoicePayUrl(inv) {
-  return `${window.location.origin}/?invoice=${encodeURIComponent(inv.id)}`;
+  return `${window.location.origin}/app.html?invoice=${encodeURIComponent(inv.id)}`;
 }
 
 function renderQR(inv) {
@@ -750,7 +750,7 @@ function renderQR(inv) {
     return;
   }
 
-  const payUrl = `${window.location.origin}/?invoice=${encodeURIComponent(inv.id)}`;
+  const payUrl = getInvoicePayUrl(inv);
   const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(payUrl);
 
   qrBoxEl.innerHTML = `
