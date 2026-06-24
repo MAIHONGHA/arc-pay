@@ -1461,8 +1461,6 @@ function openInvoiceSheet(inv) {
           <div class="sheet-link-label">Payment Link</div>
           <a href="${payUrl}" target="_blank" rel="noreferrer">${payUrl}</a>
           <div class="row" style="margin-top:12px;">
-            <button id="sheetCopyLink" class="secondary">Copy Link</button>
-            <button id="sheetCopyRecipient" class="secondary">Copy Address</button>
           </div>
         </div>
       </div>
