@@ -2196,6 +2196,19 @@ document.getElementById("btnMobileMenu")
     document.querySelector(".sidebar")?.classList.toggle("open");
   });
 
+document.addEventListener("click", (e) => {
+  const sidebar = document.querySelector(".sidebar");
+  const btnMobileMenu = document.getElementById("btnMobileMenu");
+
+  if (
+    sidebar?.classList.contains("open") &&
+    !sidebar.contains(e.target) &&
+    !btnMobileMenu?.contains(e.target)
+  ) {
+    sidebar.classList.remove("open");
+  }
+});
+
 btnSaveCustomer?.addEventListener("click", saveCustomer);
 
 btnSendClaimEmail?.addEventListener("click", async () => {
