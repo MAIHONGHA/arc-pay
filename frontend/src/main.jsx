@@ -1842,13 +1842,30 @@ await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, {
   hash: approveHash,
 });
 
-setStatus("AppKit: paying invoice...", "info");
+setStatus("AppKit: paying invoice with Arc Memo...", "info");
+
+const invoiceInterface = new ethers.Interface(CONTRACT_ABI);
+
+const payData = invoiceInterface.encodeFunctionData("payInvoice", [
+  BigInt(contractInvoiceId),
+]);
+
+const memoId = ethers.id(`arcpay-invoice-${contractInvoiceId}`);
+
+const memoData = ethers.toUtf8Bytes(
+  `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${contractInvoiceId} | amount=${selectedInvoice.amount} USDC`
+);
 
 const hash = await writeContract(wagmiAdapter.wagmiConfig, {
-  address: CONTRACT_ADDRESS,
-  abi: CONTRACT_ABI,
-  functionName: "payInvoice",
-  args: [BigInt(contractInvoiceId)],
+  address: MEMO_ADDRESS,
+  abi: MEMO_ABI,
+  functionName: "memo",
+  args: [
+    CONTRACT_ADDRESS,
+    payData,
+    memoId,
+    memoData,
+  ],
 });
 
     await waitForTransactionReceipt(wagmiAdapter.wagmiConfig, { hash });
