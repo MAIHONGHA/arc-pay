@@ -7,7 +7,7 @@ import Web3 from "web3";
 import PayrollPanel from "./PayrollPanel.jsx";
 import { Html5Qrcode } from "html5-qrcode";
 import { ethers } from "ethers";
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from "./contract";
+import { CONTRACT_ADDRESS, CONTRACT_ABI, MEMO_ADDRESS, MEMO_ABI } from "./contract";
 import { openAppKitWallet, wagmiAdapter } from "./appkit.js";
 import { getAccount, readContract, writeContract, waitForTransactionReceipt } from "@wagmi/core";
 import { parseUnits } from "viem";
@@ -1501,7 +1501,7 @@ if (payBtn) {
   if (payBtn) {
   payBtn.onclick = async () => {
     if (metamaskWallet && window.ethereum) {
-  await payWithMetaMask();
+  await payWithArcMemoMetaMask();
   return;
 }
 
@@ -1712,6 +1712,91 @@ setStatus(
     setStatus("MetaMask payment success: " + tx.transactionHash, "success");
   } catch (err) {
     setStatus("MetaMask payment failed: " + err.message, "error");
+  }
+}
+
+async function payWithArcMemoMetaMask() {
+  try {
+    if (!window.ethereum) {
+      setStatus("Install a Web3 wallet first.", "error");
+      return;
+    }
+
+    if (!metamaskWallet) await connectMetaMask();
+    if (!metamaskWallet) {
+      setStatus("Connect wallet first.", "error");
+      return;
+    }
+
+    if (!selectedInvoice) {
+      setStatus("Open invoice first.", "error");
+      return;
+    }
+
+    if (selectedInvoice.status === "PAID") {
+      setStatus("Invoice already paid.", "success");
+      return;
+    }
+
+    if (selectedInvoice.onchainId === undefined || selectedInvoice.onchainId === null) {
+      throw new Error("Missing onchainId");
+    }
+
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const signer = await provider.getSigner();
+
+    const token = new ethers.Contract(
+      USDC_TOKEN,
+      ["function approve(address spender, uint256 amount) returns (bool)"],
+      signer
+    );
+
+    const invoice = new ethers.Contract(
+      CONTRACT_ADDRESS,
+      CONTRACT_ABI,
+      signer
+    );
+
+    const memo = new ethers.Contract(
+      MEMO_ADDRESS,
+      MEMO_ABI,
+      signer
+    );
+
+    const amountUnits = ethers.parseUnits(String(selectedInvoice.amount), 6);
+
+    setStatus("Approving USDC for ArcPay contract...");
+
+    const approveTx = await token.approve(CONTRACT_ADDRESS, amountUnits);
+    await approveTx.wait();
+
+    const payData = invoice.interface.encodeFunctionData("payInvoice", [
+      BigInt(selectedInvoice.onchainId)
+    ]);
+
+    const memoId = ethers.id(`arcpay-invoice-${selectedInvoice.onchainId}`);
+
+    const memoData = ethers.toUtf8Bytes(
+      `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`
+    );
+
+    setStatus("Paying invoice with Arc Memo...");
+
+    const tx = await memo.memo(
+      CONTRACT_ADDRESS,
+      payData,
+      memoId,
+      memoData
+    );
+
+    await tx.wait();
+
+    await markInvoicePaid(tx.hash, metamaskWallet);
+
+    setStatus("Invoice paid with Arc Memo: " + tx.hash, "success");
+  } catch (err) {
+    console.error(err);
+    setStatus("Arc Memo payment failed: " + (err.message || err), "error");
   }
 }
 
