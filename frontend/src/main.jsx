@@ -1990,21 +1990,42 @@ async function payWithCircleWallet() {
     // small delay so approve is indexed
     await new Promise((resolve) => setTimeout(resolve, 6000));
 
-    // STEP 2: call ArcPayInvoice.payInvoice(onchainId)
-    setStatus("Circle: paying invoice through ArcPay contract...");
+    // STEP 2: pay through Arc Memo
+    setStatus("Circle: preparing Arc Memo...");
 
-    const payData = await api("/api/circle/contract-execution", {
-      method: "POST",
-      body: JSON.stringify({
-        userToken,
-        walletId: wallet.id,
-        contractAddress: CONTRACT_ADDRESS,
-        abiFunctionSignature: "payInvoice(uint256)",
-        abiParameters: [
-          String(selectedInvoice.onchainId)
-        ]
-      })
-    });
+    const invoiceInterface = new ethers.Interface(CONTRACT_ABI);
+
+const encodedPayData = invoiceInterface.encodeFunctionData("payInvoice", [
+  BigInt(selectedInvoice.onchainId),
+]);
+
+const memoId = ethers.id(
+  `arcpay-invoice-${selectedInvoice.onchainId}`
+);
+
+const memoData = ethers.hexlify(
+  ethers.toUtf8Bytes(
+    `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`
+  )
+);
+
+setStatus("Circle: paying invoice with Arc Memo...");
+
+const payData = await api("/api/circle/contract-execution", {
+  method: "POST",
+  body: JSON.stringify({
+    userToken,
+    walletId: wallet.id,
+    contractAddress: MEMO_ADDRESS,
+    abiFunctionSignature: "memo(address,bytes,bytes32,bytes)",
+    abiParameters: [
+      CONTRACT_ADDRESS,
+      encodedPayData,
+      memoId,
+      memoData
+    ]
+  })
+});
 
     console.log(
   "Circle payInvoice response:",
@@ -2033,41 +2054,54 @@ async function payWithCircleWallet() {
 
     setStatus("Circle contract payment approved. Waiting for tx hash...");
 
-    setTimeout(async () => {
-      try {
-        const txData = await api("/api/circle/transactions", {
-          method: "POST",
-          body: JSON.stringify({ userToken })
-        });
+    for (let i = 0; i < 10; i++) {
+  await new Promise((resolve) => setTimeout(resolve, 3000));
 
-        console.log("Circle transactions after contract pay:", txData);
+  const txData = await api("/api/circle/transactions", {
+    method: "POST",
+    body: JSON.stringify({ userToken })
+  });
 
-        const tx =
-          txData?.data?.transactions?.find((t) => {
-            const contract =
-              String(t.contractAddress || t.destinationAddress || "").toLowerCase();
-            return contract === CONTRACT_ADDRESS.toLowerCase();
-          }) ||
-          txData?.data?.transactions?.[0] ||
-          null;
+  console.log(
+    `Circle transactions attempt ${i + 1}:`,
+    JSON.stringify(txData, null, 2)
+  );
 
-        const txHash =
-          tx?.txHash ||
-          tx?.transactionHash ||
-          tx?.blockchainTxHash ||
-          tx?.id ||
-          "circle_contract_pending";
+  const tx =
+  txData?.data?.transactions?.find((t) => {
+    return (
+      t.operation === "CONTRACT_EXECUTION" &&
+      (t.state === "COMPLETE" || t.status === "COMPLETE") &&
+      (t.txHash || t.blockchainTxHash || t.transactionHash)
+    );
+  }) ||
+  txData?.data?.transactions?.[0] ||
+  null;
 
-        await markInvoicePaid(txHash, walletAddress);
+  const txHash =
+    tx?.blockchainTxHash ||
+    tx?.txHash ||
+    tx?.transactionHash ||
+    tx?.networkFeeTransactionId ||
+    tx?.operation?.txHash ||
+    "";
 
-        setStatus("Circle invoice paid through contract: " + txHash, "success");
-      } catch (err) {
-        setStatus(
-          "Circle contract payment approved, but invoice update failed: " + err.message,
-          "error"
-        );
-      }
-    }, 9000);
+  if (txHash && txHash.startsWith("0x")) {
+    await markInvoicePaid(txHash, walletAddress);
+
+    setStatus(
+      "Circle invoice paid through Arc Memo: " + txHash,
+      "success"
+    );
+
+    return;
+  }
+}
+
+throw new Error(
+  "Circle payment approved, but blockchain tx hash is not ready yet. Please wait a moment and try refreshing."
+);
+
   } catch (err) {
     console.error(err);
     setStatus("Pay with Circle contract failed: " + (err.message || JSON.stringify(err)), "error");
