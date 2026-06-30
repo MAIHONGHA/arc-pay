@@ -1450,6 +1450,19 @@ function openInvoiceSheet(inv) {
       <div>Status: ${escapeHtml(inv.status || "")}</div>
       <div>ID: ${escapeHtml(inv.id || "")}</div>
       <div>Recipient: ${escapeHtml(inv.recipientAddress || "")}</div>
+
+<div style="margin-top:12px;">
+  <label style="display:block;font-size:12px;opacity:.8;margin-bottom:6px;">
+    Payment Memo / Reference (optional)
+  </label>
+  <input
+    id="paymentMemoInput"
+    type="text"
+    maxlength="120"
+    placeholder="Example: Coffee payment, Invoice #1025"
+    style="width:100%;padding:10px;border-radius:10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:white;"
+  />
+</div>
     `;
   }
 
@@ -1733,6 +1746,9 @@ async function payWithArcMemoMetaMask() {
       return;
     }
 
+const paymentMemo =
+  document.getElementById("paymentMemoInput")?.value?.trim() || "";
+
     if (selectedInvoice.status === "PAID") {
       setStatus("Invoice already paid.", "success");
       return;
@@ -1776,9 +1792,12 @@ async function payWithArcMemoMetaMask() {
 
     const memoId = ethers.id(`arcpay-invoice-${selectedInvoice.onchainId}`);
 
-    const memoData = ethers.toUtf8Bytes(
-      `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`
-    );
+    const memoText =
+  paymentMemo !== ""
+    ? paymentMemo
+    : `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`;
+
+const memoData = ethers.toUtf8Bytes(memoText);
 
     setStatus("Paying invoice with Arc Memo...");
 
@@ -1806,6 +1825,9 @@ async function payWithAppKit() {
       setStatus("No invoice selected.", "error");
       return;
     }
+
+const paymentMemo =
+  document.getElementById("paymentMemoInput")?.value?.trim() || "";
 
     const account = getAccount(wagmiAdapter.wagmiConfig);
 
@@ -1852,9 +1874,12 @@ const payData = invoiceInterface.encodeFunctionData("payInvoice", [
 
 const memoId = ethers.id(`arcpay-invoice-${contractInvoiceId}`);
 
-const memoData = ethers.toUtf8Bytes(
-  `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${contractInvoiceId} | amount=${selectedInvoice.amount} USDC`
-);
+const memoText =
+  paymentMemo !== ""
+    ? paymentMemo
+    : `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${contractInvoiceId} | amount=${selectedInvoice.amount} USDC`;
+
+const memoData = ethers.toUtf8Bytes(memoText);
 
 const hash = await writeContract(wagmiAdapter.wagmiConfig, {
   address: MEMO_ADDRESS,
@@ -1898,6 +1923,9 @@ async function payWithCircleWallet() {
       setStatus("Open invoice first.", "error");
       return;
     }
+
+const paymentMemo =
+  document.getElementById("paymentMemoInput")?.value?.trim() || "";
 
     if (selectedInvoice.status === "PAID") {
       setStatus("Invoice already paid.", "success");
@@ -2003,10 +2031,13 @@ const memoId = ethers.id(
   `arcpay-invoice-${selectedInvoice.onchainId}`
 );
 
+const memoText =
+  paymentMemo !== ""
+    ? paymentMemo
+    : `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`;
+
 const memoData = ethers.hexlify(
-  ethers.toUtf8Bytes(
-    `ArcPay invoice payment | invoiceId=${selectedInvoice.id} | onchainId=${selectedInvoice.onchainId} | amount=${selectedInvoice.amount} USDC`
-  )
+  ethers.toUtf8Bytes(memoText)
 );
 
 setStatus("Circle: paying invoice with Arc Memo...");
