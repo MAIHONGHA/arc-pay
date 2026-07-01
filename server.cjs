@@ -179,6 +179,17 @@ try {
   console.log("recipientEmail already exists");
 }
 
+try {
+  db.prepare(`
+    ALTER TABLE invoices
+    ADD COLUMN paymentMemo TEXT
+  `).run();
+
+  console.log("paymentMemo column added");
+} catch {
+  console.log("paymentMemo already exists");
+}
+
 db.prepare(`
   CREATE TABLE IF NOT EXISTS claims (
     id TEXT PRIMARY KEY,
@@ -1233,6 +1244,7 @@ function rowToInvoice(row) {
     fromAddress: row.fromAddress || null,
     createdAt: row.createdAt,
     paidAt: row.paidAt || null,
+    paymentMemo: row.paymentMemo || "",
     dueDate: row.dueDate,
     checkoutPath,
     checkoutUrl: checkoutPath,
@@ -1650,6 +1662,7 @@ app.post("/api/invoices/:id/mark-paid", async (req, res) => {
 
     const txHash = String(req.body.txHash || "").trim();
     const fromAddress = String(req.body.fromAddress || "").trim();
+    const paymentMemo = String(req.body.paymentMemo || "").trim();
     const paidAt = new Date().toISOString();
 
     db.prepare(`
@@ -1657,24 +1670,14 @@ app.post("/api/invoices/:id/mark-paid", async (req, res) => {
       SET status = 'PAID',
           txHash = ?,
           fromAddress = ?,
-          paidAt = ?
+          paidAt = ?,
+          paymentMemo = ?
       WHERE id = ?
-    `).run(txHash || null, fromAddress || null, paidAt, req.params.id);
+    `).run(txHash || null, fromAddress || null, paidAt, paymentMemo || null, req.params.id);
 
     const updated = db
       .prepare("SELECT * FROM invoices WHERE id = ?")
       .get(req.params.id);
-
-// Memo disabled for now.
-// Arc Memo must wrap the real USDC transfer, not run after payment.
-// await recordPaymentMemo({
-//   txHash: txHash || req.body.txHash || "",
-//   type: "invoice",
-//   amount: invoiceRow?.amount || 0,
-//   from: fromAddress || req.body.fromAddress || "",
-//   to: invoiceRow?.recipientAddress || "",
-//   note: invoiceRow?.title || invoiceRow?.note || ""
-// });
 
     res.json({
       ok: true,

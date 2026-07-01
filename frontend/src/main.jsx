@@ -2144,11 +2144,18 @@ throw new Error(
 ========================= */
 
 async function markInvoicePaid(txHash, fromAddress) {
+  const paymentMemo =
+    document.getElementById("paymentMemoInput")?.value?.trim() || "";
+
   await api(
     "/api/invoices/" + encodeURIComponent(selectedInvoice.id) + "/mark-paid",
     {
       method: "POST",
-      body: JSON.stringify({ txHash, fromAddress })
+      body: JSON.stringify({
+        txHash,
+        fromAddress,
+        paymentMemo
+      })
     }
   );
 
