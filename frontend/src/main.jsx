@@ -1563,6 +1563,12 @@ function renderSelectedInvoice() {
     View TX
   </a>
 </div>
+${selectedInvoice.paymentMemo ? `
+<div>
+  <strong>Payment Memo:</strong><br>
+  ${escapeHtml(selectedInvoice.paymentMemo)}
+</div>
+` : ""}
 ` : `
 <div>
   TX: -
