@@ -1732,12 +1732,7 @@ app.post("/api/circle/user-token", async (req, res) => {
     if (!requireCircle(res)) return;
 
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        error: "Missing email"
-      });
-    }
+    if (!email) return res.status(400).json({ error: "Missing email" });
 
     const response = await fetch("https://api.circle.com/v1/w3s/users/token", {
       method: "POST",
@@ -1750,11 +1745,22 @@ app.post("/api/circle/user-token", async (req, res) => {
       })
     });
 
-    const data = await response.json();
-    res.status(response.status).json(data);
+    const text = await response.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { raw: text };
+    }
+
+    console.log("Circle user-token response:", response.status, data);
+    return res.status(response.status).json(data);
   } catch (err) {
-    res.status(500).json({
-      error: err.message
+    console.error("Circle user-token error:", err);
+    return res.status(500).json({
+      ok: false,
+      error: err.message || "Circle user-token failed"
     });
   }
 });
