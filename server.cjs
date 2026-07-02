@@ -1747,6 +1747,9 @@ app.post("/api/circle/user-token", async (req, res) => {
 
     const text = await response.text();
 
+console.log("Circle status:", response.status);
+console.log("Circle body:", text);
+
     let data;
     try {
       data = JSON.parse(text);
