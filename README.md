@@ -1,113 +1,223 @@
- ArcPay
+# ArcPay
 
- Decentralized USDC Payments on Arc Network.
+Decentralized USDC Payments on Arc Network.
 
-ArcPay is a decentralized payment platform built on the Arc ecosystem, enabling businesses and individuals to create invoices, receive USDC payments, manage payroll, send crypto claims through Gmail, and process payouts from a single unified dashboard.
+ArcPay is a decentralized USDC payment platform built on the Arc Network. It enables businesses and individuals to create invoices, receive USDC payments, manage payroll, send crypto claims through Gmail, and process payouts from a single unified dashboard.
 
+---
 
+# Overview
 
- Overview
+ArcPay simplifies real-world stablecoin payments by combining invoicing, payroll, payouts, QR payments, Circle Wallet onboarding, and Gmail-based crypto claims into one platform.
 
-ArcPay simplifies real-world stablecoin payments by combining invoicing, payroll, payouts, wallet onboarding, QR payments, and email-based crypto claims into one unified platform.
+The goal is to make USDC payments as simple as traditional online payments while keeping everything transparent and on-chain.
 
-The project focuses on practical USDC payment infrastructure rather than speculative cryptocurrency trading.
+---
 
+# Smart Contract
 
+ArcPay includes an on-chain USDC Invoice smart contract deployed on Arc Testnet.
 
- Features
+## Network
 
- Payments and Invoicing.
+Arc Testnet
 
-- Create USDC payment invoices
-- Share payment links
-- QR code payments
-- Real-time payment status tracking
+## Contract Address
 
- Gmail Crypto Claims
+0x3Fe127d053D4a518b04d5C4eF207F5e9DdB5763f
+
+## Current Capabilities
+
+- Create on-chain invoices
+- Pay invoices directly with USDC
+- Immutable payment records
+- Transaction verification
+- On-chain invoice settlement
+
+## Upcoming Smart Contract Modules
+
+- Gmail Claim Escrow
+- Payroll Distribution
+- Merchant Settlement
+- Payment Memo Protocol
+
+---
+
+# Features
+
+## Payments & Invoicing
+
+- Create USDC invoices
+- On-chain invoice creation
+- Smart contract USDC payments
+- QR Code payments
+- Shareable payment links
+- Real-time payment status
+- Transaction verification
+- Invoice history
+
+## Gmail Crypto Claim
 
 - Send USDC claims through Gmail
-- Simple onboarding flow for non-crypto users
-- Wallet onboarding support for recipients
+- Google Login integration
+- Circle Wallet onboarding
+- Easy onboarding for non-crypto users
+- Crypto claims through email
 
- Payroll and Payouts
+## Payroll
 
 - Payroll batch management
-- Scheduled payment workflows
+- Scheduled payroll
 - Employee payment tracking
 - Email payslip support
+- Payroll execution workflow
 
- Wallet Support
+## Payouts
+
+- Manual payouts
+- Scheduled payouts
+- Approval workflow
+- Transaction history
+
+## Wallet Support
 
 - MetaMask
 - Circle Wallet
 - OKX Wallet
 - Coinbase Wallet
 
- Dashboard
+## Dashboard
 
 - Payment analytics
 - Invoice tracking
+- Payroll overview
 - Claims monitoring
-- Activity overview
+- Payout overview
+- Activity history
 
+---
 
-
- Live Demo
+# Live Demo
 
 https://arcpay.pro/
 
+---
 
+# Technology Stack
 
- Technology Stack
-
- Frontend
+## Frontend
 
 - HTML
 - CSS
 - JavaScript
 - React
 
- Backend
+## Backend
 
 - Node.js
 - Express
 
- Database
+## Database
 
 - SQLite
 
- Infrastructure
+## Blockchain
+
+- Arc Network
+- Solidity
+- ERC-20 USDC
+- WalletConnect AppKit
+
+## Infrastructure
 
 - Railway
-- Arc Network
-- USDC
 - Circle Wallet Infrastructure
 
+---
 
+# Current Status
 
- Roadmap
+ArcPay MVP is live on the Arc Network.
 
-- Stable multi-wallet support
-- Bank withdrawal integrations
-- AI payment assistant
-- Merchant payment tools
+### Completed
+
+- Smart contract invoice payments
+- USDC invoice management
+- QR payment system
+- Gmail Claim
+- Circle Wallet integration
+- Multi-wallet support
+- Payroll
+- Scheduled payouts
+- Dashboard analytics
+
+### Currently Building
+
+- Gmail Claim Smart Contract
+- Payroll Smart Contract
+- Payment Memo Protocol
+
+### Planned
+
+- Bank withdrawals
+- Merchant APIs
+- AI Payment Assistant
 - Advanced payroll automation
-- Mobile wallet optimization
+- Cross-border payments
 
+---
 
+# Roadmap
 
- Current Status
+## Phase 1
 
-The MVP version is currently live and deployed on the Arc ecosystem infrastructure.
+- Smart contract invoice payments
+- QR payment system
+- Multi-wallet support
+- Circle Wallet integration
 
+## Phase 2
 
+- Gmail Claim Smart Contract
+- Payroll Smart Contract
+- Payment Memo Protocol
 
- Author
+## Phase 3
 
-MAI HONG HA
+- Merchant settlement
+- Bank withdrawals
+- AI Payment Assistant
+- Enterprise payroll
+- Cross-border payment infrastructure
 
+---
 
+# Why ArcPay?
 
- License
+ArcPay focuses on practical USDC payments instead of speculation.
+
+Businesses can:
+
+- Create invoices
+- Receive USDC payments
+- Pay employees
+- Send crypto through Gmail
+- Manage payroll
+- Process payouts
+- Verify transactions on-chain
+
+All from one unified dashboard.
+
+---
+
+# Author
+
+**MAI HONG HA**
+
+Builder of ArcPay.
+
+---
+
+# License
 
 MIT License
