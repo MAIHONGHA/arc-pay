@@ -75,72 +75,101 @@
           <button id="disconnectWalletChip">⏻ Disconnect</button>
         </div>
 
-        <section id="dashboard-top" class="panel hero-panel">
-          <div class="hero-top">
-            <div>
-              <p class="eyebrow">Crypto payments dashboard</p>
-              <h1>ArcPay</h1>
-              <p class="muted">Invoices, payroll, payouts, Circle wallet, MetaMask and email claims in one dashboard.</p>
-            </div>
-          </div>
+        <section id="dashboard-top" class="panel hero-panel dashboard-modern">
+  <div class="dash-hero">
+    <div>
+      <p class="eyebrow">ArcPay Control Center</p>
+      <h1>Payments dashboard</h1>
+      <p class="muted">
+        Monitor invoices, Circle Wallet, Gmail claims, payroll and payouts in one real-time workspace.
+      </p>
+    </div>
 
-          <section class="dashboard">
-            <div class="stat-card">
-              <div class="stat-label">Total Received</div>
-              <div class="stat-value" id="dashTotal">0 USDC</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Paid Invoices</div>
-              <div class="stat-value" id="dashPaid">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Pending</div>
-              <div class="stat-value" id="dashPending">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Latest TX</div>
-              <div class="stat-value small" id="dashLatestTx">-</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Invoices</div>
-              <div class="stat-value" id="dashTotalInvoices">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Payrolls</div>
-              <div class="stat-value" id="dashTotalPayrolls">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Claims</div>
-              <div class="stat-value" id="dashTotalClaims">0</div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-label">Total Volume</div>
-              <div class="stat-value" id="dashTotalVolume">0 USDC</div>
-            </div>
-          </section>
+    <div class="dash-live-badge">
+      <span></span>
+      Live on Arc Testnet
+    </div>
+  </div>
 
-          <div class="status-grid">
-            <div class="mini-box">
-              <span>Status</span>
-              <b id="status">Ready.</b>
-            </div>
-            <div class="mini-box">
-              <span>Google Email</span>
-              <b id="email">-</b>
-            </div>
-            <div class="mini-box">
-              <span>Circle Wallet</span>
-              <b id="circleWallet">-</b>
-              <button id="btnSetupPin" class="mini-action hidden">
-                Create Circle Wallet
-              </button>
-            </div>
-            <div class="mini-box">
-              <span>Connected Wallet</span>
-              <b id="metamaskWallet">Disconnected</b>
-            </div>
-          </div>
-        </section>
+  <section class="dashboard dashboard-grid-modern">
+    <div class="stat-card stat-primary">
+      <div class="stat-icon">💸</div>
+      <div class="stat-label">Total Received</div>
+      <div class="stat-value" id="dashTotal">0 USDC</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">🧾</div>
+      <div class="stat-label">Paid Invoices</div>
+      <div class="stat-value" id="dashPaid">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">⏳</div>
+      <div class="stat-label">Pending</div>
+      <div class="stat-value" id="dashPending">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">🔗</div>
+      <div class="stat-label">Latest TX</div>
+      <div class="stat-value small" id="dashLatestTx">-</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">📄</div>
+      <div class="stat-label">Total Invoices</div>
+      <div class="stat-value" id="dashTotalInvoices">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-label">Total Payrolls</div>
+      <div class="stat-value" id="dashTotalPayrolls">0</div>
+    </div>
+
+    <div class="stat-card">
+      <div class="stat-icon">📧</div>
+      <div class="stat-label">Total Claims</div>
+      <div class="stat-value" id="dashTotalClaims">0</div>
+    </div>
+
+    <div class="stat-card stat-primary">
+      <div class="stat-icon">📊</div>
+      <div class="stat-label">Total Volume</div>
+      <div class="stat-value" id="dashTotalVolume">0 USDC</div>
+    </div>
+  </section>
+
+<div class="activity-ticker">
+  <div class="activity-ticker-track" id="activityTicker"></div>
+</div>
+
+  <div class="status-grid status-grid-modern">
+    <div class="mini-box">
+      <span>Status</span>
+      <b id="status">Ready.</b>
+    </div>
+
+    <div class="mini-box">
+      <span>Google Email</span>
+      <b id="email">-</b>
+    </div>
+
+    <div class="mini-box">
+      <span>Circle Wallet</span>
+      <b id="circleWallet">-</b>
+      <button id="btnSetupPin" class="mini-action hidden">
+        Create Circle Wallet
+      </button>
+    </div>
+
+    <div class="mini-box">
+      <span>Connected Wallet</span>
+      <b id="metamaskWallet">Disconnected</b>
+    </div>
+  </div>
+</section>
 
         <section id="dashboard" class="panel app-section">
           <p class="eyebrow">Overview</p>

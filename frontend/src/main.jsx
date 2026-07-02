@@ -2243,11 +2243,80 @@ async function loadDashboard() {
     const feed = document.getElementById("activityFeed");
     if (feed) {
       const items = data.recentActivity || [];
-      feed.innerHTML = items.length
-        ? items.map((item) => `<div class="activity-item">🟢 ${item.text}</div>`).join("")
-        : "No activity yet.";
-    }
-  } catch (err) {
+      const getActivityIcon = (text = "") => {
+  const value = text.toLowerCase();
+
+  if (value.includes("invoice paid")) return "✅";
+  if (value.includes("payroll")) return "💰";
+  if (value.includes("claim")) return "📧";
+  if (value.includes("failed") || value.includes("error")) return "❌";
+  if (value.includes("pending")) return "⏳";
+
+  return "🔹";
+};
+
+const getActivityClass = (text = "") => {
+  const value = text.toLowerCase();
+
+  if (value.includes("invoice paid")) return "activity-success";
+  if (value.includes("payroll")) return "activity-payroll";
+  if (value.includes("claim")) return "activity-claim";
+  if (value.includes("failed") || value.includes("error")) return "activity-failed";
+  if (value.includes("pending")) return "activity-pending";
+
+  return "activity-default";
+};
+
+feed.innerHTML = items.length
+  ? items
+      .map((item) => {
+        const text = item.text || "";
+        return `
+          <div class="activity-item ${getActivityClass(text)}">
+            <span class="activity-icon">${getActivityIcon(text)}</span>
+            <span>${text}</span>
+          </div>
+        `;
+      })
+      .join("")
+  : "No activity yet.";
+  const ticker = document.getElementById("activityTicker");
+
+if (ticker) {
+  const tickerItems = items.length ? items : [];
+
+  ticker.innerHTML = tickerItems.length
+    ? [...tickerItems, ...tickerItems]
+        .map((item) => {
+          const text = item.text || "";
+          const icon = getActivityIcon(text);
+
+          return `
+<button
+  type="button"
+  class="ticker-item"
+  data-text="${text.replace(/"/g, "&quot;")}"
+>
+  ${icon} ${text}
+</button>`;
+        })
+        .join("")
+    : `<button type="button" class="ticker-item">No recent activity yet.</button>`;
+
+  ticker.onclick = (event) => {
+    const item = event.target.closest(".ticker-item");
+    if (!item) return;
+
+    const text = (item.dataset.text || item.textContent || "").toLowerCase();
+
+    if (text.includes("invoice")) return document.querySelector('[data-tab="invoices"]')?.click();
+    if (text.includes("payroll")) return document.querySelector('[data-tab="payroll"]')?.click();
+    if (text.includes("claim")) return document.querySelector('[data-tab="gmail-claim"]')?.click();
+    if (text.includes("payout")) return document.querySelector('[data-tab="payouts"]')?.click();
+  };
+ }
+}
+ } catch (err) {
     console.error("loadDashboard error:", err);
   }
 }
