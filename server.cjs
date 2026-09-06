@@ -178,22 +178,82 @@ async function createCoinbaseOnrampSession({
     );
   }
 
-  const checkoutUrl =
-    "https://pay.coinbase.com/buy/select-asset?" +
-    new URLSearchParams({
-      sessionToken,
-      defaultNetwork: "base",
-      defaultAsset: "USDC",
-      presetFiatAmount: String(amount),
-      partnerUserRef: `tror-${crypto.randomUUID()}`
-    }).toString();
+  const partnerUserRef =
+  `tror-${crypto.randomUUID()}`;
 
-  return {
-    provider: "coinbase",
-    providerStatus: "SESSION_CREATED",
+const checkoutUrl =
+  "https://pay.coinbase.com/buy/select-asset?" +
+  new URLSearchParams({
     sessionToken,
-    checkoutUrl
-  };
+    defaultNetwork: "base",
+    defaultAsset: "USDC",
+    presetFiatAmount: String(amount),
+    partnerUserRef
+  }).toString();
+
+return {
+  provider: "coinbase",
+  providerStatus: "SESSION_CREATED",
+  sessionToken,
+  checkoutUrl,
+  partnerUserRef
+};
+}
+
+async function getCoinbaseOnrampTransactions(partnerUserRef) {
+  if (!isCoinbaseOnrampConfigured()) {
+    throw new Error(
+      "Coinbase Onramp credentials are not configured."
+    );
+  }
+
+  const safeRef = encodeURIComponent(
+    String(partnerUserRef || "").trim()
+  );
+
+  if (!safeRef) {
+    throw new Error(
+      "Coinbase partnerUserRef is required."
+    );
+  }
+
+  const requestMethod = "GET";
+  const requestHost = "api.developer.coinbase.com";
+  const requestPath =
+    `/onramp/v1/buy/user/${safeRef}/transactions`;
+
+  const jwt = await generateJwt({
+    apiKeyId: COINBASE_CDP_KEY_NAME,
+    apiKeySecret:
+      COINBASE_CDP_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    requestMethod,
+    requestHost,
+    requestPath,
+    expiresIn: 120
+  });
+
+  const response = await fetch(
+    `https://${requestHost}${requestPath}?page_size=1`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/json"
+      }
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.error ||
+      `Coinbase transaction status request failed (${response.status}).`
+    );
+  }
+
+  return data;
 }
 
 /* =========================
@@ -776,6 +836,30 @@ CREATE INDEX IF NOT EXISTS idx_money_orders_provider_order_id
 ON money_orders(provider_order_id)
 `).run();
 
+
+try {
+  db.prepare(`
+    ALTER TABLE money_orders
+    ADD COLUMN provider_user_ref TEXT
+  `).run();
+} catch {}
+
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_money_orders_provider_user_ref
+  ON money_orders(provider_user_ref)
+`).run();
+
+try {
+  db.prepare(`
+    ALTER TABLE money_orders
+    ADD COLUMN payment_intent_id TEXT
+  `).run();
+} catch {}
+
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_money_orders_payment_intent_id
+  ON money_orders(payment_intent_id)
+`).run();
 
 /* =========================
    SEND MONEY PAYMENT INTENTS
@@ -9661,6 +9745,7 @@ const requestIp =
         INSERT INTO money_orders (
           id,
           workspace_id,
+          payment_intent_id,
           direction,
           asset,
           amount,
@@ -9670,6 +9755,7 @@ const requestIp =
           wallet_address,
           provider,
           provider_order_id,
+          provider_user_ref,
           provider_status,
           status,
           checkout_url,
@@ -9678,11 +9764,12 @@ const requestIp =
         )
         VALUES (
           ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          ?, ?, ?, ?, ?, ?, ?
+          ?, ?, ?, ?, ?, ?, ?, ?, ?
         )
       `).run(
         id,
         input.workspaceId,
+        String(req.body?.paymentIntentId || "").trim() || null,
         "FIAT_IN",
         input.asset,
         input.amount,
@@ -9692,12 +9779,34 @@ const requestIp =
         input.walletAddress,
         "coinbase",
         null,
+        coinbase.partnerUserRef,
         coinbase.providerStatus,
         "AWAITING_SENDER_PAYMENT",
         coinbase.checkoutUrl,
         now,
         now
       );
+
+const paymentIntentId =
+  String(req.body?.paymentIntentId || "").trim();
+
+if (paymentIntentId) {
+  db.prepare(`
+    UPDATE payment_intents
+    SET provider = 'coinbase',
+        provider_order_id = ?,
+        status = 'AWAITING_SENDER_PAYMENT',
+        updated_at = ?
+    WHERE id = ?
+      AND workspace_id = ?
+      AND status = 'AWAITING_PROVIDER'
+  `).run(
+    id,
+    now,
+    paymentIntentId,
+    input.workspaceId
+  );
+}
 
       return res.status(201).json({
         success: true,
@@ -9743,6 +9852,191 @@ app.post("/api/money/fiat-in", (req, res) =>
 
 app.post("/api/money/fiat-out", (req, res) =>
   startMoneyProviderSession(req, res, "FIAT_OUT")
+);
+
+app.get(
+  "/api/money/orders/:id/coinbase-status",
+  async (req, res) => {
+    try {
+      const id = String(req.params.id || "").trim();
+
+      const order = db.prepare(`
+        SELECT *
+        FROM money_orders
+        WHERE id = ?
+        LIMIT 1
+      `).get(id);
+
+      if (!order) {
+        return res.status(404).json({
+          success: false,
+          error: "Money order was not found."
+        });
+      }
+
+      if (
+        order.provider !== "coinbase" ||
+        !order.provider_user_ref
+      ) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "This order is not linked to Coinbase Onramp."
+        });
+      }
+
+      const data =
+        await getCoinbaseOnrampTransactions(
+          order.provider_user_ref
+        );
+
+      const transaction =
+        Array.isArray(data?.transactions)
+          ? data.transactions[0] || null
+          : null;
+
+if (transaction) {
+  const coinbaseStatus =
+    String(transaction?.status || "")
+      .trim()
+      .toUpperCase();
+
+  const providerOrderId =
+    String(
+      transaction?.id ||
+      transaction?.transactionId ||
+      ""
+    ).trim() || null;
+
+  let trorStatus = order.status;
+
+  if (coinbaseStatus === "IN_PROGRESS") {
+    trorStatus = "AWAITING_SENDER_PAYMENT";
+  }
+
+  if (coinbaseStatus === "SUCCESS") {
+    trorStatus = "FUNDED";
+  }
+
+  if (coinbaseStatus === "FAILED") {
+    trorStatus = "FAILED";
+  }
+
+  const now = new Date().toISOString();
+
+  db.prepare(`
+    UPDATE money_orders
+    SET provider_order_id = COALESCE(?, provider_order_id),
+        provider_status = ?,
+        status = ?,
+        updated_at = ?
+    WHERE id = ?
+  `).run(
+    providerOrderId,
+    coinbaseStatus || order.provider_status,
+    trorStatus,
+    now,
+    order.id
+  );
+
+if (
+  coinbaseStatus === "SUCCESS" &&
+  order.payment_intent_id
+) {
+  const intent = db.prepare(`
+    SELECT *
+    FROM payment_intents
+    WHERE id = ?
+      AND workspace_id = ?
+    LIMIT 1
+  `).get(
+    order.payment_intent_id,
+    order.workspace_id
+  );
+
+  if (intent) {
+    if (
+      intent.status === "AWAITING_SENDER_PAYMENT" ||
+      intent.status === "AWAITING_PROVIDER"
+    ) {
+      db.prepare(`
+        UPDATE payment_intents
+        SET provider = 'coinbase',
+            provider_order_id = COALESCE(?, provider_order_id),
+            status = 'FUNDED',
+            updated_at = ?
+        WHERE id = ?
+          AND workspace_id = ?
+      `).run(
+        providerOrderId,
+        now,
+        intent.id,
+        order.workspace_id
+      );
+
+      db.prepare(`
+        UPDATE payment_intents
+        SET status = 'READY_FOR_RECIPIENT',
+            updated_at = ?
+        WHERE id = ?
+          AND workspace_id = ?
+          AND status = 'FUNDED'
+      `).run(
+        now,
+        intent.id,
+        order.workspace_id
+      );
+    }
+  }
+}
+}
+
+const updatedOrder = db.prepare(`
+  SELECT
+    id,
+    workspace_id,
+    direction,
+    asset,
+    amount,
+    country,
+    fiat_currency,
+    wallet_type,
+    wallet_address,
+    provider,
+    provider_order_id,
+    provider_user_ref,
+    provider_status,
+    status,
+    created_at,
+    updated_at
+  FROM money_orders
+  WHERE id = ?
+  LIMIT 1
+`).get(order.id);
+
+return res.json({
+  success: true,
+  orderId: order.id,
+  providerUserRef:
+    order.provider_user_ref,
+  transaction,
+  order: updatedOrder
+});
+
+    } catch (err) {
+      console.error(
+        "Coinbase status check error:",
+        err?.message || err
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to load Coinbase transaction status."
+      });
+    }
+  }
 );
 
 app.get("/api/money/orders/:id", (req, res) => {
