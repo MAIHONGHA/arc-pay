@@ -10,6 +10,7 @@ const { ethers } = require("ethers");
 const cron = require("node-cron");
 const { Resend } = require("resend");
 const { Web3 } = require("web3");
+const { generateJwt } = require("@coinbase/cdp-sdk/auth");
 const ARC_MEMO_ADDRESS = "0x5294E9927c3306DcBaDb03fe70b92e01cCede505";
   const CLAIM_V2_CONTRACT_ADDRESS = String(
   process.env.CLAIM_V2_CONTRACT_ADDRESS || ""
@@ -35,6 +36,165 @@ const fetch = (...args) =>
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
 const resend = new Resend(process.env.RESEND_API_KEY);
+
+const TRIPLE_A_BASE_URL = String(
+  process.env.TRIPLE_A_BASE_URL || "https://api.uat.triple-a.io"
+).replace(/\/+$/, "");
+
+const TRIPLE_A_CLIENT_ID = String(
+  process.env.TRIPLE_A_CLIENT_ID || ""
+).trim();
+
+const TRIPLE_A_CLIENT_SECRET = String(
+  process.env.TRIPLE_A_CLIENT_SECRET || ""
+).trim();
+
+async function getTripleAAccessToken() {
+  if (!TRIPLE_A_CLIENT_ID || !TRIPLE_A_CLIENT_SECRET) {
+    throw new Error(
+      "Triple-A credentials are not configured."
+    );
+  }
+
+  const body = new URLSearchParams({
+    client_id: TRIPLE_A_CLIENT_ID,
+    client_secret: TRIPLE_A_CLIENT_SECRET,
+    grant_type: "client_credentials"
+  });
+
+  const response = await fetch(
+    `${TRIPLE_A_BASE_URL}/api/fiat-payout/v1/oauth/token`,
+    {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: body.toString()
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.error_description ||
+      data?.error ||
+      `Triple-A OAuth failed (${response.status}).`
+    );
+  }
+
+  const accessToken =
+    data?.access_token ||
+    data?.accessToken ||
+    "";
+
+  if (!accessToken) {
+    throw new Error(
+      "Triple-A OAuth response did not contain an access token."
+    );
+  }
+
+  return accessToken;
+}
+
+const COINBASE_CDP_KEY_NAME = String(
+  process.env.COINBASE_CDP_KEY_NAME || ""
+).trim();
+
+const COINBASE_CDP_PRIVATE_KEY = String(
+  process.env.COINBASE_CDP_PRIVATE_KEY || ""
+).trim();
+
+const COINBASE_ONRAMP_HOST = "api.developer.coinbase.com";
+const COINBASE_ONRAMP_TOKEN_PATH = "/onramp/v1/token";
+
+function isCoinbaseOnrampConfigured() {
+  return Boolean(
+    COINBASE_CDP_KEY_NAME &&
+    COINBASE_CDP_PRIVATE_KEY
+  );
+}
+
+async function createCoinbaseOnrampSession({
+  walletAddress,
+  amount,
+  clientIp
+}) {
+  if (!isCoinbaseOnrampConfigured()) {
+    throw new Error(
+      "Coinbase Onramp credentials are not configured."
+    );
+  }
+
+  const jwt = await generateJwt({
+    apiKeyId: COINBASE_CDP_KEY_NAME,
+    apiKeySecret:
+      COINBASE_CDP_PRIVATE_KEY.replace(/\\n/g, "\n"),
+    requestMethod: "POST",
+    requestHost: COINBASE_ONRAMP_HOST,
+    requestPath: COINBASE_ONRAMP_TOKEN_PATH,
+    expiresIn: 120
+  });
+
+  const response = await fetch(
+    `https://${COINBASE_ONRAMP_HOST}${COINBASE_ONRAMP_TOKEN_PATH}`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${jwt}`,
+        Accept: "application/json",
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        addresses: [
+          {
+            address: walletAddress,
+            blockchains: ["base"]
+          }
+        ],
+        clientIp: clientIp || "192.0.2.1"
+      })
+    }
+  );
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.error ||
+      `Coinbase Onramp token request failed (${response.status}).`
+    );
+  }
+
+  const sessionToken =
+    String(data?.token || "").trim();
+
+  if (!sessionToken) {
+    throw new Error(
+      "Coinbase Onramp response did not contain a session token."
+    );
+  }
+
+  const checkoutUrl =
+    "https://pay.coinbase.com/buy/select-asset?" +
+    new URLSearchParams({
+      sessionToken,
+      defaultNetwork: "base",
+      defaultAsset: "USDC",
+      presetFiatAmount: String(amount),
+      partnerUserRef: `tror-${crypto.randomUUID()}`
+    }).toString();
+
+  return {
+    provider: "coinbase",
+    providerStatus: "SESSION_CREATED",
+    sessionToken,
+    checkoutUrl
+  };
+}
 
 /* =========================
    AI CONFIG
@@ -9211,19 +9371,35 @@ function selectMoneyProvider({
     normalizeMoneyCode(fiatCurrency, 3);
 
   /*
-    Connect audited provider adapters here.
+    FIAT IN:
+    Coinbase Hosted Onramp.
 
-    Expected adapter result when configured:
-    {
+    Coinbase performs its own hosted
+    payment/KYC flow.
+
+    TROR never receives card data.
+  */
+  if (
+    normalizedDirection === "FIAT_IN" &&
+    isCoinbaseOnrampConfigured()
+  ) {
+    return {
       available: true,
-      provider: "provider-key",
+      provider: "coinbase",
+      status: "AWAITING_SENDER_PAYMENT",
       providerStatus: "AVAILABLE",
-      checkoutUrl: "https://provider-hosted.example/...",
-      requiresKyc: true
-    }
+      checkoutUrl: null,
+      requiresKyc: true,
+      providerHostedFlow: true,
+      direction: normalizedDirection,
+      country: normalizedCountry,
+      fiatCurrency: normalizedFiatCurrency
+    };
+  }
 
-    Do not put card data, bank credentials or KYC documents
-    through TROR Core when a provider-hosted flow is available.
+  /*
+    FIAT OUT remains provider-neutral
+    until the payout provider is connected.
   */
   return {
     available: false,
@@ -9340,6 +9516,67 @@ function discoverMoneyRoute(input) {
   };
 }
 
+app.get(
+  "/api/money/providers/triple-a/enabled-countries",
+  async (req, res) => {
+    try {
+      const accessToken = await getTripleAAccessToken();
+
+      const response = await fetch(
+        `${TRIPLE_A_BASE_URL}/api/fiat-payout/v1/discoveries/enabled-countries`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${accessToken}`
+          }
+        }
+      );
+
+      const data = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        return res.status(response.status).json({
+          ok: false,
+          error:
+            data?.message ||
+            data?.error ||
+            `Triple-A enabled countries request failed (${response.status}).`
+        });
+      }
+
+      const countries = Array.isArray(data) ? data : [];
+
+      const vietnam = countries.find(
+        (country) =>
+          String(country?.code || "")
+            .trim()
+            .toUpperCase() === "VNM"
+      );
+
+      return res.json({
+        ok: true,
+        count: countries.length,
+        vietnamEnabled: Boolean(vietnam),
+        vietnam: vietnam || null,
+        countries
+      });
+    } catch (error) {
+      console.error(
+        "Triple-A enabled countries error:",
+        error?.message || error
+      );
+
+      return res.status(500).json({
+        ok: false,
+        error:
+          error?.message ||
+          "Unable to query Triple-A enabled countries."
+      });
+    }
+  }
+);
+
 app.post("/api/money/routes", (req, res) => {
   try {
     const input = validateMoneyRouteRequest(req.body);
@@ -9352,7 +9589,11 @@ app.post("/api/money/routes", (req, res) => {
   }
 });
 
-async function startMoneyProviderSession(req, res, direction) {
+async function startMoneyProviderSession(
+  req,
+  res,
+  direction
+) {
   try {
     const input = validateMoneyRouteRequest({
       ...req.body,
@@ -9369,19 +9610,129 @@ async function startMoneyProviderSession(req, res, direction) {
     }
 
     /*
-      Future provider adapter call goes here.
-      Only create a money_orders row after the provider confirms
-      a real hosted session/order and returns its identifier.
+      COINBASE FIAT IN
     */
+    if (
+      direction === "FIAT_IN" &&
+      route.provider === "coinbase"
+    ) {
+      const forwardedIp =
+  String(
+    req.headers["x-forwarded-for"] || ""
+  )
+    .split(",")[0]
+    .trim();
+
+const rawRequestIp =
+  forwardedIp ||
+  String(req.ip || "").trim();
+
+const isLocalIp =
+  !rawRequestIp ||
+  rawRequestIp === "::1" ||
+  rawRequestIp === "127.0.0.1" ||
+  rawRequestIp === "::ffff:127.0.0.1" ||
+  rawRequestIp.startsWith("192.168.") ||
+  rawRequestIp.startsWith("10.");
+
+const requestIp =
+  isLocalIp
+    ? "192.0.2.1"
+    : rawRequestIp.replace(/^::ffff:/, "");
+
+      const coinbase =
+        await createCoinbaseOnrampSession({
+          walletAddress: input.walletAddress,
+          amount: input.amount,
+          clientIp: requestIp
+        });
+
+      const id = crypto.randomUUID();
+      const now = new Date().toISOString();
+
+      /*
+        Coinbase session token is temporary.
+        Do NOT store it in SQLite.
+
+        Store only the provider/order shell
+        and the hosted checkout URL.
+      */
+      db.prepare(`
+        INSERT INTO money_orders (
+          id,
+          workspace_id,
+          direction,
+          asset,
+          amount,
+          country,
+          fiat_currency,
+          wallet_type,
+          wallet_address,
+          provider,
+          provider_order_id,
+          provider_status,
+          status,
+          checkout_url,
+          created_at,
+          updated_at
+        )
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?
+        )
+      `).run(
+        id,
+        input.workspaceId,
+        "FIAT_IN",
+        input.asset,
+        input.amount,
+        input.country,
+        input.fiatCurrency,
+        input.walletType,
+        input.walletAddress,
+        "coinbase",
+        null,
+        coinbase.providerStatus,
+        "AWAITING_SENDER_PAYMENT",
+        coinbase.checkoutUrl,
+        now,
+        now
+      );
+
+      return res.status(201).json({
+        success: true,
+        available: true,
+        orderId: id,
+        provider: "coinbase",
+        providerStatus:
+          coinbase.providerStatus,
+        status: "AWAITING_SENDER_PAYMENT",
+        checkoutUrl:
+          coinbase.checkoutUrl,
+        requiresKyc: true,
+        providerHostedFlow: true,
+        message:
+          "Coinbase Onramp session created."
+      });
+    }
+
     return res.status(501).json({
       success: false,
       code: "PROVIDER_ADAPTER_NOT_IMPLEMENTED",
-      error: "The selected provider adapter is not implemented yet."
+      error:
+        "The selected provider adapter is not implemented yet."
     });
   } catch (err) {
+    console.error(
+      "Start money provider session error:",
+      err?.message || err
+    );
+
     return res.status(400).json({
       success: false,
-      error: err?.message || "Failed to start money provider session"
+      error:
+        err?.message ||
+        "Failed to start money provider session"
     });
   }
 }

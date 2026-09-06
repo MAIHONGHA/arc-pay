@@ -14044,6 +14044,68 @@ async function requestTrorMoneyRoute(direction) {
 
 window.requestTrorMoneyRoute = requestTrorMoneyRoute;
 
+async function startTrorFiatInSession() {
+  const activeWallet = getActivePaymentWallet();
+  const workspaceId = getCurrentWorkspace()?.id || null;
+
+  if (!activeWallet?.address) {
+    throw new Error(
+      "Connect a Web3 or Circle Wallet before adding money."
+    );
+  }
+
+  if (!workspaceId) {
+    throw new Error(
+      "Select a TROR workspace first."
+    );
+  }
+
+  const amount = Number(
+    document.getElementById("moveMoneyAddAmount")?.value || 0
+  );
+
+  const fiatCurrency = normalizeMoveMoneyCode(
+    document.getElementById("moveMoneyAddCurrency")?.value,
+    3
+  );
+
+  const country = normalizeMoveMoneyCode(
+    document.getElementById("moveMoneyAddCountry")?.value,
+    2
+  );
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error(
+      "Enter an amount greater than 0."
+    );
+  }
+
+  if (fiatCurrency.length !== 3) {
+    throw new Error(
+      "Enter a 3-letter fiat currency code, for example USD."
+    );
+  }
+
+  if (country.length !== 2) {
+    throw new Error(
+      "Enter a 2-letter country code, for example US."
+    );
+  }
+
+  return api("/api/money/fiat-in", {
+    method: "POST",
+    body: JSON.stringify({
+      workspaceId,
+      asset: "USDC",
+      amount,
+      country,
+      fiatCurrency,
+      walletType: activeWallet.type || null,
+      walletAddress: activeWallet.address
+    })
+  });
+}
+
 const TROR_COUNTRY_DEFAULT_CURRENCY = {
   US: "USD", CA: "CAD", GB: "GBP", AU: "AUD", NZ: "NZD",
   JP: "JPY", KR: "KRW", SG: "SGD", HK: "HKD", VN: "VND",
@@ -14391,28 +14453,58 @@ document
 document
   .getElementById("btnMoveMoneyAddFiat")
   ?.addEventListener("click", async () => {
+    const button =
+      document.getElementById("btnMoveMoneyAddFiat");
+
     try {
-      setMoveMoneyStatus("Checking available fiat-in routes...");
-
-      const result = await requestTrorMoneyRoute("FIAT_IN");
-
-      if (!result?.available) {
-        setMoveMoneyStatus(
-          result?.message ||
-            "No fiat-in provider is configured for this route yet."
-        );
-        return;
+      if (button) {
+        button.disabled = true;
+        button.textContent = "Opening Coinbase...";
       }
 
       setMoveMoneyStatus(
-        `Route available through ${result.provider || "provider"}.`
+        "Creating secure Coinbase Onramp session..."
       );
-    } catch (error) {
+
+      const result =
+        await startTrorFiatInSession();
+
+      if (
+        !result?.success ||
+        !result?.checkoutUrl
+      ) {
+        throw new Error(
+          result?.error ||
+            "Coinbase checkout URL was not returned."
+        );
+      }
+
       setMoveMoneyStatus(
-        error?.message || "Unable to discover a fiat-in route.",
+        "Coinbase Onramp is ready.",
+        "success"
+      );
+
+      window.location.href =
+        result.checkoutUrl;
+
+    } catch (error) {
+      console.error(
+        "TROR Coinbase fiat-in error:",
+        error
+      );
+
+      setMoveMoneyStatus(
+        error?.message ||
+          "Unable to start Coinbase Onramp.",
         "error"
       );
-    }
+
+    } finally {
+  if (button) {
+    button.disabled = false;
+    button.textContent = "Continue with Coinbase";
+  }
+}
   });
 
 document
