@@ -264,6 +264,10 @@ const XENDIT_SECRET_KEY = String(
   process.env.XENDIT_SECRET_KEY || ""
 ).trim();
 
+const XENDIT_WEBHOOK_TOKEN = String(
+  process.env.XENDIT_WEBHOOK_TOKEN || ""
+).trim();
+
 const XENDIT_API_VERSION = "2025-09-01";
 
 const XENDIT_API_BASE_URL = "https://api.xendit.co";
@@ -10568,6 +10572,233 @@ app.post(
         error:
           err?.message ||
           "Failed to execute FIAT delivery"
+      });
+    }
+  }
+);
+
+/* =========================
+   XENDIT PAYOUT WEBHOOK
+========================= */
+
+app.post(
+  "/api/webhooks/xendit",
+  (req, res) => {
+    try {
+      const callbackToken = String(
+        req.headers["x-callback-token"] || ""
+      ).trim();
+
+      if (!XENDIT_WEBHOOK_TOKEN) {
+        return res.status(503).json({
+          success: false,
+          error:
+            "Xendit webhook token is not configured"
+        });
+      }
+
+      if (
+        !callbackToken ||
+        callbackToken !== XENDIT_WEBHOOK_TOKEN
+      ) {
+        return res.status(401).json({
+          success: false,
+          error:
+            "Invalid Xendit webhook token"
+        });
+      }
+
+      const event = String(
+        req.body?.event ||
+        req.body?.event_type ||
+        ""
+      )
+        .trim()
+        .toLowerCase();
+
+      const data =
+        req.body?.data ||
+        req.body ||
+        {};
+
+      const payoutId = String(
+        data?.payout_id ||
+        data?.id ||
+        ""
+      ).trim();
+
+      const providerStatus = String(
+        data?.status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const processorReference = String(
+        data?.processor_reference || ""
+      ).trim();
+
+      if (!payoutId) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Xendit payout ID is missing"
+        });
+      }
+
+      const delivery = db.prepare(`
+        SELECT *
+        FROM payment_intent_fiat_deliveries
+        WHERE provider_payout_id = ?
+        LIMIT 1
+      `).get(payoutId);
+
+      if (!delivery) {
+        /*
+          Unknown payout:
+          acknowledge webhook so Xendit
+          does not keep retrying forever.
+        */
+        return res.json({
+          success: true,
+          ignored: true,
+          reason:
+            "Payout is not linked to a TROR FIAT delivery"
+        });
+      }
+
+      const now =
+        new Date().toISOString();
+
+      let localStatus = "PROCESSING";
+
+      if (
+        event === "v3_payout.succeeded" ||
+        providerStatus === "SUCCEEDED"
+      ) {
+        localStatus = "COMPLETED";
+      } else if (
+        event === "v3_payout.failed" ||
+        event === "v3_payout.rejected" ||
+        providerStatus === "FAILED" ||
+        providerStatus === "REJECTED"
+      ) {
+        localStatus = "FAILED";
+      } else if (
+        event === "v3_payout.reversed" ||
+        providerStatus === "REVERSED"
+      ) {
+        localStatus = "FAILED";
+      } else if (
+        event ===
+          "v3_payout.pending_compliance" ||
+        providerStatus ===
+          "PENDING_COMPLIANCE"
+      ) {
+        localStatus = "PROCESSING";
+      }
+
+      db.prepare(`
+        UPDATE payment_intent_fiat_deliveries
+        SET provider_status =
+              CASE
+                WHEN ? != ''
+                THEN ?
+                ELSE provider_status
+              END,
+            provider_reference =
+              CASE
+                WHEN ? != ''
+                THEN ?
+                ELSE provider_reference
+              END,
+            status = ?,
+            updated_at = ?,
+            completed_at =
+              CASE
+                WHEN ? = 'COMPLETED'
+                THEN COALESCE(
+                  completed_at,
+                  ?
+                )
+                ELSE completed_at
+              END,
+            failed_at =
+              CASE
+                WHEN ? = 'FAILED'
+                THEN COALESCE(
+                  failed_at,
+                  ?
+                )
+                ELSE failed_at
+              END
+        WHERE id = ?
+      `).run(
+        providerStatus,
+        providerStatus,
+
+        processorReference,
+        processorReference,
+
+        localStatus,
+        now,
+
+        localStatus,
+        now,
+
+        localStatus,
+        now,
+
+        delivery.id
+      );
+
+      db.prepare(`
+        UPDATE payment_intents
+        SET status = ?,
+            updated_at = ?,
+            completed_at =
+              CASE
+                WHEN ? = 'COMPLETED'
+                THEN COALESCE(
+                  completed_at,
+                  ?
+                )
+                ELSE completed_at
+              END
+        WHERE id = ?
+          AND workspace_id = ?
+      `).run(
+        localStatus,
+        now,
+
+        localStatus,
+        now,
+
+        delivery.payment_intent_id,
+        delivery.workspace_id
+      );
+
+      return res.json({
+        success: true,
+        payoutId,
+        event,
+        providerStatus:
+          providerStatus ||
+          delivery.provider_status ||
+          null,
+        status: localStatus
+      });
+
+    } catch (err) {
+      console.error(
+        "Xendit webhook error:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to process Xendit webhook"
       });
     }
   }
