@@ -257,6 +257,208 @@ async function getCoinbaseOnrampTransactions(partnerUserRef) {
 }
 
 /* =========================
+   XENDIT FIAT OUT CONFIG
+========================= */
+
+const XENDIT_SECRET_KEY = String(
+  process.env.XENDIT_SECRET_KEY || ""
+).trim();
+
+const XENDIT_API_VERSION = "2025-09-01";
+
+const XENDIT_API_BASE_URL = "https://api.xendit.co";
+
+function isXenditConfigured() {
+  return Boolean(XENDIT_SECRET_KEY);
+}
+
+async function createXenditPayout({
+  referenceId,
+  idempotencyKey,
+  amount,
+  currency = "VND",
+  recipient
+}) {
+  if (!isXenditConfigured()) {
+    throw new Error(
+      "Xendit payout credentials are not configured."
+    );
+  }
+
+  const safeIdempotencyKey = String(
+  idempotencyKey || ""
+).trim();
+
+if (!safeIdempotencyKey) {
+  throw new Error(
+    "Xendit idempotency key is required."
+  );
+}
+
+  const response = await fetch(
+    `${XENDIT_API_BASE_URL}/v3/payouts`,
+    {
+      method: "POST",
+      headers: {
+        Authorization:
+          `Basic ${Buffer.from(
+            `${XENDIT_SECRET_KEY}:`
+          ).toString("base64")}`,
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "api-version": XENDIT_API_VERSION,
+        "idempotency-key": safeIdempotencyKey
+      },
+      body: JSON.stringify({
+        reference_id: referenceId,
+        type: "B2C",
+
+        recipient: {
+          type: "INDIVIDUAL",
+          given_name: recipient.givenName,
+          surname: recipient.surname,
+
+          details: {
+            personal_mobile_number:
+              recipient.phone
+          },
+
+          address: {
+            country:
+              recipient.country || "VN",
+            city: recipient.city,
+            street_line_1:
+              recipient.streetLine1
+          },
+
+          account_details: {
+            currency,
+            account_country:
+              recipient.country || "VN",
+            account_holder_name:
+              recipient.accountHolderName,
+            account_number:
+              recipient.accountNumber,
+            routing_type_1:
+              recipient.routingType || "SWIFT",
+            routing_value_1:
+              recipient.routingValue
+          },
+
+          relationship: "CUSTOMER"
+        },
+
+        payout_details: {
+          source_currency: currency,
+          source_amount: Number(amount),
+          destination_currency: currency
+        },
+
+        source_of_fund: "BUSINESS_REVENUE",
+        purpose_code: "OTHER",
+        description:
+          "TROR recipient fiat delivery"
+      })
+    }
+  );
+
+  const data =
+    await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const details = Array.isArray(data?.errors)
+      ? data.errors.join("; ")
+      : "";
+
+    throw new Error(
+      data?.message ||
+      details ||
+      data?.error_code ||
+      `Xendit payout failed (${response.status}).`
+    );
+  }
+
+  if (!data?.payout_id) {
+    throw new Error(
+      "Xendit response did not contain a payout_id."
+    );
+  }
+
+  return {
+    payoutId: data.payout_id,
+    referenceId:
+      data.reference_id || referenceId,
+    providerStatus:
+      String(data.status || "").toUpperCase(),
+    processorReference:
+      data.processor_reference || null,
+    destinationAmount:
+      Number(data.destination_amount || amount),
+    destinationCurrency:
+      data.destination_currency || currency,
+    raw: data
+  };
+}
+
+async function getXenditPayout(payoutId) {
+  if (!isXenditConfigured()) {
+    throw new Error(
+      "Xendit payout credentials are not configured."
+    );
+  }
+
+  const safePayoutId = encodeURIComponent(
+    String(payoutId || "").trim()
+  );
+
+  if (!safePayoutId) {
+    throw new Error(
+      "Xendit payout ID is required."
+    );
+  }
+
+  const response = await fetch(
+    `${XENDIT_API_BASE_URL}/v3/payouts/${safePayoutId}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization:
+          `Basic ${Buffer.from(
+            `${XENDIT_SECRET_KEY}:`
+          ).toString("base64")}`,
+        Accept: "application/json",
+        "api-version": XENDIT_API_VERSION
+      }
+    }
+  );
+
+  const data =
+    await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.message ||
+      data?.error_code ||
+      `Xendit payout status request failed (${response.status}).`
+    );
+  }
+
+  return {
+    payoutId: data.payout_id,
+    referenceId: data.reference_id || null,
+    providerStatus:
+      String(data.status || "").toUpperCase(),
+    processorReference:
+      data.processor_reference || null,
+    destinationAmount:
+      Number(data.destination_amount || 0),
+    destinationCurrency:
+      data.destination_currency || null,
+    raw: data
+  };
+}
+
+/* =========================
    AI CONFIG
 ========================= */
 const openai = process.env.OPENAI_API_KEY
@@ -915,6 +1117,74 @@ for (const columnSql of [
     db.prepare(columnSql).run();
   } catch {}
 }
+
+/* =========================
+   PAYMENT INTENT FIAT DELIVERY
+
+   Separate recipient payout rail.
+   Never overwrite the sender-side provider
+   stored on payment_intents.
+========================= */
+
+db.prepare(`
+  CREATE TABLE IF NOT EXISTS payment_intent_fiat_deliveries (
+    id TEXT PRIMARY KEY,
+    payment_intent_id TEXT NOT NULL UNIQUE,
+    workspace_id TEXT NOT NULL,
+
+    provider TEXT NOT NULL DEFAULT 'xendit',
+    provider_payout_id TEXT,
+    provider_reference TEXT,
+    provider_status TEXT,
+
+    currency TEXT NOT NULL,
+    amount REAL NOT NULL,
+
+    recipient_name TEXT,
+    recipient_phone TEXT,
+    recipient_country TEXT,
+
+    bank_name TEXT,
+    account_holder_name TEXT,
+    account_number TEXT,
+    routing_type TEXT,
+    routing_value TEXT,
+
+    city TEXT,
+    street_line_1 TEXT,
+
+    status TEXT NOT NULL DEFAULT 'PENDING_DETAILS',
+
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    processing_at TEXT,
+    completed_at TEXT,
+    failed_at TEXT
+  )
+`).run();
+
+try {
+  db.prepare(`
+    ALTER TABLE payment_intent_fiat_deliveries
+    ADD COLUMN idempotency_key TEXT
+  `).run();
+} catch {}
+
+db.prepare(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_payment_intent_fiat_deliveries_idempotency
+  ON payment_intent_fiat_deliveries(idempotency_key)
+  WHERE idempotency_key IS NOT NULL
+`).run();
+
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_payment_intent_fiat_deliveries_workspace
+  ON payment_intent_fiat_deliveries(workspace_id)
+`).run();
+
+db.prepare(`
+  CREATE INDEX IF NOT EXISTS idx_payment_intent_fiat_deliveries_provider_payout
+  ON payment_intent_fiat_deliveries(provider_payout_id)
+`).run();
 
 // employees master table
 db.prepare(`
@@ -9418,6 +9688,890 @@ app.post("/api/claims/:id/payment-intent-choice", async (req, res) => {
     });
   }
 });
+
+/* =========================
+   PAYMENT INTENT FIAT DELIVERY DETAILS
+
+   Recipient must already have:
+   - verified Gmail claim
+   - selected FIAT
+   - payment intent status RECIPIENT_SELECTED
+
+   This endpoint stores beneficiary details only.
+   It does NOT create a Xendit payout yet.
+========================= */
+
+app.post(
+  "/api/payment-intents/:id/fiat-delivery",
+  async (req, res) => {
+    try {
+      const paymentIntentId = String(
+        req.params.id || ""
+      ).trim();
+
+      const claimId = String(
+        req.body?.claimId || ""
+      ).trim();
+
+      const googleAccessToken = String(
+        req.body?.googleAccessToken || ""
+      ).trim();
+
+const destinationAmount = Number(
+  req.body?.destinationAmount
+);
+
+if (
+  !Number.isFinite(destinationAmount) ||
+  destinationAmount <= 0
+) {
+  throw new Error(
+    "Valid destination amount is required"
+  );
+}
+
+      const recipientName = String(
+        req.body?.recipientName || ""
+      ).trim();
+
+      const recipientPhone = String(
+        req.body?.recipientPhone || ""
+      ).trim();
+
+      const bankName = String(
+        req.body?.bankName || ""
+      ).trim();
+
+      const accountHolderName = String(
+        req.body?.accountHolderName || ""
+      ).trim();
+
+      const accountNumber = String(
+        req.body?.accountNumber || ""
+      ).trim();
+
+      const routingType = String(
+        req.body?.routingType || "SWIFT"
+      )
+        .trim()
+        .toUpperCase();
+
+      const routingValue = String(
+        req.body?.routingValue || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const city = String(
+        req.body?.city || ""
+      ).trim();
+
+      const streetLine1 = String(
+        req.body?.streetLine1 || ""
+      ).trim();
+
+      if (!paymentIntentId) {
+        throw new Error(
+          "Payment intent ID is required"
+        );
+      }
+
+      if (!claimId) {
+        throw new Error(
+          "Recipient claim ID is required"
+        );
+      }
+
+      if (!googleAccessToken) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Google verification is required"
+        });
+      }
+
+      /*
+        Verify that the Google account still
+        owns this recipient claim.
+      */
+      const { claim } =
+        await verifyClaimRecipient(
+          claimId,
+          googleAccessToken
+        );
+
+      if (
+        String(claim.claim_type || "")
+          .trim()
+          .toUpperCase() !==
+        "PAYMENT_INTENT_CHOICE"
+      ) {
+        throw new Error(
+          "This claim is not a payment-intent recipient claim"
+        );
+      }
+
+      if (
+        String(claim.payment_intent_id || "")
+          .trim() !== paymentIntentId
+      ) {
+        throw new Error(
+          "Recipient claim does not match this payment intent"
+        );
+      }
+
+      const intent = db.prepare(`
+        SELECT *
+        FROM payment_intents
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        paymentIntentId,
+        claim.workspace_id
+      );
+
+      if (!intent) {
+        throw new Error(
+          "Payment intent was not found"
+        );
+      }
+
+      if (
+        String(intent.recipient_choice || "")
+          .trim()
+          .toUpperCase() !== "FIAT"
+      ) {
+        throw new Error(
+          "Recipient has not selected FIAT delivery"
+        );
+      }
+
+      if (
+        intent.status !==
+        "RECIPIENT_SELECTED"
+      ) {
+        throw new Error(
+          `FIAT delivery details are not available from status ${intent.status}`
+        );
+      }
+
+      const currency = String(
+        intent.receive_currency || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const recipientCountry = String(
+        intent.recipient_country || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        recipientCountry !== "VN" ||
+        currency !== "VND"
+      ) {
+        throw new Error(
+          "Xendit VND delivery currently supports Vietnam recipients only"
+        );
+      }
+
+      if (!recipientName) {
+        throw new Error(
+          "Recipient name is required"
+        );
+      }
+
+      if (!recipientPhone) {
+        throw new Error(
+          "Recipient phone is required"
+        );
+      }
+
+      if (!bankName) {
+        throw new Error(
+          "Bank name is required"
+        );
+      }
+
+      if (!accountHolderName) {
+        throw new Error(
+          "Account holder name is required"
+        );
+      }
+
+      if (!accountNumber) {
+        throw new Error(
+          "Bank account number is required"
+        );
+      }
+
+      if (
+        routingType !== "SWIFT" ||
+        !routingValue
+      ) {
+        throw new Error(
+          "A valid SWIFT routing value is required"
+        );
+      }
+
+      if (!city || !streetLine1) {
+        throw new Error(
+          "Recipient city and street address are required"
+        );
+      }
+
+      /*
+        Do not allow beneficiary details
+        to be replaced after payout processing
+        has started.
+      */
+      const existing = db.prepare(`
+        SELECT *
+        FROM payment_intent_fiat_deliveries
+        WHERE payment_intent_id = ?
+        LIMIT 1
+      `).get(paymentIntentId);
+
+      if (
+        existing &&
+        ![
+          "PENDING_DETAILS",
+          "READY_FOR_PAYOUT"
+        ].includes(
+          String(existing.status || "")
+            .trim()
+            .toUpperCase()
+        )
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "FIAT delivery details are locked because payout processing has already started"
+        });
+      }
+
+      const now =
+        new Date().toISOString();
+
+      const deliveryId =
+        existing?.id ||
+        crypto.randomUUID();
+
+      if (existing) {
+        db.prepare(`
+          UPDATE payment_intent_fiat_deliveries
+          SET recipient_name = ?,
+              recipient_phone = ?,
+              recipient_country = ?,
+              bank_name = ?,
+              account_holder_name = ?,
+              account_number = ?,
+              routing_type = ?,
+              routing_value = ?,
+              city = ?,
+              street_line_1 = ?,
+              currency = ?,
+              amount = ?,
+              status = 'READY_FOR_PAYOUT',
+              updated_at = ?
+          WHERE id = ?
+        `).run(
+          recipientName,
+          recipientPhone,
+          recipientCountry,
+          bankName,
+          accountHolderName,
+          accountNumber,
+          routingType,
+          routingValue,
+          city,
+          streetLine1,
+          currency,
+          destinationAmount,
+          now,
+          deliveryId
+        );
+      } else {
+        db.prepare(`
+          INSERT INTO payment_intent_fiat_deliveries (
+            id,
+            payment_intent_id,
+            workspace_id,
+            provider,
+            currency,
+            amount,
+            recipient_name,
+            recipient_phone,
+            recipient_country,
+            bank_name,
+            account_holder_name,
+            account_number,
+            routing_type,
+            routing_value,
+            city,
+            street_line_1,
+            status,
+            created_at,
+            updated_at
+          )
+          VALUES (
+            ?, ?, ?, 'xendit', ?, ?,
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+            'READY_FOR_PAYOUT', ?, ?
+          )
+        `).run(
+          deliveryId,
+          paymentIntentId,
+          intent.workspace_id,
+          currency,
+          destinationAmount,
+          recipientName,
+          recipientPhone,
+          recipientCountry,
+          bankName,
+          accountHolderName,
+          accountNumber,
+          routingType,
+          routingValue,
+          city,
+          streetLine1,
+          now,
+          now
+        );
+      }
+
+      const delivery = db.prepare(`
+        SELECT
+          id,
+          payment_intent_id,
+          workspace_id,
+          provider,
+          currency,
+          amount,
+          recipient_name,
+          recipient_phone,
+          recipient_country,
+          bank_name,
+          account_holder_name,
+          routing_type,
+          routing_value,
+          city,
+          street_line_1,
+          status,
+          created_at,
+          updated_at
+        FROM payment_intent_fiat_deliveries
+        WHERE id = ?
+        LIMIT 1
+      `).get(deliveryId);
+
+      return res.json({
+        success: true,
+        delivery,
+        nextAction: "CREATE_XENDIT_PAYOUT",
+        message:
+          "Recipient bank details are verified and ready for Xendit payout."
+      });
+
+    } catch (err) {
+      console.error(
+        "Save payment-intent fiat delivery error:",
+        err
+      );
+
+      return res.status(400).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to save FIAT delivery details"
+      });
+    }
+  }
+);
+
+/* =========================
+   EXECUTE PAYMENT INTENT FIAT DELIVERY
+
+   READY_FOR_PAYOUT
+   -> Xendit payout
+   -> PROCESSING / COMPLETED
+
+   Idempotency key is persisted before
+   the external provider call.
+========================= */
+
+app.post(
+  "/api/payment-intents/:id/fiat-delivery/execute",
+  async (req, res) => {
+    try {
+      const paymentIntentId = String(
+        req.params.id || ""
+      ).trim();
+
+      const claimId = String(
+        req.body?.claimId || ""
+      ).trim();
+
+      const googleAccessToken = String(
+        req.body?.googleAccessToken || ""
+      ).trim();
+
+      if (!paymentIntentId) {
+        throw new Error(
+          "Payment intent ID is required"
+        );
+      }
+
+      if (!claimId) {
+        throw new Error(
+          "Recipient claim ID is required"
+        );
+      }
+
+      if (!googleAccessToken) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Google verification is required"
+        });
+      }
+
+      if (!isXenditConfigured()) {
+        return res.status(503).json({
+          success: false,
+          error:
+            "Xendit payout provider is not configured"
+        });
+      }
+
+      /*
+        Re-verify the recipient before
+        initiating an irreversible payout.
+      */
+      const { claim } =
+        await verifyClaimRecipient(
+          claimId,
+          googleAccessToken
+        );
+
+      if (
+        String(claim.claim_type || "")
+          .trim()
+          .toUpperCase() !==
+        "PAYMENT_INTENT_CHOICE"
+      ) {
+        throw new Error(
+          "This claim is not a payment-intent recipient claim"
+        );
+      }
+
+      if (
+        String(claim.payment_intent_id || "")
+          .trim() !== paymentIntentId
+      ) {
+        throw new Error(
+          "Recipient claim does not match this payment intent"
+        );
+      }
+
+      const intent = db.prepare(`
+        SELECT *
+        FROM payment_intents
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        paymentIntentId,
+        claim.workspace_id
+      );
+
+      if (!intent) {
+        throw new Error(
+          "Payment intent was not found"
+        );
+      }
+
+      if (
+        String(intent.recipient_choice || "")
+          .trim()
+          .toUpperCase() !== "FIAT"
+      ) {
+        throw new Error(
+          "Recipient has not selected FIAT delivery"
+        );
+      }
+
+      /*
+        If the payment intent has already
+        completed, never create another payout.
+      */
+      if (intent.status === "COMPLETED") {
+        const completedDelivery =
+          db.prepare(`
+            SELECT *
+            FROM payment_intent_fiat_deliveries
+            WHERE payment_intent_id = ?
+            LIMIT 1
+          `).get(paymentIntentId);
+
+        return res.json({
+          success: true,
+          idempotent: true,
+          payoutId:
+            completedDelivery?.provider_payout_id ||
+            null,
+          providerStatus:
+            completedDelivery?.provider_status ||
+            "SUCCEEDED",
+          status: "COMPLETED",
+          message:
+            "FIAT delivery has already completed."
+        });
+      }
+
+      let delivery = db.prepare(`
+        SELECT *
+        FROM payment_intent_fiat_deliveries
+        WHERE payment_intent_id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        paymentIntentId,
+        claim.workspace_id
+      );
+
+      if (!delivery) {
+        throw new Error(
+          "FIAT delivery details have not been provided"
+        );
+      }
+
+      /*
+        A provider payout already exists.
+        Never POST another one.
+      */
+      if (delivery.provider_payout_id) {
+        const providerResult =
+          await getXenditPayout(
+            delivery.provider_payout_id
+          );
+
+        const now =
+          new Date().toISOString();
+
+        const isCompleted =
+          providerResult.providerStatus ===
+          "SUCCEEDED";
+
+        const localStatus =
+          isCompleted
+            ? "COMPLETED"
+            : "PROCESSING";
+
+        db.prepare(`
+          UPDATE payment_intent_fiat_deliveries
+          SET provider_status = ?,
+              provider_reference = COALESCE(?, provider_reference),
+              status = ?,
+              updated_at = ?,
+              completed_at =
+                CASE
+                  WHEN ? = 'COMPLETED'
+                  THEN COALESCE(completed_at, ?)
+                  ELSE completed_at
+                END
+          WHERE id = ?
+        `).run(
+          providerResult.providerStatus,
+          providerResult.processorReference,
+          localStatus,
+          now,
+          localStatus,
+          now,
+          delivery.id
+        );
+
+        db.prepare(`
+          UPDATE payment_intents
+          SET status = ?,
+              updated_at = ?,
+              completed_at =
+                CASE
+                  WHEN ? = 'COMPLETED'
+                  THEN COALESCE(completed_at, ?)
+                  ELSE completed_at
+                END
+          WHERE id = ?
+            AND workspace_id = ?
+        `).run(
+          localStatus,
+          now,
+          localStatus,
+          now,
+          paymentIntentId,
+          claim.workspace_id
+        );
+
+        return res.json({
+          success: true,
+          idempotent: true,
+          payoutId:
+            providerResult.payoutId,
+          providerStatus:
+            providerResult.providerStatus,
+          status: localStatus,
+          message:
+            isCompleted
+              ? "FIAT delivery completed."
+              : "Existing Xendit payout is still processing."
+        });
+      }
+
+      if (
+        ![
+          "READY_FOR_PAYOUT",
+          "CREATING_PAYOUT"
+        ].includes(
+          String(delivery.status || "")
+            .trim()
+            .toUpperCase()
+        )
+      ) {
+        throw new Error(
+          `FIAT payout cannot start from status ${delivery.status}`
+        );
+      }
+
+      /*
+        Persist one idempotency key before
+        calling Xendit.
+
+        Concurrent retries will all reload
+        and use the same stored key.
+      */
+      const candidateIdempotencyKey =
+        crypto.randomUUID();
+
+      const lockNow =
+        new Date().toISOString();
+
+      db.prepare(`
+        UPDATE payment_intent_fiat_deliveries
+        SET idempotency_key =
+              COALESCE(
+                idempotency_key,
+                ?
+              ),
+            status = 'CREATING_PAYOUT',
+            updated_at = ?
+        WHERE id = ?
+          AND provider_payout_id IS NULL
+          AND status IN (
+            'READY_FOR_PAYOUT',
+            'CREATING_PAYOUT'
+          )
+      `).run(
+        candidateIdempotencyKey,
+        lockNow,
+        delivery.id
+      );
+
+      delivery = db.prepare(`
+        SELECT *
+        FROM payment_intent_fiat_deliveries
+        WHERE id = ?
+        LIMIT 1
+      `).get(delivery.id);
+
+      if (!delivery?.idempotency_key) {
+        throw new Error(
+          "Unable to initialize payout idempotency key"
+        );
+      }
+
+      /*
+        Split the stored recipient name into
+        the same shape already proven against
+        Xendit sandbox.
+
+        Example:
+        NGUYEN VAN AN
+        -> givenName = NGUYEN VAN
+        -> surname = AN
+      */
+      const nameParts = String(
+        delivery.recipient_name || ""
+      )
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      if (nameParts.length < 2) {
+        throw new Error(
+          "Recipient full name must contain at least two parts"
+        );
+      }
+
+      const surname =
+        nameParts.pop();
+
+      const givenName =
+        nameParts.join(" ");
+
+      const referenceId =
+        `tror-fiat-${paymentIntentId}`;
+
+      const payout =
+        await createXenditPayout({
+          referenceId,
+          idempotencyKey:
+            delivery.idempotency_key,
+          amount:
+            Number(delivery.amount),
+          currency:
+            String(delivery.currency || "VND")
+              .trim()
+              .toUpperCase(),
+
+          recipient: {
+            givenName,
+            surname,
+
+            phone:
+              delivery.recipient_phone,
+
+            country:
+              delivery.recipient_country,
+
+            city:
+              delivery.city,
+
+            streetLine1:
+              delivery.street_line_1,
+
+            accountHolderName:
+              delivery.account_holder_name,
+
+            accountNumber:
+              delivery.account_number,
+
+            routingType:
+              delivery.routing_type,
+
+            routingValue:
+              delivery.routing_value
+          }
+        });
+
+      const now =
+        new Date().toISOString();
+
+      const providerCompleted =
+        payout.providerStatus ===
+        "SUCCEEDED";
+
+      const localStatus =
+        providerCompleted
+          ? "COMPLETED"
+          : "PROCESSING";
+
+      /*
+        Store provider identifiers immediately.
+
+        Once provider_payout_id exists,
+        retries can only read/update that
+        payout and cannot create another.
+      */
+      db.prepare(`
+        UPDATE payment_intent_fiat_deliveries
+        SET provider_payout_id = ?,
+            provider_reference = ?,
+            provider_status = ?,
+            status = ?,
+            processing_at =
+              COALESCE(processing_at, ?),
+            completed_at =
+              CASE
+                WHEN ? = 'COMPLETED'
+                THEN COALESCE(completed_at, ?)
+                ELSE completed_at
+              END,
+            updated_at = ?
+        WHERE id = ?
+      `).run(
+        payout.payoutId,
+        payout.processorReference,
+        payout.providerStatus,
+        localStatus,
+        now,
+        localStatus,
+        now,
+        now,
+        delivery.id
+      );
+
+      /*
+        Do NOT overwrite payment_intents.provider.
+        Coinbase remains the sender-side provider.
+      */
+      db.prepare(`
+        UPDATE payment_intents
+        SET status = ?,
+            updated_at = ?,
+            completed_at =
+              CASE
+                WHEN ? = 'COMPLETED'
+                THEN COALESCE(completed_at, ?)
+                ELSE completed_at
+              END
+        WHERE id = ?
+          AND workspace_id = ?
+      `).run(
+        localStatus,
+        now,
+        localStatus,
+        now,
+        paymentIntentId,
+        claim.workspace_id
+      );
+
+      return res.json({
+        success: true,
+        payoutId:
+          payout.payoutId,
+        referenceId:
+          payout.referenceId,
+        providerStatus:
+          payout.providerStatus,
+        status:
+          localStatus,
+        amount:
+          payout.destinationAmount,
+        currency:
+          payout.destinationCurrency,
+        message:
+          providerCompleted
+            ? "FIAT delivery completed."
+            : "Xendit payout created and is processing."
+      });
+
+    } catch (err) {
+      console.error(
+        "Execute payment-intent FIAT delivery error:",
+        err
+      );
+
+      return res.status(400).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to execute FIAT delivery"
+      });
+    }
+  }
+);
 
 /* =========================
    MONEY ROUTER
