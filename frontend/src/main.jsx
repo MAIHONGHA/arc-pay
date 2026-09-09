@@ -7910,7 +7910,9 @@ console.log("LOADING WORKSPACES FOR:", walletAddress);
 
   renderWorkspaceSwitcher(workspaces, currentWorkspace);
 
-  if (currentWorkspace?.id) {
+if (currentWorkspace?.id) {
+  await restoreCurrentSendMoneyIntent();
+
   window.dispatchEvent(
     new CustomEvent("workspaceChanged", {
       detail: {
@@ -14092,18 +14094,27 @@ async function startTrorFiatInSession() {
     );
   }
 
-  return api("/api/money/fiat-in", {
-    method: "POST",
-    body: JSON.stringify({
-      workspaceId,
-      asset: "USDC",
-      amount,
-      country,
-      fiatCurrency,
-      walletType: activeWallet.type || null,
-      walletAddress: activeWallet.address
-    })
-  });
+  const paymentIntentId =
+  getCurrentSendMoneyIntentId();
+
+return api("/api/money/fiat-in", {
+  method: "POST",
+  body: JSON.stringify({
+    workspaceId,
+
+    paymentIntentId:
+      paymentIntentId || null,
+
+    asset: "USDC",
+    amount,
+    country,
+    fiatCurrency,
+    walletType:
+      activeWallet.type || null,
+    walletAddress:
+      activeWallet.address
+  })
+});
 }
 
 const TROR_COUNTRY_DEFAULT_CURRENCY = {
@@ -14171,6 +14182,73 @@ syncSendMoneyReceiveMethodUI();
 
 let currentSendMoneyIntent = null;
 
+const CURRENT_SEND_MONEY_INTENT_KEY =
+  "trorCurrentSendMoneyIntentId";
+
+function saveCurrentSendMoneyIntent(intent) {
+  currentSendMoneyIntent = intent || null;
+
+  const intentId = String(
+    intent?.id || ""
+  ).trim();
+
+  if (intentId) {
+    sessionStorage.setItem(
+      CURRENT_SEND_MONEY_INTENT_KEY,
+      intentId
+    );
+  }
+}
+
+function getCurrentSendMoneyIntentId() {
+  return (
+    String(
+      currentSendMoneyIntent?.id || ""
+    ).trim() ||
+    String(
+      sessionStorage.getItem(
+        CURRENT_SEND_MONEY_INTENT_KEY
+      ) || ""
+    ).trim()
+  );
+}
+
+async function restoreCurrentSendMoneyIntent() {
+  try {
+    const paymentIntentId =
+      getCurrentSendMoneyIntentId();
+
+    const workspaceId =
+      getCurrentWorkspace()?.id || null;
+
+    if (
+      !paymentIntentId ||
+      !workspaceId
+    ) {
+      return;
+    }
+
+    const result = await api(
+      `/api/money/payment-intents/${encodeURIComponent(
+        paymentIntentId
+      )}?workspaceId=${encodeURIComponent(
+        workspaceId
+      )}`
+    );
+
+    if (result?.intent) {
+      renderSendMoneyIntentResult(
+        result.intent
+      );
+    }
+  } catch (error) {
+    console.warn(
+      "Restore payment intent skipped:",
+      error?.message || error
+    );
+  }
+}
+
 function getSendMoneyIntentStepText(status) {
   const normalized = String(status || "").toUpperCase();
 
@@ -14203,7 +14281,7 @@ function renderSendMoneyIntentResult(intent) {
   const el = document.getElementById("sendMoneyIntentResult");
   if (!el || !intent) return;
 
-  currentSendMoneyIntent = intent;
+  saveCurrentSendMoneyIntent(intent);
 
   const preferredText =
     intent.receiveMethod === "FIAT"
