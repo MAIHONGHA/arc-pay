@@ -13128,96 +13128,286 @@ async function loadClaimPage() {
     color:#0f172a;
   "
 >
-  <h3
-    style="
-      margin-top:0;
-      color:#0f172a;
-    "
-  >
+  <h3 style="margin-top:0;color:#0f172a;">
     Withdraw to Bank
   </h3>
 
-        <div
-          id="bankWithdrawForm"
-          style="
-            display:flex;
-            flex-direction:column;
-            gap:12px;
-          "
-        >
-          <input
-            id="bankCountry"
-            placeholder="Country"
-            style="
-              padding:14px;
-              border-radius:12px;
-              border:1px solid rgba(255,255,255,0.16);
-              background:#ffffff;
-              color:#111827;
-              box-sizing:border-box;
-              width:100%;
-            "
-          />
+  <div
+    id="bankWithdrawForm"
+    style="
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+    "
+  >
 
-          <input
-            id="bankName"
-            placeholder="Bank Name"
-            style="
-              padding:14px;
-              border-radius:12px;
-              border:1px solid rgba(255,255,255,0.16);
-              background:#ffffff;
-              color:#111827;
-              box-sizing:border-box;
-              width:100%;
-            "
-          />
-
-          <input
-            id="bankAccount"
-            placeholder="Account Number"
-            style="
-              padding:14px;
-              border-radius:12px;
-              border:1px solid rgba(255,255,255,0.16);
-              background:#ffffff;
-              color:#111827;
-              box-sizing:border-box;
-              width:100%;
-            "
-          />
-
-          <input
-            id="bankHolder"
-            placeholder="Account Holder"
-            style="
-              padding:14px;
-              border-radius:12px;
-              border:1px solid rgba(255,255,255,0.16);
-              background:#ffffff;
-              color:#111827;
-              box-sizing:border-box;
-              width:100%;
-            "
-          />
-
-          <button
-            id="btnRequestWithdraw"
-            style="
-              padding:16px;
-              border:none;
-              border-radius:14px;
-              background:linear-gradient(135deg,#0ea5e9,#10b981);
-              color:#ffffff;
-              font-size:16px;
-              font-weight:bold;
-              cursor:pointer;
-            "
-          >
-            Request Bank Withdraw
-          </button>
-        </div>
+    <!-- CLAIM AMOUNT -->
+    <div
+      style="
+        padding:14px;
+        border-radius:12px;
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+      "
+    >
+      <div
+        style="
+          font-size:12px;
+          color:#64748b;
+          margin-bottom:4px;
+        "
+      >
+        Claim Amount
       </div>
+
+      <div
+        id="bankClaimAmount"
+        style="
+          font-size:18px;
+          font-weight:700;
+          color:#0f172a;
+        "
+      >
+        -- USDC
+      </div>
+
+      <div
+        style="
+          font-size:11px;
+          color:#64748b;
+          margin-top:3px;
+        "
+      >
+        Amount is taken directly from this Gmail Claim.
+      </div>
+    </div>
+
+    <!-- COUNTRY -->
+    <input
+      id="bankCountry"
+      value="VN"
+      placeholder="Country"
+      maxlength="2"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <!-- CURRENCY -->
+    <input
+      id="bankCurrency"
+      value="VND"
+      placeholder="Receive Currency"
+      maxlength="3"
+      readonly
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#f8fafc;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <!-- PROVIDER -->
+    <div
+      style="
+        padding:12px 14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#f8fafc;
+        font-size:13px;
+        color:#475569;
+      "
+    >
+      Bank payout provider:
+      <b style="color:#0f172a;">Xendit</b>
+    </div>
+
+    <div
+      style="
+        margin-top:4px;
+        font-size:12px;
+        font-weight:700;
+        color:#64748b;
+        text-transform:uppercase;
+        letter-spacing:.04em;
+      "
+    >
+      Recipient
+    </div>
+
+    <input
+      id="bankRecipientName"
+      placeholder="Recipient Full Name"
+      autocomplete="name"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankRecipientPhone"
+      placeholder="Phone Number"
+      autocomplete="tel"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <div
+      style="
+        margin-top:4px;
+        font-size:12px;
+        font-weight:700;
+        color:#64748b;
+        text-transform:uppercase;
+        letter-spacing:.04em;
+      "
+    >
+      Bank Account
+    </div>
+
+    <input
+      id="bankName"
+      placeholder="Bank Name"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankAccount"
+      placeholder="Account Number"
+      autocomplete="off"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankHolder"
+      placeholder="Account Holder Name"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankRoutingType"
+      value="SWIFT"
+      placeholder="Routing Type"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankRoutingValue"
+      placeholder="Routing Value / SWIFT Code"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankCity"
+      placeholder="City"
+      autocomplete="address-level2"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <input
+      id="bankStreet"
+      placeholder="Street Address"
+      autocomplete="street-address"
+      style="
+        padding:14px;
+        border-radius:12px;
+        border:1px solid #e2e8f0;
+        background:#ffffff;
+        color:#111827;
+        box-sizing:border-box;
+        width:100%;
+      "
+    />
+
+    <button
+      id="btnRequestWithdraw"
+      style="
+        padding:16px;
+        border:none;
+        border-radius:14px;
+        background:linear-gradient(135deg,#0ea5e9,#10b981);
+        color:#ffffff;
+        font-size:16px;
+        font-weight:bold;
+        cursor:pointer;
+      "
+    >
+      Request Bank Withdrawal
+    </button>
+
+  </div>
+</div>
 
       <p
         id="claimStatus"
@@ -13237,6 +13427,14 @@ async function loadClaimPage() {
         "<div style='padding:40px;color:white;'>❌ Claim not found</div>";
       return;
     }
+
+const bankClaimAmountEl =
+  document.getElementById("bankClaimAmount");
+
+if (bankClaimAmountEl) {
+  bankClaimAmountEl.textContent =
+    `${Number(claimData.amount || 0)} USDC`;
+}
 
     isPaymentIntentChoiceClaim =
       String(claimData.claim_type || "").toUpperCase() ===
