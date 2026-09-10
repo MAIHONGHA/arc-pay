@@ -5979,51 +5979,83 @@ function renderCircleNetwork(blockchain) {
 }
 
 if (networkSelect) {
-  const setActiveCircleNetwork = (blockchain) => {
-    const selected = multiChainBalances.find(
-      (item) =>
-        String(item?.blockchain || "").toUpperCase() ===
-        String(blockchain || "").toUpperCase()
-    );
+  const setActiveCircleNetwork = async (blockchain) => {
+  const selected = multiChainBalances.find(
+    (item) =>
+      String(item?.blockchain || "").toUpperCase() ===
+      String(blockchain || "").toUpperCase()
+  );
 
-    if (!selected) {
-      window.trorActiveCircleNetwork = null;
-      window.trorActiveCircleWallet = null;
-
-      renderCircleNetwork(blockchain);
-      return;
-    }
-
-    window.trorActiveCircleNetwork =
-      String(selected.blockchain || "").toUpperCase();
-
-    window.trorActiveCircleWallet = {
-      blockchain: selected.blockchain,
-      walletId: selected.walletId,
-      address: selected.address,
-      tokenId: selected.tokenId,
-      balance: selected.balance
-    };
-
-    console.log(
-      "TROR active Circle network:",
-      window.trorActiveCircleNetwork
-    );
-
-    console.log(
-      "TROR active Circle wallet:",
-      window.trorActiveCircleWallet
-    );
+  if (!selected) {
+    window.trorActiveCircleNetwork = null;
+    window.trorActiveCircleWallet = null;
 
     renderCircleNetwork(blockchain);
+    return;
+  }
+
+  window.trorActiveCircleNetwork =
+    String(selected.blockchain || "").toUpperCase();
+
+  window.trorActiveCircleWallet = {
+    blockchain: selected.blockchain,
+    walletId: selected.walletId,
+    address: selected.address,
+    tokenId: selected.tokenId,
+    balance: selected.balance
   };
 
-  networkSelect.onchange = () => {
-    setActiveCircleNetwork(networkSelect.value);
-  };
+  console.log(
+    "TROR active Circle network:",
+    window.trorActiveCircleNetwork
+  );
 
-  networkSelect.value = "ARC-TESTNET";
-  setActiveCircleNetwork("ARC-TESTNET");
+  console.log(
+    "TROR active Circle wallet:",
+    window.trorActiveCircleWallet
+  );
+
+  /*
+    Render Circle-indexed balance first
+    so the UI remains responsive.
+  */
+  renderCircleNetwork(blockchain);
+
+  /*
+    ARC-TESTNET:
+    replace Circle-indexed balance with
+    the actual USDC balance read on-chain.
+  */
+  if (
+    String(selected.blockchain || "").toUpperCase() ===
+      "ARC-TESTNET" &&
+    selected.walletId &&
+    selected.address
+  ) {
+    const onchainBalance =
+      await refreshActiveCircleUsdcBalance(
+        userToken,
+        window.trorActiveCircleWallet
+      );
+
+    console.log(
+      "TROR active Circle Arc on-chain balance:",
+      onchainBalance
+    );
+  }
+};
+
+networkSelect.onchange = async () => {
+  await setActiveCircleNetwork(
+    networkSelect.value
+  );
+};
+
+networkSelect.value = "ARC-TESTNET";
+
+await setActiveCircleNetwork(
+  "ARC-TESTNET"
+);
 }
 
   const wallet = extractWallet(listData);
@@ -6326,14 +6358,62 @@ async function refreshActiveCircleUsdcBalance(
     }
 
     const usdc =
-      await findUsdcTokenByBlockchain(
-        userToken,
-        walletId,
-        blockchain
-      );
+  await findUsdcTokenByBlockchain(
+    userToken,
+    walletId,
+    blockchain
+  );
 
-    const freshBalance =
-      Number(usdc?.balance || 0);
+let freshBalance =
+  Number(usdc?.balance || 0);
+
+/*
+  Arc balance source of truth:
+  read USDC directly on-chain for the
+  actual Circle wallet address.
+*/
+const walletAddress =
+  activeWallet?.address ||
+  window.trorActiveCircleWallet?.address ||
+  null;
+
+if (
+  String(blockchain).toUpperCase() ===
+    "ARC-TESTNET" &&
+  walletAddress
+) {
+  const onchainResult =
+    await api(
+      "/api/circle/arc-usdc-balance",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          walletAddress
+        })
+      }
+    );
+
+  if (
+    onchainResult?.success &&
+    Number.isFinite(
+      Number(onchainResult.balance)
+    )
+  ) {
+    freshBalance =
+      Number(onchainResult.balance);
+  }
+}
+
+console.log(
+  "TROR Circle fresh Arc balance:",
+  {
+    walletAddress,
+    circleIndexedBalance:
+      Number(usdc?.balance || 0),
+    onchainBalance:
+      freshBalance
+  }
+);
 
     /*
       Update the normal Dashboard Circle

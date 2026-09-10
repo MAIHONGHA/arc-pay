@@ -8798,6 +8798,61 @@ app.post("/api/circle/wallet-balances", async (req, res) => {
   }
 });
 
+app.post(
+  "/api/circle/arc-usdc-balance",
+  async (req, res) => {
+    try {
+      const walletAddress = String(
+        req.body?.walletAddress || ""
+      ).trim();
+
+      if (
+        !walletAddress ||
+        !ethers.isAddress(walletAddress)
+      ) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid walletAddress"
+        });
+      }
+
+      const usdc = new ethers.Contract(
+        USDC_ADDRESS,
+        ERC20_ABI,
+        provider
+      );
+
+      const rawBalance =
+        await usdc.balanceOf(walletAddress);
+
+      const balance = ethers.formatUnits(
+        rawBalance,
+        USDC_DECIMALS
+      );
+
+      return res.json({
+        success: true,
+        blockchain: "ARC-TESTNET",
+        walletAddress,
+        tokenAddress: USDC_ADDRESS,
+        balance
+      });
+    } catch (err) {
+      console.error(
+        "Arc Circle USDC balance error:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to read Arc USDC balance"
+      });
+    }
+  }
+);
+
 /* =========================
    CIRCLE PAYMENT
 ========================= */
