@@ -6295,6 +6295,154 @@ console.log(
   return results;
 }
 
+async function refreshActiveCircleUsdcBalance(
+  userTokenOverride = null,
+  walletOverride = null
+) {
+  try {
+    const activeWallet =
+      walletOverride ||
+      window.trorActiveCircleWallet;
+
+    const userToken =
+      userTokenOverride ||
+      localStorage.getItem(
+        "circleUserToken"
+      );
+
+    const walletId =
+      activeWallet?.walletId ||
+      activeWallet?.id;
+
+    const blockchain =
+      activeWallet?.blockchain ||
+      "ARC-TESTNET";
+
+    if (
+      !walletId ||
+      !userToken
+    ) {
+      return null;
+    }
+
+    const usdc =
+      await findUsdcTokenByBlockchain(
+        userToken,
+        walletId,
+        blockchain
+      );
+
+    const freshBalance =
+      Number(usdc?.balance || 0);
+
+    /*
+      Update the normal Dashboard Circle
+      session only when this is the same
+      currently active wallet.
+    */
+    const currentActive =
+      window.trorActiveCircleWallet;
+
+    const sameActiveWallet =
+      currentActive &&
+      String(
+        currentActive.walletId || ""
+      ) ===
+      String(walletId);
+
+    if (sameActiveWallet) {
+      window.trorActiveCircleWallet = {
+        ...currentActive,
+        tokenId:
+          usdc?.tokenId ||
+          currentActive.tokenId ||
+          null,
+        balance:
+          freshBalance
+      };
+
+      const networkBalance =
+        document.getElementById(
+          "circleNetworkBalance"
+        );
+
+      if (networkBalance) {
+        networkBalance.textContent =
+          `${freshBalance} USDC`;
+      }
+
+      const multiChainBalances =
+        Array.isArray(
+          window.trorCircleMultiChainBalances
+        )
+          ? window.trorCircleMultiChainBalances
+          : [];
+
+      window.trorCircleMultiChainBalances =
+        multiChainBalances.map(
+          (item) => {
+            const sameWallet =
+              String(
+                item?.walletId || ""
+              ) ===
+              String(walletId);
+
+            const sameBlockchain =
+              String(
+                item?.blockchain || ""
+              ).toUpperCase() ===
+              String(
+                blockchain
+              ).toUpperCase();
+
+            if (
+              sameWallet &&
+              sameBlockchain
+            ) {
+              return {
+                ...item,
+                tokenId:
+                  usdc?.tokenId ||
+                  item.tokenId ||
+                  null,
+                balance:
+                  freshBalance,
+                raw:
+                  usdc?.raw ||
+                  item.raw ||
+                  null
+              };
+            }
+
+            return item;
+          }
+        );
+    }
+
+    console.log(
+      "TROR Circle balance refreshed:",
+      {
+        walletId,
+        blockchain,
+        balance:
+          freshBalance
+      }
+    );
+
+    return freshBalance;
+  } catch (err) {
+    console.error(
+      "TROR Circle balance refresh failed:",
+      err
+    );
+
+    return null;
+  }
+}
+
+window.refreshActiveCircleUsdcBalance =
+  refreshActiveCircleUsdcBalance;
+
 /* =========================
    GOOGLE + CIRCLE LOGIN
 ========================= */
@@ -13635,6 +13783,16 @@ document.getElementById(
         "Failed to verify Circle claim."
       );
     }
+
+await refreshActiveCircleUsdcBalance(
+  userToken,
+  {
+    walletId,
+    id: walletId,
+    blockchain: "ARC-TESTNET",
+    address: walletAddress
+  }
+);
 
     statusEl.textContent =
       "Claimed successfully to your Circle wallet!";
