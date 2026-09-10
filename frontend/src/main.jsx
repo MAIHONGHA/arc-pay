@@ -3236,7 +3236,14 @@ function getClaimCircleArcWallet(data) {
   const wallets =
     extractCircleWallets(data);
 
-  return (
+  const primaryAddress =
+    getPrimaryCircleAddress(wallets);
+
+  if (!primaryAddress) {
+    return null;
+  }
+
+  const primaryArcSca =
     wallets.find((wallet) => {
       const blockchain =
         String(
@@ -3254,19 +3261,48 @@ function getClaimCircleArcWallet(data) {
         ).toUpperCase();
 
       const address =
-        wallet?.address ||
-        wallet?.walletAddress ||
-        wallet?.accounts?.[0]?.address ||
-        null;
+        String(
+          wallet?.address ||
+          wallet?.walletAddress ||
+          wallet?.accounts?.[0]?.address ||
+          ""
+        )
+          .trim()
+          .toLowerCase();
 
       return (
         blockchain === "ARC-TESTNET" &&
         accountType === "SCA" &&
         state === "LIVE" &&
-        Boolean(address)
+        address === primaryAddress
       );
-    }) || null
-  );
+    }) || null;
+
+  if (primaryArcSca) {
+    console.log(
+      "TROR claim primary Arc SCA:",
+      {
+        walletId:
+          primaryArcSca.id ||
+          primaryArcSca.walletId ||
+          null,
+        address:
+          getClaimCircleWalletAddress(
+            primaryArcSca
+          ),
+        primaryAddress
+      }
+    );
+  } else {
+    console.log(
+      "TROR claim primary Arc SCA not found:",
+      {
+        primaryAddress
+      }
+    );
+  }
+
+  return primaryArcSca;
 }
 
 function getClaimCircleWalletAddress(wallet) {
