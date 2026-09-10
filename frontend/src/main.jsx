@@ -14886,14 +14886,6 @@ document
     }
   });
 
-document
-  .getElementById("btnOpenMoveMoneyFromClaim")
-  ?.addEventListener("click", () => {
-    window.location.hash = "move-money";
-    showTab("move-money");
-    updateTopbarTitle("move-money");
-  });
-
 /* =========================
    EVENT LISTENERS + INIT
 ========================= */
