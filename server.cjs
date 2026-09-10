@@ -1425,6 +1425,48 @@ try {
   `).run();
 } catch {}
 
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN recipient_name TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN recipient_phone TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN routing_type TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN routing_value TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN city TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN street_line_1 TEXT
+  `).run();
+} catch {}
+
 db.prepare(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawals_claim_id
   ON withdrawals(claim_id)
@@ -9105,6 +9147,7 @@ const ACTIVE_OFFRAMP_STATUSES = new Set([
   "KYC_REQUIRED",
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
+  "AWAITING_SETTLEMENT",
   "PROCESSING",
   "SETTLED",
   "COMPLETED"
@@ -11525,11 +11568,18 @@ app.post("/api/withdrawals", async (req, res) => {
     const {
       googleAccessToken,
       country,
+      fiatCurrency,
+      recipientName,
+      recipientPhone,
       bankName,
       accountHolder,
       accountNumber,
+      routingType,
+      routingValue,
+      city,
+      streetLine1,
       claimId
-    } = req.body;
+    } = req.body || {};
 
     if (!claimId) {
       return res.status(400).json({
@@ -11545,41 +11595,141 @@ app.post("/api/withdrawals", async (req, res) => {
       });
     }
 
+    /*
+      Always verify the Gmail recipient server-side.
+
+      Never trust recipient identity or claim amount
+      supplied by the browser.
+    */
     const { claim, googleUser } =
       await verifyClaimRecipient(
         claimId,
         googleAccessToken
       );
 
-if (String(claim.claim_type || "").toUpperCase() === "PAYMENT_INTENT_CHOICE") {
-  return res.status(409).json({
-    success: false,
-    error: "This recipient-choice claim cannot create a bank withdrawal. Select the delivery method first; provider payout is a later step."
-  });
-}
-
-if (String(claim.status || "").toUpperCase() === "CLAIMED") {
-  return res.status(409).json({
-    success: false,
-    error:
-      "This claim has already been claimed to a wallet."
-  });
-}
-
     if (
-      !country ||
-      !bankName ||
-      !accountHolder ||
-      !accountNumber
+      String(claim.claim_type || "")
+        .trim()
+        .toUpperCase() ===
+      "PAYMENT_INTENT_CHOICE"
     ) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        error: "Bank information is required"
+        error:
+          "This recipient-choice claim cannot create a bank withdrawal. Select the delivery method first; provider payout is a later step."
       });
     }
 
+    if (
+      String(claim.status || "")
+        .trim()
+        .toUpperCase() ===
+      "CLAIMED"
+    ) {
+      return res.status(409).json({
+        success: false,
+        error:
+          "This claim has already been claimed to a wallet."
+      });
+    }
+
+    const normalizedCountry =
+      String(country || "")
+        .trim()
+        .toUpperCase();
+
+    const normalizedCurrency =
+      String(fiatCurrency || "")
+        .trim()
+        .toUpperCase();
+
+    /*
+      Claim bank withdrawal currently uses
+      the same proven Xendit VN/VND corridor.
+
+      This does NOT create a Xendit payout.
+    */
+    if (normalizedCountry !== "VN") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Bank withdrawal currently supports Vietnam recipients only."
+      });
+    }
+
+    if (normalizedCurrency !== "VND") {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Bank withdrawal currently supports VND only."
+      });
+    }
+
+    if (!isXenditConfigured()) {
+      return res.status(503).json({
+        success: false,
+        error:
+          "Xendit payout provider is not configured."
+      });
+    }
+
+    const safeRecipientName =
+      String(recipientName || "").trim();
+
+    const safeRecipientPhone =
+      String(recipientPhone || "").trim();
+
+    const safeBankName =
+      String(bankName || "").trim();
+
+    const safeAccountHolder =
+      String(accountHolder || "").trim();
+
+    const safeAccountNumber =
+      String(accountNumber || "").trim();
+
+    const safeRoutingType =
+      String(routingType || "SWIFT")
+        .trim()
+        .toUpperCase();
+
+    const safeRoutingValue =
+      String(routingValue || "")
+        .trim()
+        .toUpperCase();
+
+    const safeCity =
+      String(city || "").trim();
+
+    const safeStreetLine1 =
+      String(streetLine1 || "").trim();
+
+    if (
+      !safeRecipientName ||
+      !safeRecipientPhone ||
+      !safeBankName ||
+      !safeAccountHolder ||
+      !safeAccountNumber ||
+      !safeRoutingType ||
+      !safeRoutingValue ||
+      !safeCity ||
+      !safeStreetLine1
+    ) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Please complete all recipient and bank information."
+      });
+    }
+
+    /*
+      One claim can have only one bank withdrawal.
+    */
     const existing = db.prepare(`
-      SELECT id
+      SELECT
+        id,
+        status,
+        provider
       FROM withdrawals
       WHERE claim_id = ?
       LIMIT 1
@@ -11593,59 +11743,139 @@ if (String(claim.status || "").toUpperCase() === "CLAIMED") {
       });
     }
 
-const offRamp = selectOffRampProvider({
-  country
-});
+    /*
+      IMPORTANT:
 
-const destinationMasked =
-  maskBankAccount(accountNumber);
+      Amount always comes from the server-side claim.
+      The browser cannot choose a different amount.
+    */
+    const claimAmount =
+      Number(claim.amount);
 
-    const id = crypto.randomUUID();
+    if (
+      !Number.isFinite(claimAmount) ||
+      claimAmount <= 0
+    ) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid claim amount."
+      });
+    }
+
+    const destinationMasked =
+      maskBankAccount(
+        safeAccountNumber
+      );
+
+    const id =
+      crypto.randomUUID();
+
+    const now =
+      new Date().toISOString();
+
+    /*
+      BATCH A ONLY
+
+      We register Xendit as the selected payout rail,
+      but DO NOT call createXenditPayout() here.
+
+      Claim USDC must be settled first.
+    */
+    const status =
+      "AWAITING_SETTLEMENT";
+
+    const provider =
+      "xendit";
+
+    const providerStatus =
+      "NOT_STARTED";
 
     db.prepare(`
-  INSERT INTO withdrawals (
-    id,
-    workspace_id,
-    email,
-    amount,
-    country,
-    bank_name,
-    account_holder,
-    account_number,
-    claim_id,
-    status,
-    created_at,
-    provider,
-    provider_status,
-    fiat_currency,
-    destination_masked
-  )
-  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-`).run(
-  id,
-  claim.workspace_id || null,
-  googleUser.email,
-  claim.amount,
-  country,
-  bankName,
-  accountHolder,
-  accountNumber,
-  String(claimId),
-  offRamp.status,
-  new Date().toISOString(),
-  offRamp.provider,
-  offRamp.providerStatus,
-  null,
-  destinationMasked
-);
+      INSERT INTO withdrawals (
+        id,
+        workspace_id,
+        email,
+        amount,
+        country,
+        bank_name,
+        account_holder,
+        account_number,
+        claim_id,
+        status,
+        created_at,
+        provider,
+        provider_status,
+        fiat_currency,
+        destination_masked,
+        recipient_name,
+        recipient_phone,
+        routing_type,
+        routing_value,
+        city,
+        street_line_1
+      )
+      VALUES (
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      )
+    `).run(
+      id,
+      claim.workspace_id || null,
+      googleUser.email,
+      claimAmount,
+      normalizedCountry,
+      safeBankName,
+      safeAccountHolder,
+      safeAccountNumber,
+      String(claimId),
+      status,
+      now,
+      provider,
+      providerStatus,
+      normalizedCurrency,
+      destinationMasked,
+      safeRecipientName,
+      safeRecipientPhone,
+      safeRoutingType,
+      safeRoutingValue,
+      safeCity,
+      safeStreetLine1
+    );
 
-return res.json({
-  success: true,
-  withdrawalId: id,
-  status: offRamp.status,
-  provider: offRamp.provider,
-  providerStatus: offRamp.providerStatus
-});
+    return res.json({
+      success: true,
+
+      withdrawalId: id,
+
+      claimId:
+        String(claimId),
+
+      amount:
+        claimAmount,
+
+      asset:
+        "USDC",
+
+      country:
+        normalizedCountry,
+
+      fiatCurrency:
+        normalizedCurrency,
+
+      provider,
+
+      providerStatus,
+
+      status,
+
+      destinationMasked,
+
+      nextAction:
+        "SETTLE_CLAIM_USDC",
+
+      message:
+        "Bank withdrawal request created. Claim USDC must be settled before the Xendit payout can start."
+    });
 
   } catch (err) {
     console.error(

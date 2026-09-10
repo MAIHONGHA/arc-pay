@@ -12389,6 +12389,7 @@ const circleClaimButton =
   "KYC_REQUIRED",
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
+  "AWAITING_SETTLEMENT",
   "PROCESSING",
   "SETTLED",
   "COMPLETED"
@@ -12404,6 +12405,7 @@ const withdrawalBlocksWalletClaim = [
   "KYC_REQUIRED",
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
+  "AWAITING_SETTLEMENT",
   "PROCESSING",
   "SETTLED",
   "COMPLETED"
@@ -14317,100 +14319,160 @@ if (!confirmResult?.success) {
 }
 };
   document.getElementById(
-    "btnRequestWithdraw"
-  ).onclick = async () => {
-    const googleAccessToken =
-  localStorage.getItem("googleToken");
+  "btnRequestWithdraw"
+).onclick = async () => {
+  const statusEl =
+    document.getElementById("claimStatus");
 
-  if (!googleAccessToken) {
-  document.getElementById(
-    "claimStatus"
-  ).innerText =
-    "Please verify your Gmail first.";
+  const button =
+    document.getElementById("btnRequestWithdraw");
 
-  return;
-}
+  const googleAccessToken =
+    localStorage.getItem("googleToken");
 
-    if (!googleVerified) {
-      document.getElementById(
-        "claimStatus"
-      ).innerText =
-        "Please verify your Gmail first.";
+  if (!googleAccessToken || !googleVerified) {
+    statusEl.innerText =
+      "Please verify your Gmail first.";
+    return;
+  }
 
-      return;
+  const country =
+    document.getElementById("bankCountry")
+      ?.value.trim().toUpperCase();
+
+  const fiatCurrency =
+    document.getElementById("bankCurrency")
+      ?.value.trim().toUpperCase();
+
+  const recipientName =
+    document.getElementById("bankRecipientName")
+      ?.value.trim();
+
+  const recipientPhone =
+    document.getElementById("bankRecipientPhone")
+      ?.value.trim();
+
+  const bankName =
+    document.getElementById("bankName")
+      ?.value.trim();
+
+  const accountNumber =
+    document.getElementById("bankAccount")
+      ?.value.trim();
+
+  const accountHolder =
+    document.getElementById("bankHolder")
+      ?.value.trim();
+
+  const routingType =
+    document.getElementById("bankRoutingType")
+      ?.value.trim().toUpperCase();
+
+  const routingValue =
+    document.getElementById("bankRoutingValue")
+      ?.value.trim().toUpperCase();
+
+  const city =
+    document.getElementById("bankCity")
+      ?.value.trim();
+
+  const streetLine1 =
+    document.getElementById("bankStreet")
+      ?.value.trim();
+
+  if (
+    !country ||
+    !fiatCurrency ||
+    !recipientName ||
+    !recipientPhone ||
+    !bankName ||
+    !accountNumber ||
+    !accountHolder ||
+    !routingType ||
+    !routingValue ||
+    !city ||
+    !streetLine1
+  ) {
+    statusEl.innerText =
+      "Please complete all recipient and bank information.";
+    return;
+  }
+
+  if (country !== "VN" || fiatCurrency !== "VND") {
+    statusEl.innerText =
+      "Bank withdrawal currently supports VN / VND only.";
+    return;
+  }
+
+  try {
+    button.disabled = true;
+    button.style.opacity = "0.65";
+    button.style.cursor = "not-allowed";
+
+    statusEl.innerText =
+      "Creating bank withdrawal request...";
+
+    const result = await api(
+      "/api/withdrawals",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          googleAccessToken,
+          claimId: claimData?.id,
+
+          country,
+          fiatCurrency,
+
+          recipientName,
+          recipientPhone,
+
+          bankName,
+          accountHolder,
+          accountNumber,
+
+          routingType,
+          routingValue,
+
+          city,
+          streetLine1
+        })
+      }
+    );
+
+    if (result?.success === false) {
+      throw new Error(
+        result?.error ||
+        "Bank withdrawal request failed."
+      );
     }
 
-    const country =
-      document.getElementById(
-        "bankCountry"
-      ).value.trim();
+    statusEl.innerText =
+      result?.message ||
+      "Bank withdrawal request created.";
 
-    const bankName =
-      document.getElementById(
-        "bankName"
-      ).value.trim();
+    await loadClaimWithdrawalStatus(
+      claimData?.id
+    );
 
-    const account =
-      document.getElementById(
-        "bankAccount"
-      ).value.trim();
+  } catch (err) {
+    console.error(
+      "Bank withdrawal error:",
+      err
+    );
 
-    const holder =
-      document.getElementById(
-        "bankHolder"
-      ).value.trim();
-
-    if (
-      !country ||
-      !bankName ||
-      !account ||
-      !holder
-    ) {
-      document.getElementById(
-        "claimStatus"
-      ).innerText =
-        "Please complete all bank information.";
-
-      return;
-    }
-
-    try {
-
-      const result = await api(
-        "/api/withdrawals",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            googleAccessToken,
-            country,
-            bankName,
-            accountHolder: holder,
-            accountNumber: account,
-            claimId: claimData?.id
-          })
-        }
+    statusEl.innerText =
+      "Error: " +
+      (
+        err?.message ||
+        err?.error ||
+        String(err)
       );
 
-      document.getElementById(
-        "claimStatus"
-      ).innerText =
-        result.success === false
-          ? "Bank withdrawal request failed."
-          : "Bank withdrawal request submitted.";
-    } catch (err) {
-  console.error("Bank withdrawal error:", err);
-
-  document.getElementById(
-    "claimStatus"
-  ).innerText =
-    "Error: " +
-    (
-      err?.message ||
-      err?.error ||
-      JSON.stringify(err)
-    );
-}
-  };
+    button.disabled = false;
+    button.style.opacity = "1";
+    button.style.cursor = "pointer";
+  }
+};
 }
 
 
