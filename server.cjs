@@ -490,6 +490,511 @@ const ARC_RPC_URL = String(
 );
 const provider = new ethers.JsonRpcProvider(ARC_RPC_URL);
 
+/* =========================
+   TROR CLAIM SETTLEMENT
+========================= */
+
+const TROR_SETTLEMENT_WALLET = String(
+  process.env.TROR_SETTLEMENT_WALLET || ""
+).trim();
+
+const TROR_SETTLEMENT_PRIVATE_KEY = String(
+  process.env.TROR_SETTLEMENT_PRIVATE_KEY || ""
+).trim();
+
+const SETTLEMENT_REBROADCAST_SAFETY_SECONDS =
+  60;
+
+function isTrorSettlementConfigured() {
+  return Boolean(
+    TROR_SETTLEMENT_WALLET &&
+    TROR_SETTLEMENT_PRIVATE_KEY
+  );
+}
+
+function getTrorSettlementSigner() {
+  if (!isTrorSettlementConfigured()) {
+    throw new Error(
+      "TROR settlement wallet is not configured."
+    );
+  }
+
+  if (!ethers.isAddress(TROR_SETTLEMENT_WALLET)) {
+    throw new Error(
+      "TROR_SETTLEMENT_WALLET is not a valid address."
+    );
+  }
+
+  const signer =
+    new ethers.Wallet(
+      TROR_SETTLEMENT_PRIVATE_KEY,
+      provider
+    );
+
+  if (
+    signer.address.toLowerCase() !==
+    TROR_SETTLEMENT_WALLET.toLowerCase()
+  ) {
+    throw new Error(
+      "TROR_SETTLEMENT_PRIVATE_KEY does not match TROR_SETTLEMENT_WALLET."
+    );
+  }
+
+  return signer;
+}
+
+const TROR_CLAIM_SETTLEMENT_ABI = [
+  "function claim(uint256 claimId,uint256 authorizationDeadline,bytes authorization)",
+  "function claims(uint256 claimId) view returns (address sender,bytes32 emailHash,uint256 amount,string memo,uint256 createdAt,uint256 expiresAt,bool claimed,bool refunded)",
+  "event ClaimPaid(uint256 indexed claimId,address indexed receiver,uint256 amount,string memo)"
+];
+
+function getTrorClaimReadContract() {
+  if (!CLAIM_V2_CONTRACT_ADDRESS) {
+    throw new Error(
+      "CLAIM_V2_CONTRACT_ADDRESS is not configured."
+    );
+  }
+
+  if (!ethers.isAddress(CLAIM_V2_CONTRACT_ADDRESS)) {
+    throw new Error(
+      "CLAIM_V2_CONTRACT_ADDRESS is not a valid address."
+    );
+  }
+
+  return new ethers.Contract(
+    CLAIM_V2_CONTRACT_ADDRESS,
+    TROR_CLAIM_SETTLEMENT_ABI,
+    provider
+  );
+}
+
+function getTrorClaimSettlementContract() {
+  if (!CLAIM_V2_CONTRACT_ADDRESS) {
+    throw new Error(
+      "CLAIM_V2_CONTRACT_ADDRESS is not configured."
+    );
+  }
+
+  if (!ethers.isAddress(CLAIM_V2_CONTRACT_ADDRESS)) {
+    throw new Error(
+      "CLAIM_V2_CONTRACT_ADDRESS is not a valid address."
+    );
+  }
+
+  const signer =
+    getTrorSettlementSigner();
+
+  return new ethers.Contract(
+    CLAIM_V2_CONTRACT_ADDRESS,
+    TROR_CLAIM_SETTLEMENT_ABI,
+    signer
+  );
+}
+
+async function readTrorClaimOnChain(
+  claimId
+) {
+  const contract =
+  getTrorClaimReadContract();
+
+  const result =
+    await contract.claims(
+      BigInt(claimId)
+    );
+
+  return {
+    sender: result.sender,
+    emailHash: result.emailHash,
+    amount: result.amount,
+    memo: result.memo,
+    createdAt: result.createdAt,
+    expiresAt: result.expiresAt,
+    claimed: result.claimed,
+    refunded: result.refunded
+  };
+}
+
+async function findTrorClaimPaidEvent({
+  claimId,
+  receiverAddress
+}) {
+  const contract =
+    getTrorClaimReadContract();
+
+  if (!ethers.isAddress(receiverAddress)) {
+    throw new Error(
+      "ClaimPaid receiver address is invalid."
+    );
+  }
+
+  const filter =
+    contract.filters.ClaimPaid(
+      BigInt(claimId),
+      receiverAddress
+    );
+
+  const events =
+    await contract.queryFilter(
+      filter,
+      0,
+      "latest"
+    );
+
+  if (!events.length) {
+    return null;
+  }
+
+  const event =
+    events[events.length - 1];
+
+  return {
+    transactionHash:
+      event.transactionHash,
+    blockNumber:
+      Number(event.blockNumber),
+    claimId:
+      event.args?.claimId,
+    receiver:
+      event.args?.receiver,
+    amount:
+      event.args?.amount,
+    memo:
+      event.args?.memo
+  };
+}
+
+function finalizeTrorClaimSettlement({
+  withdrawalId,
+  workspaceId,
+  claimId,
+  settlementWallet,
+  transactionHash,
+  blockNumber
+}) {
+  if (!ethers.isAddress(settlementWallet)) {
+    throw new Error(
+      "Settlement wallet address is invalid."
+    );
+  }
+
+  if (!transactionHash) {
+    throw new Error(
+      "Settlement transaction hash is required."
+    );
+  }
+
+  const now =
+    new Date().toISOString();
+
+  const finalize =
+    db.transaction(() => {
+      const claim = db.prepare(`
+        SELECT *
+        FROM claims
+        WHERE id = ?
+        LIMIT 1
+      `).get(
+        String(claimId)
+      );
+
+      if (!claim) {
+        throw new Error(
+          "Settlement claim was not found."
+        );
+      }
+
+      const claimStatus = String(
+        claim.status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (claimStatus === "CLAIMED") {
+        const sameWallet =
+          String(
+            claim.walletAddress || ""
+          ).toLowerCase() ===
+          settlementWallet.toLowerCase();
+
+        const sameTx =
+          String(
+            claim.txHash || ""
+          ).toLowerCase() ===
+          String(
+            transactionHash
+          ).toLowerCase();
+
+        if (!sameWallet || !sameTx) {
+          throw new Error(
+            "Claim was already completed by a different settlement transaction."
+          );
+        }
+      } else {
+        db.prepare(`
+          UPDATE claims
+          SET status = 'CLAIMED',
+              walletAddress = ?,
+              txHash = ?,
+              claimedAt = ?
+          WHERE id = ?
+        `).run(
+          settlementWallet,
+          transactionHash,
+          now,
+          String(claimId)
+        );
+      }
+
+      const withdrawalResult =
+        db.prepare(`
+          UPDATE withdrawals
+          SET status = 'READY_FOR_PAYOUT',
+              settlement_status = 'CONFIRMED',
+              settlement_tx_hash = ?,
+              settlement_wallet = ?,
+              settlement_block_number = ?,
+              settled_at = ?
+          WHERE id = ?
+            AND workspace_id = ?
+            AND claim_id = ?
+            AND status IN (
+              'SETTLING',
+              'READY_FOR_PAYOUT'
+            )
+        `).run(
+          transactionHash,
+          settlementWallet,
+          Number(blockNumber),
+          now,
+          withdrawalId,
+          workspaceId,
+          String(claimId)
+        );
+
+      if (
+        withdrawalResult.changes !== 1
+      ) {
+        throw new Error(
+          "Withdrawal could not be finalized from its current settlement state."
+        );
+      }
+
+      return db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        withdrawalId,
+        workspaceId
+      );
+    });
+
+  return finalize();
+}
+
+async function createTrorClaimAuthorization({
+  claimId,
+  recipientEmail,
+  receiverAddress,
+  authorizationLifetimeSeconds = 10 * 60
+}) {
+  if (!CLAIM_VERIFIER_PRIVATE_KEY) {
+    throw new Error(
+      "CLAIM_VERIFIER_PRIVATE_KEY is not configured."
+    );
+  }
+
+  if (!CLAIM_V2_CONTRACT_ADDRESS) {
+    throw new Error(
+      "CLAIM_V2_CONTRACT_ADDRESS is not configured."
+    );
+  }
+
+  if (!ethers.isAddress(receiverAddress)) {
+    throw new Error(
+      "Claim receiver address is invalid."
+    );
+  }
+
+  const verifierWallet =
+    new ethers.Wallet(
+      CLAIM_VERIFIER_PRIVATE_KEY
+    );
+
+  if (
+    CLAIM_VERIFIER_ADDRESS &&
+    verifierWallet.address.toLowerCase() !==
+      CLAIM_VERIFIER_ADDRESS.toLowerCase()
+  ) {
+    throw new Error(
+      "CLAIM_VERIFIER_PRIVATE_KEY does not match CLAIM_VERIFIER_ADDRESS."
+    );
+  }
+
+  const safeAuthorizationLifetime =
+  Number(
+    authorizationLifetimeSeconds
+  );
+
+if (
+  !Number.isInteger(
+    safeAuthorizationLifetime
+  ) ||
+  safeAuthorizationLifetime <= 0 ||
+  safeAuthorizationLifetime >
+    60 * 60
+) {
+  throw new Error(
+    "Invalid claim authorization lifetime."
+  );
+}
+
+const authorizationDeadline =
+  Math.floor(Date.now() / 1000) +
+  safeAuthorizationLifetime;
+
+  const emailHash =
+    ethers.keccak256(
+      ethers.toUtf8Bytes(
+        String(recipientEmail || "")
+          .trim()
+          .toLowerCase()
+      )
+    );
+
+  const messageHash =
+    ethers.keccak256(
+      ethers.AbiCoder.defaultAbiCoder().encode(
+        [
+          "uint256",
+          "address",
+          "uint256",
+          "address",
+          "bytes32",
+          "uint256"
+        ],
+        [
+          ARC_CHAIN_ID,
+          CLAIM_V2_CONTRACT_ADDRESS,
+          BigInt(claimId),
+          receiverAddress,
+          emailHash,
+          authorizationDeadline
+        ]
+      )
+    );
+
+  const authorization =
+    await verifierWallet.signMessage(
+      ethers.getBytes(messageHash)
+    );
+
+  return {
+    authorizationDeadline,
+    authorization,
+    emailHash
+  };
+}
+
+async function prepareTrorClaimSettlementTransaction({
+  claimId,
+  recipientEmail
+}) {
+  const signer =
+    getTrorSettlementSigner();
+
+  const contract =
+    getTrorClaimSettlementContract();
+
+  const {
+    authorizationDeadline,
+    authorization
+  } = await createTrorClaimAuthorization({
+  claimId,
+  recipientEmail,
+  receiverAddress:
+    signer.address,
+  authorizationLifetimeSeconds:
+    60 * 60
+});
+
+  const populated =
+    await contract.claim.populateTransaction(
+      BigInt(claimId),
+      BigInt(authorizationDeadline),
+      authorization
+    );
+
+  const network =
+    await provider.getNetwork();
+
+  const nonce =
+    await provider.getTransactionCount(
+      signer.address,
+      "pending"
+    );
+
+  const feeData =
+    await provider.getFeeData();
+
+  const gasLimit =
+    await provider.estimateGas({
+      ...populated,
+      from:
+        signer.address
+    });
+
+  const txRequest = {
+    ...populated,
+    chainId:
+      Number(network.chainId),
+    nonce,
+    gasLimit
+  };
+
+  if (
+    feeData.maxFeePerGas != null &&
+    feeData.maxPriorityFeePerGas != null
+  ) {
+    txRequest.type = 2;
+    txRequest.maxFeePerGas =
+      feeData.maxFeePerGas;
+    txRequest.maxPriorityFeePerGas =
+      feeData.maxPriorityFeePerGas;
+  } else if (
+    feeData.gasPrice != null
+  ) {
+    txRequest.gasPrice =
+      feeData.gasPrice;
+  } else {
+    throw new Error(
+      "Unable to determine Arc transaction fee data."
+    );
+  }
+
+  const rawTx =
+    await signer.signTransaction(
+      txRequest
+    );
+
+  const transactionHash =
+    ethers.keccak256(
+      rawTx
+    );
+
+  return {
+    rawTx,
+    transactionHash,
+    nonce,
+    authorizationDeadline,
+    settlementWallet:
+      signer.address
+  };
+}
+
 const ERC20_ABI = [
   "function transfer(address to, uint256 amount) returns (bool)",
   "function balanceOf(address account) view returns (uint256)",
@@ -1466,6 +1971,65 @@ try {
     ADD COLUMN street_line_1 TEXT
   `).run();
 } catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_status TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_tx_hash TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_wallet TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_block_number INTEGER
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_raw_tx TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_nonce INTEGER
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN settlement_authorization_deadline INTEGER
+  `).run();
+} catch {}
+
+db.prepare(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawals_settlement_wallet_nonce
+  ON withdrawals(
+    settlement_wallet,
+    settlement_nonce
+  )
+  WHERE settlement_wallet IS NOT NULL
+    AND settlement_nonce IS NOT NULL
+`).run();
 
 db.prepare(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawals_claim_id
@@ -9148,6 +9712,8 @@ const ACTIVE_OFFRAMP_STATUSES = new Set([
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
   "AWAITING_SETTLEMENT",
+  "SETTLING",
+  "READY_FOR_PAYOUT",
   "PROCESSING",
   "SETTLED",
   "COMPLETED"
@@ -11957,6 +12523,974 @@ app.get("/api/withdrawals", (req, res) => {
   }
 });
 
+app.post("/api/withdrawals/:id/settle", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const workspaceId = String(
+      req.body?.workspaceId || ""
+    ).trim();
+
+    const googleAccessToken = String(
+      req.body?.googleAccessToken || ""
+    ).trim();
+
+    if (!googleAccessToken) {
+      return res.status(403).json({
+        success: false,
+        error: "Google verification is required"
+      });
+    }
+
+    if (!workspaceId) {
+      return res.status(400).json({
+        success: false,
+        error: "Workspace is required"
+      });
+    }
+
+    const withdrawal = db.prepare(`
+      SELECT *
+      FROM withdrawals
+      WHERE id = ?
+        AND workspace_id = ?
+      LIMIT 1
+    `).get(
+      id,
+      workspaceId
+    );
+
+    if (!withdrawal) {
+      return res.status(404).json({
+        success: false,
+        error: "Withdrawal not found in this workspace"
+      });
+    }
+
+    if (!withdrawal.claim_id) {
+      return res.status(409).json({
+        success: false,
+        error: "Withdrawal is not linked to a claim"
+      });
+    }
+
+const { claim: verifiedClaim } =
+  await verifyClaimRecipient(
+    withdrawal.claim_id,
+    googleAccessToken
+  );
+
+if (
+  String(verifiedClaim.workspace_id || "") !==
+  String(workspaceId)
+) {
+  return res.status(403).json({
+    success: false,
+    error:
+      "Claim does not belong to this workspace"
+  });
+}
+
+    const currentStatus = String(
+      withdrawal.status || ""
+    )
+      .trim()
+      .toUpperCase();
+
+    if (currentStatus === "SETTLING") {
+  const recoveryWallet = String(
+    withdrawal.settlement_wallet ||
+    TROR_SETTLEMENT_WALLET ||
+    ""
+  ).trim();
+
+  if (
+    !recoveryWallet ||
+    !ethers.isAddress(recoveryWallet)
+  ) {
+    throw new Error(
+      "Settlement wallet is missing or invalid for recovery."
+    );
+  }
+
+const settlementStatus = String(
+  withdrawal.settlement_status || ""
+)
+  .trim()
+  .toUpperCase();
+
+if (settlementStatus === "FAILED") {
+  return res.status(409).json({
+    success: false,
+    retryable: false,
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status: "SETTLING",
+    settlementStatus:
+      "FAILED",
+    settlementWallet:
+      String(
+        withdrawal.settlement_wallet || ""
+      ).trim(),
+    settlementTxHash:
+      String(
+        withdrawal.settlement_tx_hash || ""
+      ).trim() || null,
+    error:
+      "Claim settlement previously failed and requires manual review before another settlement attempt."
+  });
+}
+
+if (settlementStatus === "SIGNED") {
+  const rawTx = String(
+    withdrawal.settlement_raw_tx || ""
+  ).trim();
+
+  const expectedTxHash = String(
+    withdrawal.settlement_tx_hash || ""
+  ).trim();
+
+  if (!rawTx || !expectedTxHash) {
+    throw new Error(
+      "Signed settlement transaction is incomplete."
+    );
+  }
+
+  const calculatedTxHash =
+    ethers.keccak256(rawTx);
+
+  if (
+    calculatedTxHash.toLowerCase() !==
+    expectedTxHash.toLowerCase()
+  ) {
+    throw new Error(
+      "Persisted settlement transaction hash does not match the signed transaction."
+    );
+  }
+
+  const authorizationDeadline =
+    Number(
+      withdrawal
+        .settlement_authorization_deadline
+    );
+
+  if (
+    !Number.isFinite(
+      authorizationDeadline
+    ) ||
+    authorizationDeadline <= 0
+  ) {
+    throw new Error(
+      "Settlement authorization deadline is missing or invalid."
+    );
+  }
+
+  const currentUnixTime =
+    Math.floor(Date.now() / 1000);
+
+  if (
+    currentUnixTime +
+      SETTLEMENT_REBROADCAST_SAFETY_SECONDS >=
+    authorizationDeadline
+  ) {
+    const failedResult = db.prepare(`
+      UPDATE withdrawals
+      SET settlement_status = 'FAILED',
+          processing_at = ?
+      WHERE id = ?
+        AND workspace_id = ?
+        AND status = 'SETTLING'
+        AND settlement_status = 'SIGNED'
+        AND settlement_tx_hash = ?
+        AND settlement_raw_tx = ?
+    `).run(
+      new Date().toISOString(),
+      id,
+      workspaceId,
+      expectedTxHash,
+      rawTx
+    );
+
+    if (failedResult.changes !== 1) {
+      throw new Error(
+        "Settlement could not be marked failed before authorization expiry."
+      );
+    }
+
+    return res.status(409).json({
+      success: false,
+      retryable: false,
+      withdrawalId: id,
+      claimId:
+        withdrawal.claim_id,
+      status: "SETTLING",
+      settlementStatus:
+        "FAILED",
+      settlementTxHash:
+        expectedTxHash,
+      error:
+        "Settlement authorization is expired or too close to expiry. Manual review is required."
+    });
+  }
+
+  let networkTx = null;
+
+  try {
+    networkTx =
+      await provider.broadcastTransaction(
+        rawTx
+      );
+  } catch (broadcastErr) {
+    networkTx =
+      await provider.getTransaction(
+        expectedTxHash
+      );
+
+    if (!networkTx) {
+      throw broadcastErr;
+    }
+  }
+
+  if (
+    String(networkTx.hash || "")
+      .toLowerCase() !==
+    expectedTxHash.toLowerCase()
+  ) {
+    throw new Error(
+      "Broadcast settlement transaction hash mismatch."
+    );
+  }
+
+  const broadcastNow =
+    new Date().toISOString();
+
+  const markBroadcast =
+    db.prepare(`
+      UPDATE withdrawals
+      SET settlement_status = 'BROADCAST',
+          processing_at = ?
+      WHERE id = ?
+        AND workspace_id = ?
+        AND status = 'SETTLING'
+        AND settlement_status = 'SIGNED'
+        AND settlement_tx_hash = ?
+        AND settlement_raw_tx = ?
+    `).run(
+      broadcastNow,
+      id,
+      workspaceId,
+      expectedTxHash,
+      rawTx
+    );
+
+  if (markBroadcast.changes !== 1) {
+    const latestBroadcast =
+      db.prepare(`
+        SELECT
+          status,
+          settlement_status,
+          settlement_tx_hash
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+    if (
+      String(
+        latestBroadcast?.settlement_status ||
+        ""
+      )
+        .trim()
+        .toUpperCase() !== "BROADCAST" ||
+      String(
+        latestBroadcast?.settlement_tx_hash ||
+        ""
+      ).toLowerCase() !==
+        expectedTxHash.toLowerCase()
+    ) {
+      throw new Error(
+        "Settlement transaction was broadcast but its state could not be persisted safely."
+      );
+    }
+  }
+
+  return res.json({
+    success: true,
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status: "SETTLING",
+    settlementStatus:
+      "BROADCAST",
+    settlementWallet:
+      recoveryWallet,
+    settlementTxHash:
+      expectedTxHash,
+    message:
+      "Persisted settlement transaction was broadcast successfully."
+  });
+}
+
+if (settlementStatus === "BROADCAST") {
+  const expectedTxHash = String(
+    withdrawal.settlement_tx_hash || ""
+  ).trim();
+
+  if (
+    !expectedTxHash ||
+    !ethers.isHexString(
+      expectedTxHash,
+      32
+    )
+  ) {
+    throw new Error(
+      "Broadcast settlement transaction hash is missing or invalid."
+    );
+  }
+
+  const receipt =
+    await provider.getTransactionReceipt(
+      expectedTxHash
+    );
+
+  if (!receipt) {
+  const networkTx =
+    await provider.getTransaction(
+      expectedTxHash
+    );
+
+  if (networkTx) {
+    return res.status(202).json({
+      success: true,
+      pending: true,
+      withdrawalId: id,
+      claimId:
+        withdrawal.claim_id,
+      status: "SETTLING",
+      settlementStatus:
+        "BROADCAST",
+      settlementWallet:
+        recoveryWallet,
+      settlementTxHash:
+        expectedTxHash,
+      message:
+        "Settlement transaction is known by the network and is waiting for confirmation."
+    });
+  }
+
+  const rawTx = String(
+    withdrawal.settlement_raw_tx || ""
+  ).trim();
+
+  const authorizationDeadline =
+    Number(
+      withdrawal
+        .settlement_authorization_deadline
+    );
+
+  const currentUnixTime =
+    Math.floor(Date.now() / 1000);
+
+  if (
+    !Number.isFinite(
+      authorizationDeadline
+    ) ||
+    authorizationDeadline <= 0
+  ) {
+    throw new Error(
+      "Settlement authorization deadline is missing or invalid."
+    );
+  }
+
+  if (
+  currentUnixTime +
+    SETTLEMENT_REBROADCAST_SAFETY_SECONDS >=
+  authorizationDeadline
+) {
+    const failedNow =
+      new Date().toISOString();
+
+    const markExpired =
+      db.prepare(`
+        UPDATE withdrawals
+        SET settlement_status = 'FAILED',
+            processing_at = ?
+        WHERE id = ?
+          AND workspace_id = ?
+          AND status = 'SETTLING'
+          AND settlement_status = 'BROADCAST'
+          AND settlement_tx_hash = ?
+      `).run(
+        failedNow,
+        id,
+        workspaceId,
+        expectedTxHash
+      );
+
+    if (markExpired.changes !== 1) {
+      throw new Error(
+        "Expired settlement transaction could not be marked as failed safely."
+      );
+    }
+
+    return res.status(409).json({
+      success: false,
+      retryable: false,
+      withdrawalId: id,
+      claimId:
+        withdrawal.claim_id,
+      status: "SETTLING",
+      settlementStatus:
+        "FAILED",
+      settlementWallet:
+        recoveryWallet,
+      settlementTxHash:
+        expectedTxHash,
+      error:
+        "Settlement authorization expired before the transaction was confirmed."
+    });
+  }
+
+  if (!rawTx) {
+    throw new Error(
+      "Settlement raw transaction is missing."
+    );
+  }
+
+  const calculatedTxHash =
+    ethers.keccak256(rawTx);
+
+  if (
+    calculatedTxHash.toLowerCase() !==
+    expectedTxHash.toLowerCase()
+  ) {
+    throw new Error(
+      "Persisted settlement transaction hash does not match the signed transaction."
+    );
+  }
+
+  try {
+    await provider.broadcastTransaction(
+      rawTx
+    );
+  } catch (rebroadcastErr) {
+    const recoveredTx =
+      await provider.getTransaction(
+        expectedTxHash
+      );
+
+    if (!recoveredTx) {
+      throw rebroadcastErr;
+    }
+  }
+
+  return res.status(202).json({
+    success: true,
+    pending: true,
+    rebroadcast: true,
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status: "SETTLING",
+    settlementStatus:
+      "BROADCAST",
+    settlementWallet:
+      recoveryWallet,
+    settlementTxHash:
+      expectedTxHash,
+    message:
+      "Settlement transaction was safely rebroadcast and is waiting for confirmation."
+  });
+}
+
+  if (Number(receipt.status) !== 1) {
+  const failedNow =
+    new Date().toISOString();
+
+  const markFailed =
+    db.prepare(`
+      UPDATE withdrawals
+      SET settlement_status = 'FAILED',
+          processing_at = ?
+      WHERE id = ?
+        AND workspace_id = ?
+        AND status = 'SETTLING'
+        AND settlement_status = 'BROADCAST'
+        AND settlement_tx_hash = ?
+    `).run(
+      failedNow,
+      id,
+      workspaceId,
+      expectedTxHash
+    );
+
+  if (markFailed.changes !== 1) {
+    throw new Error(
+      "Settlement transaction reverted and the failed state could not be persisted safely."
+    );
+  }
+
+  return res.status(409).json({
+    success: false,
+    retryable: false,
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status: "SETTLING",
+    settlementStatus: "FAILED",
+    settlementWallet:
+      recoveryWallet,
+    settlementTxHash:
+      expectedTxHash,
+    error:
+      "Settlement transaction reverted on-chain."
+  });
+}
+}
+
+  const onChainClaim =
+    await readTrorClaimOnChain(
+      withdrawal.claim_id
+    );
+
+  if (!onChainClaim.claimed) {
+
+  if (settlementStatus === "PREPARING") {
+    const processingAtMs =
+      Date.parse(
+        String(
+          withdrawal.processing_at || ""
+        )
+      );
+
+    const preparingIsStale =
+      Number.isFinite(processingAtMs) &&
+      Date.now() - processingAtMs >
+        2 * 60 * 1000;
+
+    if (preparingIsStale) {
+      const resetResult =
+        db.prepare(`
+          UPDATE withdrawals
+          SET status = 'AWAITING_SETTLEMENT',
+              settlement_status = NULL,
+              settlement_wallet = NULL,
+              processing_at = NULL
+          WHERE id = ?
+            AND workspace_id = ?
+            AND status = 'SETTLING'
+            AND settlement_status = 'PREPARING'
+            AND settlement_tx_hash IS NULL
+            AND settlement_raw_tx IS NULL
+            AND settlement_nonce IS NULL
+        `).run(
+          id,
+          workspaceId
+        );
+
+      if (resetResult.changes === 1) {
+        return res.status(409).json({
+          success: false,
+          retryable: true,
+          withdrawalId: id,
+          claimId:
+            withdrawal.claim_id,
+          status:
+            "AWAITING_SETTLEMENT",
+          settlementStatus: null,
+          settlementTxHash: null,
+          error:
+            "Stale settlement preparation was safely reset. Retry settlement."
+        });
+      }
+    }
+  }
+
+  return res.status(409).json({
+    success: false,
+    retryable:
+      settlementStatus ===
+      "PREPARING",
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status: currentStatus,
+    settlementStatus:
+      withdrawal.settlement_status ||
+      null,
+    settlementTxHash:
+      withdrawal.settlement_tx_hash ||
+      null,
+    error:
+      settlementStatus ===
+      "PREPARING"
+        ? "Claim settlement is still being prepared."
+        : "No confirmed on-chain claim settlement was found yet."
+  });
+}
+
+  if (onChainClaim.refunded) {
+    throw new Error(
+      "Claim cannot be recovered because it was refunded on-chain."
+    );
+  }
+
+  const paidEvent =
+    await findTrorClaimPaidEvent({
+      claimId:
+        withdrawal.claim_id,
+      receiverAddress:
+        recoveryWallet
+    });
+
+  if (!paidEvent) {
+    throw new Error(
+      "Claim is already claimed on-chain, but no ClaimPaid event was found for the settlement wallet."
+    );
+  }
+
+  if (
+    String(paidEvent.receiver || "")
+      .toLowerCase() !==
+    recoveryWallet.toLowerCase()
+  ) {
+    throw new Error(
+      "Recovered ClaimPaid receiver does not match the settlement wallet."
+    );
+  }
+
+  const expectedAmount =
+    ethers.parseUnits(
+      String(withdrawal.amount),
+      USDC_DECIMALS
+    );
+
+  if (
+    paidEvent.amount !==
+    expectedAmount
+  ) {
+    throw new Error(
+      "Recovered ClaimPaid amount does not match the withdrawal amount."
+    );
+  }
+
+const persistedSettlementTxHash =
+  String(
+    withdrawal.settlement_tx_hash || ""
+  ).trim();
+
+if (persistedSettlementTxHash) {
+  if (
+    String(
+      paidEvent.transactionHash || ""
+    ).toLowerCase() !==
+    persistedSettlementTxHash.toLowerCase()
+  ) {
+    throw new Error(
+      "Recovered ClaimPaid transaction does not match the persisted settlement transaction."
+    );
+  }
+}
+
+  const recoveredWithdrawal =
+    finalizeTrorClaimSettlement({
+      withdrawalId: id,
+      workspaceId,
+      claimId:
+        withdrawal.claim_id,
+      settlementWallet:
+        recoveryWallet,
+      transactionHash:
+        paidEvent.transactionHash,
+      blockNumber:
+        paidEvent.blockNumber
+    });
+
+  return res.json({
+    success: true,
+    recovered: true,
+    withdrawal:
+      recoveredWithdrawal,
+    withdrawalId: id,
+    claimId:
+      withdrawal.claim_id,
+    status:
+      "READY_FOR_PAYOUT",
+    settlementStatus:
+      "CONFIRMED",
+    settlementTxHash:
+      paidEvent.transactionHash,
+    settlementBlockNumber:
+      paidEvent.blockNumber,
+    message:
+      "Existing on-chain claim settlement was recovered successfully. No new transaction was sent."
+  });
+}
+
+    if (
+      currentStatus === "READY_FOR_PAYOUT"
+    ) {
+      return res.json({
+        success: true,
+        withdrawalId: id,
+        status: currentStatus,
+        message: "Claim settlement has already completed"
+      });
+    }
+
+    if (
+      currentStatus !==
+      "AWAITING_SETTLEMENT"
+    ) {
+      return res.status(409).json({
+        success: false,
+        withdrawalId: id,
+        status: currentStatus,
+        error:
+          `Claim settlement cannot start from status ${currentStatus}`
+      });
+    }
+
+const claim = db.prepare(`
+  SELECT *
+  FROM claims
+  WHERE id = ?
+  LIMIT 1
+`).get(
+  withdrawal.claim_id
+);
+
+if (!claim) {
+  throw new Error(
+    "Linked claim was not found."
+  );
+}
+
+if (
+  String(claim.status || "")
+    .trim()
+    .toUpperCase() === "CLAIMED"
+) {
+  throw new Error(
+    "Linked claim has already been claimed."
+  );
+}
+
+const onChainClaim =
+  await readTrorClaimOnChain(
+    withdrawal.claim_id
+  );
+
+if (
+  !onChainClaim.amount ||
+  onChainClaim.amount === 0n
+) {
+  throw new Error(
+    "Claim was not found on-chain."
+  );
+}
+
+if (onChainClaim.claimed) {
+  throw new Error(
+    "Claim has already been claimed on-chain."
+  );
+}
+
+if (onChainClaim.refunded) {
+  throw new Error(
+    "Claim has already been refunded on-chain."
+  );
+}
+
+const expectedEmailHash =
+  ethers.keccak256(
+    ethers.toUtf8Bytes(
+      String(
+        claim.recipientEmail || ""
+      )
+        .trim()
+        .toLowerCase()
+    )
+  );
+
+if (
+  String(onChainClaim.emailHash || "")
+    .toLowerCase() !==
+  expectedEmailHash.toLowerCase()
+) {
+  throw new Error(
+    "Claim email hash does not match the on-chain claim."
+  );
+}
+
+const expectedAmount =
+  ethers.parseUnits(
+    String(claim.amount),
+    USDC_DECIMALS
+  );
+
+if (
+  onChainClaim.amount !==
+  expectedAmount
+) {
+  throw new Error(
+    "Claim amount does not match the on-chain claim."
+  );
+}
+
+const settlementSigner =
+  getTrorSettlementSigner();
+
+const settlementWallet =
+  settlementSigner.address;
+
+const lockNow =
+  new Date().toISOString();
+
+const lockResult = db.prepare(`
+  UPDATE withdrawals
+  SET status = 'SETTLING',
+      settlement_status = 'PREPARING',
+      settlement_wallet = ?,
+      processing_at = ?
+  WHERE id = ?
+    AND workspace_id = ?
+    AND status = 'AWAITING_SETTLEMENT'
+    AND NOT EXISTS (
+      SELECT 1
+      FROM withdrawals AS active_settlement
+      WHERE active_settlement.id <> ?
+        AND lower(
+          COALESCE(
+            active_settlement.settlement_wallet,
+            ''
+          )
+        ) = lower(?)
+        AND active_settlement.status = 'SETTLING'
+        AND active_settlement.settlement_status IN (
+          'PREPARING',
+          'SIGNED',
+          'BROADCAST'
+        )
+    )
+`).run(
+  settlementWallet,
+  lockNow,
+  id,
+  workspaceId,
+  id,
+  settlementWallet
+);
+
+if (lockResult.changes !== 1) {
+  const latest = db.prepare(`
+    SELECT status,
+           settlement_status,
+           settlement_tx_hash
+    FROM withdrawals
+    WHERE id = ?
+      AND workspace_id = ?
+    LIMIT 1
+  `).get(
+    id,
+    workspaceId
+  );
+
+  return res.status(409).json({
+    success: false,
+    withdrawalId: id,
+    status:
+      latest?.status || null,
+    settlementStatus:
+      latest?.settlement_status || null,
+    settlementTxHash:
+      latest?.settlement_tx_hash || null,
+    error:
+      "Claim settlement could not acquire the settlement lock"
+  });
+}
+
+const preparedTx =
+  await prepareTrorClaimSettlementTransaction({
+    claimId:
+      withdrawal.claim_id,
+    recipientEmail:
+      claim.recipientEmail
+  });
+
+const signedNow =
+  new Date().toISOString();
+
+const saveSignedTx =
+  db.prepare(`
+    UPDATE withdrawals
+    SET settlement_status = 'SIGNED',
+        settlement_tx_hash = ?,
+        settlement_raw_tx = ?,
+        settlement_nonce = ?,
+        settlement_authorization_deadline = ?,
+        settlement_wallet = ?,
+        processing_at = ?
+    WHERE id = ?
+      AND workspace_id = ?
+      AND status = 'SETTLING'
+      AND settlement_status = 'PREPARING'
+      AND settlement_tx_hash IS NULL
+      AND settlement_raw_tx IS NULL
+  `).run(
+    preparedTx.transactionHash,
+    preparedTx.rawTx,
+    preparedTx.nonce,
+    preparedTx.authorizationDeadline,
+    preparedTx.settlementWallet,
+    signedNow,
+    id,
+    workspaceId
+  );
+
+if (saveSignedTx.changes !== 1) {
+  throw new Error(
+    "Signed settlement transaction could not be persisted safely."
+  );
+}
+
+return res.json({
+  success: true,
+  withdrawalId: id,
+  claimId:
+    withdrawal.claim_id,
+  status: "SETTLING",
+  settlementStatus: "SIGNED",
+  settlementWallet:
+    preparedTx.settlementWallet,
+  settlementTxHash:
+    preparedTx.transactionHash,
+  settlementNonce:
+    preparedTx.nonce,
+  message:
+    "Claim settlement transaction is signed and safely persisted. It has not been broadcast yet."
+});
+
+  } catch (err) {
+    console.error(
+      "Claim settlement lock error:",
+      err
+    );
+
+    return res.status(500).json({
+      success: false,
+      error:
+        err?.message ||
+        "Failed to start claim settlement"
+    });
+  }
+});
+
 app.post("/api/withdrawals/:id/status", async (req, res) => {
   try {
     const { id } = req.params;
@@ -12810,71 +14344,16 @@ withdrawalBlocksWalletClaim(
       });
     }
 
-if (!CLAIM_VERIFIER_PRIVATE_KEY) {
-  throw new Error(
-    "CLAIM_VERIFIER_PRIVATE_KEY is not configured."
-  );
-}
-
-if (!CLAIM_V2_CONTRACT_ADDRESS) {
-  throw new Error(
-    "CLAIM_V2_CONTRACT_ADDRESS is not configured."
-  );
-}
-
-const authorizationDeadline =
-  Math.floor(Date.now() / 1000) +
-  10 * 60;
-
-const verifierWallet =
-  new ethers.Wallet(
-    CLAIM_VERIFIER_PRIVATE_KEY
-  );
-
-if (
-  CLAIM_VERIFIER_ADDRESS &&
-  verifierWallet.address.toLowerCase() !==
-    CLAIM_VERIFIER_ADDRESS.toLowerCase()
-) {
-  throw new Error(
-    "CLAIM_VERIFIER_PRIVATE_KEY does not match CLAIM_VERIFIER_ADDRESS."
-  );
-}
-
-const messageHash =
-  ethers.keccak256(
-    ethers.AbiCoder.defaultAbiCoder().encode(
-      [
-        "uint256",
-        "address",
-        "uint256",
-        "address",
-        "bytes32",
-        "uint256"
-      ],
-      [
-        ARC_CHAIN_ID,
-        CLAIM_V2_CONTRACT_ADDRESS,
-        BigInt(id),
-        walletAddress,
-        ethers.keccak256(
-          ethers.toUtf8Bytes(
-            String(
-              claim.recipientEmail || ""
-            )
-              .trim()
-              .toLowerCase()
-          )
-        ),
-        authorizationDeadline
-      ]
-    )
-  );
-
-const authorization =
-  await verifierWallet.signMessage(
-    ethers.getBytes(messageHash)
-  );
+const {
+  authorizationDeadline,
+  authorization
+} = await createTrorClaimAuthorization({
+  claimId: id,
+  recipientEmail:
+    claim.recipientEmail,
+  receiverAddress:
+    walletAddress
+});
 
 return res.json({
   success: true,
