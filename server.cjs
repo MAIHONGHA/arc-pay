@@ -2058,6 +2058,68 @@ try {
   `).run();
 } catch {}
 
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_amount REAL
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_currency TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_quote_rate REAL
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_quote_source TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_quote_id TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_quote_expires_at TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_idempotency_key TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN payout_started_at TEXT
+  `).run();
+} catch {}
+
+db.prepare(`
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawals_payout_idempotency
+  ON withdrawals(payout_idempotency_key)
+  WHERE payout_idempotency_key IS NOT NULL
+`).run();
+
 db.prepare(`
   CREATE UNIQUE INDEX IF NOT EXISTS idx_withdrawals_settlement_wallet_nonce
   ON withdrawals(
