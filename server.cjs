@@ -272,6 +272,19 @@ const XENDIT_API_VERSION = "2025-09-01";
 
 const XENDIT_API_BASE_URL = "https://api.xendit.co";
 
+const TROR_USDC_VND_RATE = Number(
+  process.env.TROR_USDC_VND_RATE || 0
+);
+
+const TROR_PAYOUT_QUOTE_TTL_SECONDS = Number(
+  process.env.TROR_PAYOUT_QUOTE_TTL_SECONDS || 300
+);
+
+const TROR_PAYOUT_QUOTE_SOURCE = String(
+  process.env.TROR_PAYOUT_QUOTE_SOURCE ||
+  "TROR_TREASURY_MANUAL"
+).trim();
+
 function isXenditConfigured() {
   return Boolean(XENDIT_SECRET_KEY);
 }
@@ -13591,6 +13604,343 @@ return res.json({
     });
   }
 });
+
+app.post(
+  "/api/withdrawals/:id/quote",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const workspaceId = String(
+        req.body?.workspaceId || ""
+      ).trim();
+
+      const googleAccessToken = String(
+        req.body?.googleAccessToken || ""
+      ).trim();
+
+      if (!workspaceId) {
+        return res.status(400).json({
+          success: false,
+          error: "Workspace is required"
+        });
+      }
+
+      if (!googleAccessToken) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Google verification is required"
+        });
+      }
+
+      const withdrawal = db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          error: "Withdrawal was not found"
+        });
+      }
+
+      if (!withdrawal.claim_id) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal is not linked to a Gmail Claim"
+        });
+      }
+
+      const { claim } =
+        await verifyClaimRecipient(
+          withdrawal.claim_id,
+          googleAccessToken
+        );
+
+      if (
+        String(claim.workspace_id || "") !==
+        workspaceId
+      ) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Claim does not belong to this workspace"
+        });
+      }
+
+      const currentStatus = String(
+        withdrawal.status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const settlementStatus = String(
+        withdrawal.settlement_status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        currentStatus !==
+          "READY_FOR_PAYOUT" ||
+        settlementStatus !== "CONFIRMED"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Fiat quote is only available after confirmed USDC settlement"
+        });
+      }
+
+      if (
+        String(
+          withdrawal.provider || ""
+        )
+          .trim()
+          .toLowerCase() !== "xendit"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal is not routed to Xendit"
+        });
+      }
+
+const existingQuoteExpiry =
+  withdrawal.payout_quote_expires_at
+    ? new Date(
+        withdrawal.payout_quote_expires_at
+      )
+    : null;
+
+const existingQuoteIsValid =
+  Number.isFinite(
+    Number(withdrawal.payout_amount)
+  ) &&
+  Number(withdrawal.payout_amount) > 0 &&
+  String(
+    withdrawal.payout_currency || ""
+  ).toUpperCase() === "VND" &&
+  withdrawal.payout_quote_id &&
+  existingQuoteExpiry &&
+  !Number.isNaN(
+    existingQuoteExpiry.getTime()
+  ) &&
+  existingQuoteExpiry.getTime() >
+    Date.now();
+
+if (existingQuoteIsValid) {
+  return res.json({
+    success: true,
+    idempotent: true,
+    withdrawal: {
+      id: withdrawal.id,
+      claim_id:
+        withdrawal.claim_id,
+      amount:
+        withdrawal.amount,
+      fiat_currency:
+        withdrawal.fiat_currency,
+      status:
+        withdrawal.status,
+      provider:
+        withdrawal.provider,
+      provider_status:
+        withdrawal.provider_status,
+      payout_amount:
+        withdrawal.payout_amount,
+      payout_currency:
+        withdrawal.payout_currency,
+      payout_quote_rate:
+        withdrawal.payout_quote_rate,
+      payout_quote_source:
+        withdrawal.payout_quote_source,
+      payout_quote_id:
+        withdrawal.payout_quote_id,
+      payout_quote_expires_at:
+        withdrawal.payout_quote_expires_at
+    },
+    message:
+      "Existing server-side treasury payout quote is still valid."
+  });
+}
+
+      const usdcAmount =
+  Number(withdrawal.amount);
+
+if (
+  !Number.isFinite(usdcAmount) ||
+  usdcAmount <= 0
+) {
+  return res.status(409).json({
+    success: false,
+    error:
+      "Withdrawal USDC amount is invalid"
+  });
+}
+
+if (
+  !Number.isFinite(TROR_USDC_VND_RATE) ||
+  TROR_USDC_VND_RATE <= 0
+) {
+  return res.status(503).json({
+    success: false,
+    error:
+      "Server-side USDC/VND payout rate is not configured"
+  });
+}
+
+if (
+  !Number.isInteger(
+    TROR_PAYOUT_QUOTE_TTL_SECONDS
+  ) ||
+  TROR_PAYOUT_QUOTE_TTL_SECONDS < 60 ||
+  TROR_PAYOUT_QUOTE_TTL_SECONDS > 3600
+) {
+  return res.status(500).json({
+    success: false,
+    error:
+      "Invalid payout quote TTL configuration"
+  });
+}
+
+const payoutCurrency = "VND";
+
+const quoteRate =
+  TROR_USDC_VND_RATE;
+
+const payoutAmount =
+  Math.round(
+    usdcAmount * quoteRate
+  );
+
+if (payoutAmount <= 0) {
+  return res.status(500).json({
+    success: false,
+    error:
+      "Calculated payout amount is invalid"
+  });
+}
+
+const quoteSource =
+  TROR_PAYOUT_QUOTE_SOURCE;
+
+const quoteId =
+  `tror-claim-${withdrawal.claim_id}-${crypto.randomUUID()}`;
+
+const expiresAt =
+  new Date(
+    Date.now() +
+    TROR_PAYOUT_QUOTE_TTL_SECONDS * 1000
+  );
+
+      const now =
+        new Date().toISOString();
+
+      const idempotencyKey =
+        withdrawal.payout_idempotency_key ||
+        crypto.randomUUID();
+
+      const updateResult = db.prepare(`
+        UPDATE withdrawals
+        SET payout_amount = ?,
+            payout_currency = ?,
+            payout_quote_rate = ?,
+            payout_quote_source = ?,
+            payout_quote_id = ?,
+            payout_quote_expires_at = ?,
+            payout_idempotency_key =
+              COALESCE(
+                payout_idempotency_key,
+                ?
+              ),
+            provider_status =
+              CASE
+                WHEN provider_status IS NULL
+                  OR provider_status = ''
+                  OR provider_status = 'NOT_STARTED'
+                THEN 'QUOTE_READY'
+                ELSE provider_status
+              END
+        WHERE id = ?
+          AND workspace_id = ?
+          AND status = 'READY_FOR_PAYOUT'
+          AND settlement_status = 'CONFIRMED'
+      `).run(
+        payoutAmount,
+        payoutCurrency,
+        quoteRate,
+        quoteSource,
+        quoteId,
+        expiresAt.toISOString(),
+        idempotencyKey,
+        id,
+        workspaceId
+      );
+
+      if (updateResult.changes !== 1) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal quote could not be stored from its current state"
+        });
+      }
+
+      const updated = db.prepare(`
+        SELECT
+          id,
+          claim_id,
+          amount,
+          fiat_currency,
+          status,
+          provider,
+          provider_status,
+          payout_amount,
+          payout_currency,
+          payout_quote_rate,
+          payout_quote_source,
+          payout_quote_id,
+          payout_quote_expires_at
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      return res.json({
+        success: true,
+        withdrawal: updated,
+        message:
+  "Server-side treasury payout quote stored. Xendit payout has not started."
+      });
+
+    } catch (err) {
+      console.error(
+        "Create Gmail Claim payout quote error:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to store fiat payout quote"
+      });
+    }
+  }
+);
 
 app.post("/api/withdrawals/:id/status", async (req, res) => {
   try {
