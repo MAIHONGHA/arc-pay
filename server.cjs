@@ -617,15 +617,41 @@ async function readTrorClaimOnChain(
 
 async function findTrorClaimPaidEvent({
   claimId,
-  receiverAddress
+  receiverAddress,
+  transactionHash
 }) {
-  const contract =
-    getTrorClaimReadContract();
+  const safeTxHash =
+    String(transactionHash || "").trim();
+
+  if (
+    !safeTxHash ||
+    !/^0x[a-fA-F0-9]{64}$/.test(safeTxHash)
+  ) {
+    throw new Error(
+      "Missing or invalid settlement transaction hash."
+    );
+  }
 
   if (!ethers.isAddress(receiverAddress)) {
     throw new Error(
       "ClaimPaid receiver address is invalid."
     );
+  }
+
+  const contract =
+    getTrorClaimReadContract();
+
+  const receipt =
+    await provider.getTransactionReceipt(
+      safeTxHash
+    );
+
+  if (!receipt) {
+    return null;
+  }
+
+  if (Number(receipt.status) !== 1) {
+    return null;
   }
 
   const filter =
@@ -637,8 +663,8 @@ async function findTrorClaimPaidEvent({
   const events =
     await contract.queryFilter(
       filter,
-      0,
-      "latest"
+      receipt.blockNumber,
+      receipt.blockNumber
     );
 
   if (!events.length) {
@@ -646,7 +672,18 @@ async function findTrorClaimPaidEvent({
   }
 
   const event =
-    events[events.length - 1];
+    events.find((item) => {
+      return (
+        String(
+          item.transactionHash || ""
+        ).toLowerCase() ===
+        safeTxHash.toLowerCase()
+      );
+    });
+
+  if (!event) {
+    return null;
+  }
 
   return {
     transactionHash:
@@ -13141,12 +13178,14 @@ if (settlementStatus === "BROADCAST") {
   }
 
   const paidEvent =
-    await findTrorClaimPaidEvent({
-      claimId:
-        withdrawal.claim_id,
-      receiverAddress:
-        recoveryWallet
-    });
+  await findTrorClaimPaidEvent({
+    claimId:
+      withdrawal.claim_id,
+    receiverAddress:
+      recoveryWallet,
+    transactionHash:
+      withdrawal.settlement_tx_hash
+  });
 
   if (!paidEvent) {
     throw new Error(
