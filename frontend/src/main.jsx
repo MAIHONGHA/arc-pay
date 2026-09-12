@@ -13674,18 +13674,26 @@ if (bankClaimAmountEl) {
         `You received ${claimData.amount} USDC`;
     }
 
-    if (!isPaymentIntentChoiceClaim && claimData.status === "CLAIMED") {
-      document.getElementById(
-        "googleVerifyBox"
-      ).style.display = "none";
+    if (
+  !isPaymentIntentChoiceClaim &&
+  String(claimData.status || "").toUpperCase() === "CLAIMED"
+) {
+  document.getElementById(
+    "googleVerifyBox"
+  ).style.display = "none";
 
-      document.getElementById(
-        "claimStatus"
-      ).innerText =
-        "This claim has already been claimed.";
+  const withdrawal =
+    await loadClaimWithdrawalStatus(claimId);
 
-      return;
-    }
+  if (!withdrawal) {
+    document.getElementById(
+      "claimStatus"
+    ).innerText =
+      "This claim has already been claimed.";
+  }
+
+  return;
+}
   } catch (err) {
     document.body.innerHTML =
       "<div style='padding:40px;color:white;'>❌ Claim not found</div>";
