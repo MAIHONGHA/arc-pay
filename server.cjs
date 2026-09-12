@@ -12774,7 +12774,12 @@ app.get("/api/withdrawals/claim/:claimId", (req, res) => {
       });
     }
 
-    res.json(withdrawal);
+    const {
+      settlement_raw_tx,
+      ...safeWithdrawal
+    } = withdrawal;
+
+    res.json(safeWithdrawal);
   } catch (err) {
     console.error("Get withdrawal by claim error:", err);
 
