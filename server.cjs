@@ -9906,6 +9906,19 @@ function maskBankAccount(value) {
   )}${visible}`;
 }
 
+function sanitizeWithdrawalForClient(withdrawal) {
+  if (!withdrawal || typeof withdrawal !== "object") {
+    return withdrawal;
+  }
+
+  const {
+    settlement_raw_tx,
+    ...safeWithdrawal
+  } = withdrawal;
+
+  return safeWithdrawal;
+}
+
 function selectOffRampProvider({ country }) {
   const normalizedCountry =
     String(country || "").trim().toUpperCase();
@@ -12774,12 +12787,9 @@ app.get("/api/withdrawals/claim/:claimId", (req, res) => {
       });
     }
 
-    const {
-      settlement_raw_tx,
-      ...safeWithdrawal
-    } = withdrawal;
-
-    res.json(safeWithdrawal);
+    res.json(
+      sanitizeWithdrawalForClient(withdrawal)
+    );
   } catch (err) {
     console.error("Get withdrawal by claim error:", err);
 
@@ -12808,7 +12818,9 @@ app.get("/api/withdrawals", (req, res) => {
       ORDER BY created_at DESC
     `).all(workspaceId);
 
-    return res.json(rows);
+    return res.json(
+      rows.map(sanitizeWithdrawalForClient)
+    );
   } catch (err) {
     console.error(
       "Load withdrawals error:",
@@ -13515,12 +13527,14 @@ if (persistedSettlementTxHash) {
     success: true,
     recovered: true,
     withdrawal:
-      recoveredWithdrawal,
+      sanitizeWithdrawalForClient(
+        recoveredWithdrawal
+      ),
     withdrawalId: id,
     claimId:
       withdrawal.claim_id,
     status:
-      "READY_FOR_PAYOUT",
+      "AWAITING_TREASURY",
     settlementStatus:
       "CONFIRMED",
     settlementTxHash:
@@ -13894,7 +13908,10 @@ if (
         return res.json({
           success: true,
           idempotent: true,
-          withdrawal,
+          withdrawal:
+            sanitizeWithdrawalForClient(
+              withdrawal
+            ),
           message:
             "Treasury funding was already confirmed."
         });
@@ -13964,7 +13981,10 @@ if (
           return res.json({
             success: true,
             idempotent: true,
-            withdrawal: latest,
+            withdrawal:
+              sanitizeWithdrawalForClient(
+                latest
+              ),
             message:
               "Treasury funding was already confirmed."
           });
@@ -13990,7 +14010,10 @@ if (
 
       return res.json({
         success: true,
-        withdrawal: updated,
+        withdrawal:
+          sanitizeWithdrawalForClient(
+            updated
+          ),
         message:
           "Treasury funding confirmed. Withdrawal is ready for payout."
       });
