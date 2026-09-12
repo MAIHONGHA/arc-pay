@@ -11430,7 +11430,131 @@ app.post(
 
       if (!delivery) {
         /*
-          Unknown payout:
+          Gmail Claim bank withdrawals use the same
+          Xendit payout provider, but are stored in
+          withdrawals instead of
+          payment_intent_fiat_deliveries.
+
+          This fallback is additive: the existing
+          Move Money / payment-intent webhook path
+          above remains unchanged.
+        */
+        const withdrawal = db.prepare(`
+          SELECT *
+          FROM withdrawals
+          WHERE provider_order_id = ?
+            AND lower(COALESCE(provider, '')) = 'xendit'
+          LIMIT 1
+        `).get(payoutId);
+
+        if (withdrawal) {
+          const now =
+            new Date().toISOString();
+
+          let localStatus =
+            "PROCESSING";
+
+          if (
+            event === "v3_payout.succeeded" ||
+            providerStatus === "SUCCEEDED"
+          ) {
+            localStatus = "COMPLETED";
+          } else if (
+            event === "v3_payout.failed" ||
+            event === "v3_payout.rejected" ||
+            providerStatus === "FAILED" ||
+            providerStatus === "REJECTED"
+          ) {
+            localStatus = "FAILED";
+          } else if (
+            event === "v3_payout.reversed" ||
+            providerStatus === "REVERSED"
+          ) {
+            localStatus = "FAILED";
+          } else if (
+            event ===
+              "v3_payout.pending_compliance" ||
+            providerStatus ===
+              "PENDING_COMPLIANCE"
+          ) {
+            localStatus = "PROCESSING";
+          }
+
+          db.prepare(`
+            UPDATE withdrawals
+            SET provider_status =
+                  CASE
+                    WHEN ? != ''
+                    THEN ?
+                    ELSE provider_status
+                  END,
+                provider_reference =
+                  CASE
+                    WHEN ? != ''
+                    THEN ?
+                    ELSE provider_reference
+                  END,
+                status = ?,
+                processing_at =
+                  COALESCE(
+                    processing_at,
+                    ?
+                  ),
+                completed_at =
+                  CASE
+                    WHEN ? = 'COMPLETED'
+                    THEN COALESCE(
+                      completed_at,
+                      ?
+                    )
+                    ELSE completed_at
+                  END,
+                failed_at =
+                  CASE
+                    WHEN ? = 'FAILED'
+                    THEN COALESCE(
+                      failed_at,
+                      ?
+                    )
+                    ELSE failed_at
+                  END
+            WHERE id = ?
+              AND provider_order_id = ?
+          `).run(
+            providerStatus,
+            providerStatus,
+
+            processorReference,
+            processorReference,
+
+            localStatus,
+            now,
+
+            localStatus,
+            now,
+
+            localStatus,
+            now,
+
+            withdrawal.id,
+            payoutId
+          );
+
+          return res.json({
+            success: true,
+            payoutId,
+            event,
+            providerStatus:
+              providerStatus ||
+              withdrawal.provider_status ||
+              null,
+            status: localStatus,
+            source: "GMAIL_CLAIM_WITHDRAWAL"
+          });
+        }
+
+        /*
+          Truly unknown payout:
           acknowledge webhook so Xendit
           does not keep retrying forever.
         */
@@ -11438,7 +11562,7 @@ app.post(
           success: true,
           ignored: true,
           reason:
-            "Payout is not linked to a TROR FIAT delivery"
+            "Payout is not linked to a TROR FIAT delivery or Gmail Claim withdrawal"
         });
       }
 
