@@ -388,15 +388,41 @@ if (!safeIdempotencyKey) {
 
   if (!response.ok) {
     const details = Array.isArray(data?.errors)
-      ? data.errors.join("; ")
-      : "";
+  ? data.errors
+      .map((item) => {
+        if (typeof item === "string") {
+          return item;
+        }
 
-    throw new Error(
-      data?.message ||
-      details ||
-      data?.error_code ||
-      `Xendit payout failed (${response.status}).`
-    );
+        if (item && typeof item === "object") {
+          const field =
+            item.field ||
+            item.path ||
+            item.parameter ||
+            "";
+
+          const message =
+            item.message ||
+            item.error ||
+            JSON.stringify(item);
+
+          return field
+            ? `${field}: ${message}`
+            : message;
+        }
+
+        return String(item);
+      })
+      .filter(Boolean)
+      .join("; ")
+  : "";
+
+throw new Error(
+  details ||
+  data?.message ||
+  data?.error_code ||
+  `Xendit payout failed (${response.status}).`
+);
   }
 
   if (!data?.payout_id) {
