@@ -12381,22 +12381,6 @@ const web3ClaimButton =
 const circleClaimButton =
   document.getElementById("btnClaimCircle");
 
-    const statusOrder = [
-  "PENDING",
-  "REVIEW",
-  "APPROVED",
-  "AWAITING_PROVIDER",
-  "KYC_REQUIRED",
-  "REVIEW_REQUIRED",
-  "AWAITING_CRYPTO",
-  "AWAITING_SETTLEMENT",
-  "PROCESSING",
-  "SETTLED",
-  "COMPLETED"
-];
-
-    const currentStatusIndex = statusOrder.indexOf(data.status);
-
 const withdrawalBlocksWalletClaim = [
   "PENDING",
   "REVIEW",
@@ -12406,6 +12390,7 @@ const withdrawalBlocksWalletClaim = [
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
   "AWAITING_SETTLEMENT",
+  "READY_FOR_PAYOUT",
   "PROCESSING",
   "SETTLED",
   "COMPLETED"
@@ -12451,111 +12436,211 @@ const formatStatusTime = (value) => {
   return date.toLocaleString();
 };
 
-    const normalizedWithdrawalStatus =
-  String(data.status || "").trim().toUpperCase();
+const normalizedWithdrawalStatus =
+  String(data.status || "")
+    .trim()
+    .toUpperCase();
+
+const normalizedProviderStatus =
+  String(data.provider_status || "")
+    .trim()
+    .toUpperCase();
 
 const isLegacyWithdrawal =
   ["PENDING", "REVIEW", "APPROVED"].includes(
     normalizedWithdrawalStatus
   );
 
+const withdrawalAmount =
+  Number(data.amount || 0);
+
+const payoutAmount =
+  Number(data.payout_amount || 0);
+
+const payoutCurrency =
+  String(
+    data.payout_currency ||
+    data.fiat_currency ||
+    "VND"
+  ).toUpperCase();
+
+const payoutProvider =
+  String(data.provider || "")
+    .trim()
+    .toLowerCase();
+
+const providerLabel =
+  payoutProvider === "xendit"
+    ? "Xendit"
+    : payoutProvider
+      ? payoutProvider
+      : "Off-ramp provider";
+
+const formattedWithdrawalAmount =
+  Number.isFinite(withdrawalAmount)
+    ? withdrawalAmount.toLocaleString(
+        undefined,
+        {
+          maximumFractionDigits: 6
+        }
+      )
+    : "0";
+
+const formattedPayoutAmount =
+  Number.isFinite(payoutAmount) &&
+  payoutAmount > 0
+    ? payoutAmount.toLocaleString(
+        undefined,
+        {
+          maximumFractionDigits: 2
+        }
+      )
+    : null;
+
+const modernTimelineSteps = [
+  {
+    status: "AWAITING_SETTLEMENT",
+    title: "Waiting for USDC settlement",
+    description:
+      "TROR is preparing the claim USDC for bank payout.",
+    time:
+      data.processing_at ||
+      data.created_at
+  },
+  {
+    status: "READY_FOR_PAYOUT",
+    title: "Settlement confirmed",
+    description:
+      formattedPayoutAmount
+        ? `${formattedWithdrawalAmount} USDC is ready for ${formattedPayoutAmount} ${payoutCurrency} bank payout.`
+        : `${formattedWithdrawalAmount} USDC settlement has been confirmed.`,
+    time: data.settled_at
+  },
+  {
+    status: "PROCESSING",
+    title: "Bank payout processing",
+    description:
+      `${providerLabel} is processing the bank payout.`,
+    time:
+      data.payout_started_at ||
+      data.processing_at
+  },
+  {
+    status: "COMPLETED",
+    title: "Bank payout completed",
+    description:
+      formattedPayoutAmount
+        ? `${formattedPayoutAmount} ${payoutCurrency} payout completed through ${providerLabel}.`
+        : `The bank payout completed through ${providerLabel}.`,
+    time: data.completed_at
+  }
+];
+
+const legacyTimelineSteps = [
+  {
+    status: "PENDING",
+    title: "Withdrawal Requested",
+    description:
+      "Your bank withdrawal request has been submitted.",
+    time: data.created_at
+  },
+  {
+    status: "REVIEW",
+    title: "Under Review",
+    description:
+      "This legacy withdrawal is under review.",
+    time: data.reviewed_at
+  },
+  {
+    status: "APPROVED",
+    title: "Approved",
+    description:
+      "This legacy withdrawal is waiting for settlement.",
+    time: data.approved_at
+  },
+  {
+    status: "COMPLETED",
+    title: "Completed",
+    description:
+      "The off-ramp provider confirmed settlement.",
+    time: data.completed_at
+  }
+];
+
 const timelineSteps =
   isLegacyWithdrawal
-    ? [
-        {
-          status: "PENDING",
-          title: "Withdrawal Requested",
-          description:
-            "Your bank withdrawal request has been submitted.",
-          time: data.created_at
-        },
-        {
-          status: "REVIEW",
-          title: "Under Review",
-          description:
-            "This legacy withdrawal is under review.",
-          time: data.reviewed_at
-        },
-        {
-          status: "APPROVED",
-          title: "Approved",
-          description:
-            "This legacy withdrawal is waiting for off-ramp settlement.",
-          time: data.approved_at
-        },
-        {
-          status: "COMPLETED",
-          title: "Completed",
-          description:
-            "The off-ramp provider confirmed settlement.",
-          time: data.completed_at
-        }
-      ]
-    : [
-        {
-          status: "AWAITING_PROVIDER",
-          title: "Finding Off-ramp Provider",
-          description:
-            "TROR is checking for an available off-ramp provider.",
-          time: data.created_at
-        },
-        {
-          status: "AWAITING_CRYPTO",
-          title: "Awaiting Crypto",
-          description:
-            "The provider is waiting to receive the required USDC.",
-          time: null
-        },
-        {
-          status: "PROCESSING",
-          title: "Processing Fiat Payout",
-          description:
-            "The off-ramp provider is processing the fiat payout.",
-          time: data.processing_at
-        },
-        {
-          status: "SETTLED",
-          title: "Settlement Confirmed",
-          description:
-            "The provider has confirmed fiat settlement.",
-          time: data.settled_at
-        },
-        {
-          status: "COMPLETED",
-          title: "Completed",
-          description:
-            "Your bank withdrawal has been completed.",
-          time: data.completed_at
-        }
-      ];
+    ? legacyTimelineSteps
+    : modernTimelineSteps;
 
 const effectiveStatusOrder =
-  timelineSteps.map((step) => step.status);
+  timelineSteps.map(
+    (step) => step.status
+  );
 
 const effectiveStatusIndex =
   effectiveStatusOrder.indexOf(
     normalizedWithdrawalStatus
   );
 
-    if (button) {
-  button.disabled =
-    !["REJECTED", "FAILED"].includes(
+if (button) {
+  const canRetryWithdrawal =
+    ["REJECTED", "FAILED"].includes(
       normalizedWithdrawalStatus
     );
 
+  button.disabled =
+    !canRetryWithdrawal;
+
+  button.style.opacity =
+    canRetryWithdrawal ? "1" : "0.55";
+
+  button.style.cursor =
+    canRetryWithdrawal
+      ? "pointer"
+      : "not-allowed";
+
   const withdrawalButtonLabels = {
-    PENDING: "Withdrawal Requested",
-    REVIEW: "Under Review",
-    APPROVED: "Awaiting Settlement",
-    AWAITING_PROVIDER: "Finding Off-ramp Provider",
-    KYC_REQUIRED: "KYC Required",
-    REVIEW_REQUIRED: "Provider Review Required",
-    AWAITING_CRYPTO: "Awaiting Crypto",
-    PROCESSING: "Processing Withdrawal",
-    SETTLED: "Settlement Confirmed",
-    COMPLETED: "Withdrawal Completed",
-    REJECTED: "Withdrawal Rejected",
-    FAILED: "Withdrawal Failed"
+    PENDING:
+      "Withdrawal Requested",
+
+    REVIEW:
+      "Under Review",
+
+    APPROVED:
+      "Awaiting Settlement",
+
+    AWAITING_PROVIDER:
+      "Finding Off-ramp Provider",
+
+    KYC_REQUIRED:
+      "KYC Required",
+
+    REVIEW_REQUIRED:
+      "Provider Review Required",
+
+    AWAITING_CRYPTO:
+      "Awaiting Crypto",
+
+    AWAITING_SETTLEMENT:
+      "Waiting for USDC Settlement",
+
+    READY_FOR_PAYOUT:
+      "Ready for Bank Payout",
+
+    PROCESSING:
+      "Bank Payout Processing",
+
+    SETTLED:
+      "Settlement Confirmed",
+
+    COMPLETED:
+      "Bank Payout Completed",
+
+    REJECTED:
+      "Retry Bank Withdrawal",
+
+    FAILED:
+      "Retry Bank Withdrawal"
   };
 
   button.textContent =
@@ -12564,166 +12649,296 @@ const effectiveStatusIndex =
     ] || "Withdrawal Requested";
 }
 
-    if (data.status === "COMPLETED" && bankForm) {
-      bankForm.style.display = "none";
-    }
+if (
+  normalizedWithdrawalStatus ===
+    "COMPLETED" &&
+  bankForm
+) {
+  bankForm.style.display = "none";
+}
 
-    if (statusEl) {
+if (statusEl) {
   if (
     ["REJECTED", "FAILED"].includes(
       normalizedWithdrawalStatus
     )
   ) {
-        statusEl.innerHTML = `
+    statusEl.innerHTML = `
+      <div style="
+        padding:16px;
+        border-radius:12px;
+        background:rgba(239,68,68,0.12);
+        border:1px solid rgba(239,68,68,0.35);
+        color:#fca5a5;
+        font-weight:700;
+      ">
+        ${
+          normalizedWithdrawalStatus ===
+          "FAILED"
+            ? "The bank payout could not be completed."
+            : "Your bank withdrawal request was rejected."
+        }
+      </div>
+    `;
+  } else {
+    const completed =
+      normalizedWithdrawalStatus ===
+      "COMPLETED";
+
+    const payoutSummary =
+      !isLegacyWithdrawal
+        ? `
           <div style="
-            padding:16px;
-            border-radius:12px;
-            background:rgba(239,68,68,0.12);
-            border:1px solid rgba(239,68,68,0.35);
-            color:#fca5a5;
-            font-weight:700;
-          ">
-            ${
-  normalizedWithdrawalStatus === "FAILED"
-    ? "The off-ramp provider could not complete this withdrawal."
-    : "Your bank withdrawal request was rejected."
-}
-          </div>
-        `;
-      } else {
-        statusEl.innerHTML = `
-          <div style="
-            margin-top:16px;
-            padding:18px;
-            border-radius:16px;
-            background:rgba(15,23,42,0.72);
-            border:1px solid rgba(148,163,184,0.18);
+            margin-bottom:18px;
+            padding:14px;
+            border-radius:14px;
+            background:${
+              completed
+                ? "rgba(34,197,94,0.10)"
+                : "rgba(212,175,55,0.08)"
+            };
+            border:1px solid ${
+              completed
+                ? "rgba(34,197,94,0.30)"
+                : "rgba(212,175,55,0.24)"
+            };
           ">
             <div style="
-              font-size:16px;
+              font-size:12px;
               font-weight:800;
-              margin-bottom:16px;
-              color:#ffffff;
+              letter-spacing:.08em;
+              text-transform:uppercase;
+              color:#94a3b8;
+              margin-bottom:8px;
             ">
-              Bank withdrawal progress
+              Bank payout
             </div>
 
-            ${timelineSteps
-              .map((step, index) => {
-                const isCompleted =
-                  effectiveStatusIndex >= index &&
-                  effectiveStatusIndex !== -1;
+            <div style="
+              font-size:18px;
+              font-weight:800;
+              color:#ffffff;
+            ">
+              ${formattedWithdrawalAmount} USDC
+              ${
+                formattedPayoutAmount
+                  ? ` → ${formattedPayoutAmount} ${payoutCurrency}`
+                  : ""
+              }
+            </div>
 
-                const isCurrent =
-                  data.status === step.status;
+            <div style="
+              margin-top:9px;
+              display:grid;
+              gap:5px;
+              font-size:13px;
+              color:#cbd5e1;
+            ">
+              <div>
+                Provider:
+                <b>${providerLabel}</b>
+              </div>
 
-                return `
-                  <div style="
-                    display:flex;
-                    gap:12px;
-                    position:relative;
-                    padding-bottom:${index === timelineSteps.length - 1 ? "0" : "18px"};
-                  ">
+              <div>
+                Status:
+                <b>
+                  ${
+                    completed
+                      ? "Completed"
+                      : normalizedWithdrawalStatus ===
+                          "PROCESSING"
+                        ? "Processing"
+                        : normalizedWithdrawalStatus ===
+                            "READY_FOR_PAYOUT"
+                          ? "Ready for payout"
+                          : "Settlement pending"
+                  }
+                </b>
+              </div>
+
+              ${
+                normalizedProviderStatus
+                  ? `
+                    <div>
+                      Provider status:
+                      <b>${normalizedProviderStatus}</b>
+                    </div>
+                  `
+                  : ""
+              }
+
+              ${
+                data.provider_reference
+                  ? `
                     <div style="
-                      display:flex;
-                      flex-direction:column;
-                      align-items:center;
+                      word-break:break-all;
                     ">
-                      <div style="
-                        width:28px;
-                        height:28px;
-                        border-radius:50%;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        font-weight:800;
-                        background:${
-                          isCompleted
-                            ? "rgba(34,197,94,0.2)"
-                            : "rgba(148,163,184,0.12)"
-                        };
-                        border:1px solid ${
-                          isCompleted
-                            ? "rgba(34,197,94,0.55)"
-                            : "rgba(148,163,184,0.22)"
-                        };
-                        color:${
-                          isCompleted
-                            ? "#86efac"
-                            : "#64748b"
-                        };
-                      ">
-                        ${isCompleted ? "✓" : index + 1}
-                      </div>
-
-                      ${
-                        index !== timelineSteps.length - 1
-                          ? `
-                            <div style="
-                              width:2px;
-                              flex:1;
-                              min-height:34px;
-                              background:${
-                                effectiveStatusIndex > index
-                                  ? "rgba(34,197,94,0.45)"
-                                  : "rgba(148,163,184,0.18)"
-                              };
-                              margin-top:4px;
-                            "></div>
-                          `
-                          : ""
-                      }
+                      Reference:
+                      <b>
+                        ${data.provider_reference}
+                      </b>
                     </div>
-
-                    <div style="padding-top:3px;">
-                      <div style="
-                        font-weight:800;
-                        color:${
-                          isCurrent
-                            ? "#ffffff"
-                            : isCompleted
-                            ? "#cbd5e1"
-                            : "#64748b"
-                        };
-                      ">
-                        ${step.title}
-                      </div>
-
-                      <div style="
-                        margin-top:4px;
-                        font-size:13px;
-                        line-height:1.45;
-                        color:${
-                          isCompleted
-                            ? "#94a3b8"
-                            : "#475569"
-                        };
-                      ">
-                        ${step.description}
-                        ${
-  step.time
-    ? `
-      <div style="
-        margin-top:5px;
-        font-size:12px;
-        color:#94a3b8;
-      ">
-        ${formatStatusTime(step.time)}
-      </div>
-    `
-    : ""
-}
-                      </div>
-                    </div>
-                  </div>
-                `;
-              })
-              .join("")}
+                  `
+                  : ""
+              }
+            </div>
           </div>
-        `;
-      }
-    }
+        `
+        : "";
 
+    statusEl.innerHTML = `
+      <div style="
+        margin-top:16px;
+        padding:18px;
+        border-radius:16px;
+        background:rgba(15,23,42,0.72);
+        border:1px solid rgba(148,163,184,0.18);
+      ">
+        <div style="
+          font-size:16px;
+          font-weight:800;
+          margin-bottom:16px;
+          color:#ffffff;
+        ">
+          Bank withdrawal progress
+        </div>
+
+        ${payoutSummary}
+
+        ${timelineSteps
+          .map((step, index) => {
+            const isCompleted =
+              effectiveStatusIndex >= index &&
+              effectiveStatusIndex !== -1;
+
+            const isCurrent =
+              normalizedWithdrawalStatus ===
+              step.status;
+
+            return `
+              <div style="
+                display:flex;
+                gap:12px;
+                position:relative;
+                padding-bottom:${
+                  index ===
+                  timelineSteps.length - 1
+                    ? "0"
+                    : "18px"
+                };
+              ">
+                <div style="
+                  display:flex;
+                  flex-direction:column;
+                  align-items:center;
+                ">
+                  <div style="
+                    width:28px;
+                    height:28px;
+                    border-radius:50%;
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    font-weight:800;
+                    background:${
+                      isCompleted
+                        ? "rgba(34,197,94,0.2)"
+                        : "rgba(148,163,184,0.12)"
+                    };
+                    border:1px solid ${
+                      isCompleted
+                        ? "rgba(34,197,94,0.55)"
+                        : "rgba(148,163,184,0.22)"
+                    };
+                    color:${
+                      isCompleted
+                        ? "#86efac"
+                        : "#64748b"
+                    };
+                  ">
+                    ${
+                      isCompleted
+                        ? "✓"
+                        : index + 1
+                    }
+                  </div>
+
+                  ${
+                    index !==
+                    timelineSteps.length - 1
+                      ? `
+                        <div style="
+                          width:2px;
+                          flex:1;
+                          min-height:34px;
+                          background:${
+                            effectiveStatusIndex >
+                            index
+                              ? "rgba(34,197,94,0.45)"
+                              : "rgba(148,163,184,0.18)"
+                          };
+                          margin-top:4px;
+                        "></div>
+                      `
+                      : ""
+                  }
+                </div>
+
+                <div style="
+                  padding-top:3px;
+                ">
+                  <div style="
+                    font-weight:800;
+                    color:${
+                      isCurrent
+                        ? "#ffffff"
+                        : isCompleted
+                          ? "#cbd5e1"
+                          : "#64748b"
+                    };
+                  ">
+                    ${step.title}
+                  </div>
+
+                  <div style="
+                    margin-top:4px;
+                    font-size:13px;
+                    line-height:1.45;
+                    color:${
+                      isCompleted
+                        ? "#94a3b8"
+                        : "#475569"
+                    };
+                  ">
+                    ${step.description}
+
+                    ${
+                      step.time
+                        ? `
+                          <div style="
+                            margin-top:5px;
+                            font-size:12px;
+                            color:#94a3b8;
+                          ">
+                            ${
+                              formatStatusTime(
+                                step.time
+                              )
+                            }
+                          </div>
+                        `
+                        : ""
+                    }
+                  </div>
+                </div>
+              </div>
+            `;
+          })
+          .join("")}
+      </div>
+    `;
+  }
+}
     return data;
   } catch (err) {
     console.error("Load withdrawal status error:", err);
