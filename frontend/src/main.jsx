@@ -12390,6 +12390,7 @@ const withdrawalBlocksWalletClaim = [
   "REVIEW_REQUIRED",
   "AWAITING_CRYPTO",
   "AWAITING_SETTLEMENT",
+  "AWAITING_TREASURY",
   "READY_FOR_PAYOUT",
   "PROCESSING",
   "SETTLED",
@@ -12507,6 +12508,17 @@ const modernTimelineSteps = [
       data.processing_at ||
       data.created_at
   },
+
+{
+  status: "AWAITING_TREASURY",
+  title: "Treasury funding pending",
+  description:
+    "USDC settlement is confirmed. TROR is preparing fiat liquidity for the bank payout.",
+  time:
+    data.treasury_updated_at ||
+    data.settled_at
+},
+
   {
     status: "READY_FOR_PAYOUT",
     title: "Settlement confirmed",
@@ -12623,6 +12635,9 @@ if (button) {
 
     AWAITING_SETTLEMENT:
       "Waiting for USDC Settlement",
+
+AWAITING_TREASURY:
+  "Preparing Bank Payout",
 
     READY_FOR_PAYOUT:
       "Ready for Bank Payout",
@@ -12744,14 +12759,17 @@ if (statusEl) {
                 <b>
                   ${
                     completed
-                      ? "Completed"
-                      : normalizedWithdrawalStatus ===
-                          "PROCESSING"
-                        ? "Processing"
-                        : normalizedWithdrawalStatus ===
-                            "READY_FOR_PAYOUT"
-                          ? "Ready for payout"
-                          : "Settlement pending"
+  ? "Completed"
+  : normalizedWithdrawalStatus ===
+      "PROCESSING"
+    ? "Processing"
+    : normalizedWithdrawalStatus ===
+        "READY_FOR_PAYOUT"
+      ? "Ready for payout"
+      : normalizedWithdrawalStatus ===
+          "AWAITING_TREASURY"
+        ? "Preparing bank payout"
+        : "Settlement pending"
                   }
                 </b>
               </div>

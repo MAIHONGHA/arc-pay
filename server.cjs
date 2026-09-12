@@ -285,6 +285,10 @@ const TROR_PAYOUT_QUOTE_SOURCE = String(
   "TROR_TREASURY_MANUAL"
 ).trim();
 
+const TROR_TREASURY_CONTROL_TOKEN = String(
+  process.env.TROR_TREASURY_CONTROL_TOKEN || ""
+).trim();
+
 function isXenditConfigured() {
   return Boolean(XENDIT_SECRET_KEY);
 }
@@ -799,28 +803,41 @@ function finalizeTrorClaimSettlement({
       const withdrawalResult =
         db.prepare(`
           UPDATE withdrawals
-          SET status = 'READY_FOR_PAYOUT',
-              settlement_status = 'CONFIRMED',
-              settlement_tx_hash = ?,
-              settlement_wallet = ?,
-              settlement_block_number = ?,
-              settled_at = ?
-          WHERE id = ?
-            AND workspace_id = ?
-            AND claim_id = ?
-            AND status IN (
-              'SETTLING',
-              'READY_FOR_PAYOUT'
-            )
-        `).run(
-          transactionHash,
-          settlementWallet,
-          Number(blockNumber),
-          now,
-          withdrawalId,
-          workspaceId,
-          String(claimId)
-        );
+SET status = 'AWAITING_TREASURY',
+    settlement_status = 'CONFIRMED',
+    settlement_tx_hash = ?,
+    settlement_wallet = ?,
+    settlement_block_number = ?,
+    settled_at = ?,
+    treasury_status =
+      CASE
+        WHEN treasury_status IS NULL
+          OR treasury_status = ''
+        THEN 'PENDING'
+        ELSE treasury_status
+      END,
+    treasury_updated_at =
+      COALESCE(
+        treasury_updated_at,
+        ?
+      )
+WHERE id = ?
+  AND workspace_id = ?
+  AND claim_id = ?
+  AND status IN (
+    'SETTLING',
+    'AWAITING_TREASURY'
+  )
+    `).run(
+  transactionHash,
+  settlementWallet,
+  Number(blockNumber),
+  now,
+  now,
+  withdrawalId,
+  workspaceId,
+  String(claimId)
+);
 
       if (
         withdrawalResult.changes !== 1
@@ -2124,6 +2141,46 @@ try {
   db.prepare(`
     ALTER TABLE withdrawals
     ADD COLUMN payout_started_at TEXT
+  `).run();
+} catch {}
+
+/* =========================
+   GMAIL CLAIM TREASURY GATE
+
+   Settlement confirms that claim USDC
+   reached the TROR settlement wallet.
+
+   Treasury confirmation is separate:
+   it represents fiat liquidity / funding
+   being ready before a provider payout
+   may begin.
+========================= */
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN treasury_status TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN treasury_reference TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN treasury_confirmed_at TEXT
+  `).run();
+} catch {}
+
+try {
+  db.prepare(`
+    ALTER TABLE withdrawals
+    ADD COLUMN treasury_updated_at TEXT
   `).run();
 } catch {}
 
@@ -13730,6 +13787,226 @@ return res.json({
 });
 
 app.post(
+  "/api/withdrawals/:id/confirm-treasury",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+const treasuryControlToken = String(
+  req.headers["x-tror-treasury-token"] || ""
+).trim();
+
+if (!TROR_TREASURY_CONTROL_TOKEN) {
+  return res.status(503).json({
+    success: false,
+    error:
+      "Treasury control is not configured"
+  });
+}
+
+if (
+  !treasuryControlToken ||
+  treasuryControlToken !==
+    TROR_TREASURY_CONTROL_TOKEN
+) {
+  return res.status(403).json({
+    success: false,
+    error:
+      "Treasury authorization failed"
+  });
+}
+
+      const workspaceId = String(
+        req.body?.workspaceId || ""
+      ).trim();
+
+      const treasuryReference = String(
+        req.body?.treasuryReference || ""
+      ).trim();
+
+      if (!workspaceId) {
+        return res.status(400).json({
+          success: false,
+          error: "Workspace is required"
+        });
+      }
+
+      if (!treasuryReference) {
+        return res.status(400).json({
+          success: false,
+          error: "Treasury reference is required"
+        });
+      }
+
+      const withdrawal = db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          error: "Withdrawal was not found"
+        });
+      }
+
+      if (!withdrawal.claim_id) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal is not linked to a Gmail Claim"
+        });
+      }
+
+      const currentStatus = String(
+        withdrawal.status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const settlementStatus = String(
+        withdrawal.settlement_status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const treasuryStatus = String(
+        withdrawal.treasury_status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        currentStatus === "READY_FOR_PAYOUT" &&
+        treasuryStatus === "CONFIRMED"
+      ) {
+        return res.json({
+          success: true,
+          idempotent: true,
+          withdrawal,
+          message:
+            "Treasury funding was already confirmed."
+        });
+      }
+
+      if (
+        currentStatus !==
+          "AWAITING_TREASURY" ||
+        settlementStatus !== "CONFIRMED"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Treasury can only be confirmed after USDC settlement"
+        });
+      }
+
+      const now =
+        new Date().toISOString();
+
+      const updateResult = db.prepare(`
+        UPDATE withdrawals
+        SET treasury_status = 'CONFIRMED',
+            treasury_reference = ?,
+            treasury_confirmed_at = ?,
+            treasury_updated_at = ?,
+            status = 'READY_FOR_PAYOUT'
+        WHERE id = ?
+          AND workspace_id = ?
+          AND status = 'AWAITING_TREASURY'
+          AND settlement_status = 'CONFIRMED'
+          AND (
+            treasury_status IS NULL
+            OR treasury_status = ''
+            OR treasury_status = 'PENDING'
+          )
+      `).run(
+        treasuryReference,
+        now,
+        now,
+        id,
+        workspaceId
+      );
+
+      if (updateResult.changes !== 1) {
+        const latest = db.prepare(`
+          SELECT *
+          FROM withdrawals
+          WHERE id = ?
+            AND workspace_id = ?
+          LIMIT 1
+        `).get(
+          id,
+          workspaceId
+        );
+
+        if (
+          String(
+            latest?.treasury_status || ""
+          ).toUpperCase() ===
+            "CONFIRMED" &&
+          String(
+            latest?.status || ""
+          ).toUpperCase() ===
+            "READY_FOR_PAYOUT"
+        ) {
+          return res.json({
+            success: true,
+            idempotent: true,
+            withdrawal: latest,
+            message:
+              "Treasury funding was already confirmed."
+          });
+        }
+
+        return res.status(409).json({
+          success: false,
+          error:
+            "Treasury confirmation could not be applied from the current state"
+        });
+      }
+
+      const updated = db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      return res.json({
+        success: true,
+        withdrawal: updated,
+        message:
+          "Treasury funding confirmed. Withdrawal is ready for payout."
+      });
+
+    } catch (err) {
+      console.error(
+        "Confirm Gmail Claim treasury funding error:",
+        err
+      );
+
+      return res.status(500).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to confirm treasury funding"
+      });
+    }
+  }
+);
+
+app.post(
   "/api/withdrawals/:id/quote",
   async (req, res) => {
     try {
@@ -13813,17 +14090,24 @@ app.post(
         .trim()
         .toUpperCase();
 
+const treasuryStatus = String(
+  withdrawal.treasury_status || ""
+)
+  .trim()
+  .toUpperCase();
+
       if (
-        currentStatus !==
-          "READY_FOR_PAYOUT" ||
-        settlementStatus !== "CONFIRMED"
-      ) {
-        return res.status(409).json({
-          success: false,
-          error:
-            "Fiat quote is only available after confirmed USDC settlement"
-        });
-      }
+  currentStatus !==
+    "READY_FOR_PAYOUT" ||
+  settlementStatus !== "CONFIRMED" ||
+  treasuryStatus !== "CONFIRMED"
+) {
+  return res.status(409).json({
+    success: false,
+    error:
+      "Fiat quote is only available after confirmed USDC settlement and treasury funding"
+  });
+}
 
       if (
         String(
@@ -13987,6 +14271,7 @@ const expiresAt =
           AND workspace_id = ?
           AND status = 'READY_FOR_PAYOUT'
           AND settlement_status = 'CONFIRMED'
+          AND treasury_status = 'CONFIRMED'
       `).run(
         payoutAmount,
         payoutCurrency,
@@ -14262,6 +14547,20 @@ app.post(
         .trim()
         .toUpperCase();
 
+const treasuryStatus = String(
+  withdrawal.treasury_status || ""
+)
+  .trim()
+  .toUpperCase();
+
+if (treasuryStatus !== "CONFIRMED") {
+  return res.status(409).json({
+    success: false,
+    error:
+      "Treasury funding must be confirmed before bank payout can start"
+  });
+}
+
       if (
         withdrawalStatus !==
           "READY_FOR_PAYOUT" ||
@@ -14366,6 +14665,8 @@ app.post(
             AND status =
               'READY_FOR_PAYOUT'
             AND settlement_status =
+              'CONFIRMED'
+              AND treasury_status =
               'CONFIRMED'
             AND provider_order_id IS NULL
             AND provider_status IN (
