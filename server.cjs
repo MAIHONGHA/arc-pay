@@ -13843,13 +13843,6 @@ const expiresAt =
     TROR_PAYOUT_QUOTE_TTL_SECONDS * 1000
   );
 
-      const now =
-        new Date().toISOString();
-
-      const idempotencyKey =
-        withdrawal.payout_idempotency_key ||
-        crypto.randomUUID();
-
       const updateResult = db.prepare(`
         UPDATE withdrawals
         SET payout_amount = ?,
@@ -13858,11 +13851,6 @@ const expiresAt =
             payout_quote_source = ?,
             payout_quote_id = ?,
             payout_quote_expires_at = ?,
-            payout_idempotency_key =
-              COALESCE(
-                payout_idempotency_key,
-                ?
-              ),
             provider_status =
               CASE
                 WHEN provider_status IS NULL
@@ -13882,7 +13870,6 @@ const expiresAt =
         quoteSource,
         quoteId,
         expiresAt.toISOString(),
-        idempotencyKey,
         id,
         workspaceId
       );
@@ -13937,6 +13924,542 @@ const expiresAt =
         error:
           err?.message ||
           "Failed to store fiat payout quote"
+      });
+    }
+  }
+);
+
+app.post(
+  "/api/withdrawals/:id/execute-payout",
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      const workspaceId = String(
+        req.body?.workspaceId || ""
+      ).trim();
+
+      const googleAccessToken = String(
+        req.body?.googleAccessToken || ""
+      ).trim();
+
+      if (!workspaceId) {
+        return res.status(400).json({
+          success: false,
+          error: "Workspace is required"
+        });
+      }
+
+      if (!googleAccessToken) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Google verification is required"
+        });
+      }
+
+      let withdrawal = db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      if (!withdrawal) {
+        return res.status(404).json({
+          success: false,
+          error:
+            "Withdrawal was not found"
+        });
+      }
+
+      if (!withdrawal.claim_id) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal is not linked to a Gmail Claim"
+        });
+      }
+
+      const { claim } =
+        await verifyClaimRecipient(
+          withdrawal.claim_id,
+          googleAccessToken
+        );
+
+      if (
+        String(claim.workspace_id || "") !==
+        workspaceId
+      ) {
+        return res.status(403).json({
+          success: false,
+          error:
+            "Claim does not belong to this workspace"
+        });
+      }
+
+      if (
+        String(
+          withdrawal.provider || ""
+        )
+          .trim()
+          .toLowerCase() !== "xendit"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal is not routed to Xendit"
+        });
+      }
+
+      if (
+        String(
+          withdrawal.settlement_status || ""
+        )
+          .trim()
+          .toUpperCase() !== "CONFIRMED"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "USDC settlement must be confirmed before fiat payout"
+        });
+      }
+
+      /*
+        If provider payout already exists,
+        never POST another payout.
+      */
+      if (withdrawal.provider_order_id) {
+        const providerResult =
+          await getXenditPayout(
+            withdrawal.provider_order_id
+          );
+
+        const now =
+          new Date().toISOString();
+
+        const providerStatus = String(
+          providerResult.providerStatus || ""
+        )
+          .trim()
+          .toUpperCase();
+
+        let localStatus =
+          "PROCESSING";
+
+        if (providerStatus === "SUCCEEDED") {
+          localStatus = "COMPLETED";
+        } else if (
+          [
+            "FAILED",
+            "REJECTED",
+            "REVERSED"
+          ].includes(providerStatus)
+        ) {
+          localStatus = "FAILED";
+        }
+
+        db.prepare(`
+          UPDATE withdrawals
+          SET provider_status = ?,
+              provider_reference =
+                COALESCE(
+                  ?,
+                  provider_reference
+                ),
+              status = ?,
+              completed_at =
+                CASE
+                  WHEN ? = 'COMPLETED'
+                  THEN COALESCE(
+                    completed_at,
+                    ?
+                  )
+                  ELSE completed_at
+                END,
+              failed_at =
+                CASE
+                  WHEN ? = 'FAILED'
+                  THEN COALESCE(
+                    failed_at,
+                    ?
+                  )
+                  ELSE failed_at
+                END
+          WHERE id = ?
+            AND workspace_id = ?
+        `).run(
+          providerStatus,
+          providerResult.processorReference,
+          localStatus,
+          localStatus,
+          now,
+          localStatus,
+          now,
+          id,
+          workspaceId
+        );
+
+        return res.json({
+          success: true,
+          idempotent: true,
+          payoutId:
+            providerResult.payoutId,
+          providerStatus,
+          status:
+            localStatus,
+          amount:
+            providerResult.destinationAmount,
+          currency:
+            providerResult.destinationCurrency,
+          message:
+            localStatus === "COMPLETED"
+              ? "Bank payout completed."
+              : localStatus === "FAILED"
+                ? "Bank payout failed."
+                : "Existing Xendit payout is still processing."
+        });
+      }
+
+      const withdrawalStatus = String(
+        withdrawal.status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      const providerStatus = String(
+        withdrawal.provider_status || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        withdrawalStatus !==
+          "READY_FOR_PAYOUT" ||
+        ![
+          "QUOTE_READY",
+          "CREATING_PAYOUT"
+        ].includes(providerStatus)
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            `Payout cannot start from status ${withdrawal.status} / ${withdrawal.provider_status}`
+        });
+      }
+
+      const payoutAmount =
+        Number(
+          withdrawal.payout_amount
+        );
+
+      const payoutCurrency = String(
+        withdrawal.payout_currency || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      if (
+        !Number.isFinite(payoutAmount) ||
+        payoutAmount <= 0 ||
+        payoutCurrency !== "VND"
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Valid server-side payout quote is required"
+        });
+      }
+
+      const quoteExpiry =
+        withdrawal.payout_quote_expires_at
+          ? new Date(
+              withdrawal.payout_quote_expires_at
+            )
+          : null;
+
+      /*
+        Before payout begins, quote must still
+        be valid.
+
+        Once CREATING_PAYOUT has started,
+        retries must keep using the same
+        idempotency key even if quote expires.
+      */
+      if (
+        providerStatus === "QUOTE_READY" &&
+        (
+          !quoteExpiry ||
+          Number.isNaN(
+            quoteExpiry.getTime()
+          ) ||
+          quoteExpiry.getTime() <= Date.now()
+        )
+      ) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Payout quote has expired. Create a new quote first."
+        });
+      }
+
+      if (!isXenditConfigured()) {
+        return res.status(503).json({
+          success: false,
+          error:
+            "Xendit payout provider is not configured"
+        });
+      }
+
+      const candidateIdempotencyKey =
+        crypto.randomUUID();
+
+      const lockNow =
+        new Date().toISOString();
+
+      const lockResult =
+        db.prepare(`
+          UPDATE withdrawals
+          SET payout_idempotency_key =
+                COALESCE(
+                  payout_idempotency_key,
+                  ?
+                ),
+              provider_status =
+                'CREATING_PAYOUT',
+              payout_started_at =
+                COALESCE(
+                  payout_started_at,
+                  ?
+                )
+          WHERE id = ?
+            AND workspace_id = ?
+            AND status =
+              'READY_FOR_PAYOUT'
+            AND settlement_status =
+              'CONFIRMED'
+            AND provider_order_id IS NULL
+            AND provider_status IN (
+              'QUOTE_READY',
+              'CREATING_PAYOUT'
+            )
+        `).run(
+          candidateIdempotencyKey,
+          lockNow,
+          id,
+          workspaceId
+        );
+
+      if (lockResult.changes !== 1) {
+        return res.status(409).json({
+          success: false,
+          error:
+            "Withdrawal payout could not be locked from its current state"
+        });
+      }
+
+      withdrawal = db.prepare(`
+        SELECT *
+        FROM withdrawals
+        WHERE id = ?
+          AND workspace_id = ?
+        LIMIT 1
+      `).get(
+        id,
+        workspaceId
+      );
+
+      if (
+        !withdrawal?.payout_idempotency_key
+      ) {
+        throw new Error(
+          "Unable to initialize payout idempotency key"
+        );
+      }
+
+      const nameParts = String(
+        withdrawal.recipient_name || ""
+      )
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+      if (nameParts.length < 2) {
+        throw new Error(
+          "Recipient full name must contain at least two parts"
+        );
+      }
+
+      const surname =
+        nameParts.pop();
+
+      const givenName =
+        nameParts.join(" ");
+
+      const referenceId =
+        `tror-claim-${withdrawal.claim_id}`;
+
+      const payout =
+        await createXenditPayout({
+          referenceId,
+          idempotencyKey:
+            withdrawal.payout_idempotency_key,
+          amount:
+            Number(
+              withdrawal.payout_amount
+            ),
+          currency:
+            String(
+              withdrawal.payout_currency ||
+              "VND"
+            )
+              .trim()
+              .toUpperCase(),
+
+          recipient: {
+            givenName,
+            surname,
+
+            phone:
+              withdrawal.recipient_phone,
+
+            country:
+              withdrawal.country,
+
+            city:
+              withdrawal.city,
+
+            streetLine1:
+              withdrawal.street_line_1,
+
+            accountHolderName:
+              withdrawal.account_holder,
+
+            accountNumber:
+              withdrawal.account_number,
+
+            routingType:
+              withdrawal.routing_type,
+
+            routingValue:
+              withdrawal.routing_value
+          }
+        });
+
+      const now =
+        new Date().toISOString();
+
+      const finalProviderStatus = String(
+        payout.providerStatus || ""
+      )
+        .trim()
+        .toUpperCase();
+
+      let localStatus =
+        "PROCESSING";
+
+      if (
+        finalProviderStatus ===
+        "SUCCEEDED"
+      ) {
+        localStatus =
+          "COMPLETED";
+      } else if (
+        [
+          "FAILED",
+          "REJECTED",
+          "REVERSED"
+        ].includes(
+          finalProviderStatus
+        )
+      ) {
+        localStatus =
+          "FAILED";
+      }
+
+      db.prepare(`
+        UPDATE withdrawals
+        SET provider_order_id = ?,
+            provider_reference = ?,
+            provider_status = ?,
+            status = ?,
+            processing_at =
+              COALESCE(
+                processing_at,
+                ?
+              ),
+            completed_at =
+              CASE
+                WHEN ? = 'COMPLETED'
+                THEN COALESCE(
+                  completed_at,
+                  ?
+                )
+                ELSE completed_at
+              END,
+            failed_at =
+              CASE
+                WHEN ? = 'FAILED'
+                THEN COALESCE(
+                  failed_at,
+                  ?
+                )
+                ELSE failed_at
+              END
+        WHERE id = ?
+          AND workspace_id = ?
+      `).run(
+        payout.payoutId,
+        payout.processorReference,
+        finalProviderStatus,
+        localStatus,
+        now,
+        localStatus,
+        now,
+        localStatus,
+        now,
+        id,
+        workspaceId
+      );
+
+      return res.json({
+        success: true,
+        payoutId:
+          payout.payoutId,
+        referenceId:
+          payout.referenceId,
+        providerStatus:
+          finalProviderStatus,
+        status:
+          localStatus,
+        amount:
+          payout.destinationAmount,
+        currency:
+          payout.destinationCurrency,
+        message:
+          localStatus === "COMPLETED"
+            ? "Bank payout completed."
+            : localStatus === "FAILED"
+              ? "Bank payout failed."
+              : "Xendit bank payout created and is processing."
+      });
+
+    } catch (err) {
+      console.error(
+        "Execute Gmail Claim payout error:",
+        err
+      );
+
+      return res.status(400).json({
+        success: false,
+        error:
+          err?.message ||
+          "Failed to execute Gmail Claim payout"
       });
     }
   }
